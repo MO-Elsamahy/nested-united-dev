@@ -1,0 +1,13 @@
+2026/01/29-02:36:44.595 4da8 Reusing MANIFEST D:\rentals-dashboard\browser-data\ada4193c-9814-48ce-9aae-d481d58e99ef\Default\IndexedDB\https_gathern.co_0.indexeddb.leveldb/MANIFEST-000001
+2026/01/29-02:36:44.596 4da8 Recovering log #7
+2026/01/29-02:36:44.597 4da8 Reusing old log D:\rentals-dashboard\browser-data\ada4193c-9814-48ce-9aae-d481d58e99ef\Default\IndexedDB\https_gathern.co_0.indexeddb.leveldb/000007.log 
+2026/01/29-02:36:44.759 1e74 Level-0 table #11: started
+2026/01/29-02:36:44.804 1e74 Level-0 table #11: 1470 bytes OK
+2026/01/29-02:36:44.808 1e74 Delete type=0 #7
+2026/01/29-02:36:44.810 4ff8 Manual compaction at level-0 from '\x00\x06\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at '\x00\x06\x00\x00\x05' @ 265 : 1
+2026/01/29-02:36:44.810 4ff8 Compacting 1@0 + 1@1 files
+2026/01/29-02:36:44.853 4ff8 Generated table #12@0: 89 keys, 1779 bytes
+2026/01/29-02:36:44.853 4ff8 Compacted 1@0 + 1@1 files => 1779 bytes
+2026/01/29-02:36:44.856 4ff8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2026/01/29-02:36:44.858 4ff8 Delete type=2 #11
+2026/01/29-02:36:44.860 4ff8 Manual compaction at level-0 from '\x00\x06\x00\x00\x05' @ 265 : 1 .. '\x00\x07\x00\x00\x00' @ 0 : 0; will stop at (end)

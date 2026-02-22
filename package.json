@@ -1,0 +1,126 @@
+{
+  "name": "rentals-dashboard",
+  "version": "1.0.1",
+  "description": "لوحة تحكم لإدارة الوحدات السكنية والإيجارات",
+  "author": "Mohamed Amir Elsamahy <https://samahy.tech/>",
+  "private": true,
+  "main": "electron/dist/main.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:start\"",
+    "electron:start": "tsc -p electron/tsconfig.json && electron .",
+    "electron:build": "npm run build && npm run electron:compile && electron-builder",
+    "electron:compile": "tsc -p electron/tsconfig.json",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "@react-pdf/renderer": "^4.3.2",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.87.1",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "exceljs": "^4.4.0",
+    "ical.js": "^2.2.1",
+    "lucide-react": "^0.556.0",
+    "mysql2": "^3.16.2",
+    "next": "^16.1.6",
+    "next-auth": "^4.24.13",
+    "nodemailer": "^7.0.13",
+    "puppeteer": "^24.36.1",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "tailwind-merge": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20",
+    "@types/nodemailer": "^7.0.9",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/uuid": "^10.0.0",
+    "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/ui": "^4.0.18",
+    "baseline-browser-mapping": "^2.9.19",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.6",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.8",
+    "happy-dom": "^20.6.1",
+    "rcedit": "^5.0.2",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.0.18",
+    "wait-on": "^9.0.3"
+  },
+  "build": {
+    "appId": "com.rentals.dashboard",
+    "productName": "NestedUnited",
+    "copyright": "Copyright © 2025 Mohamed Amir Elsamahy",
+    "directories": {
+      "output": "dist-electron",
+      "buildResources": "build"
+    },
+    "icon": "build/icon.ico",
+    "files": [
+      "electron/dist/**/*",
+      ".next/standalone/**/*",
+      ".next/static/**/*",
+      "public/**/*",
+      "!node_modules",
+      "!node_modules/@img/sharp-darwin-*/**/*",
+      "!node_modules/@img/sharp-linux-*/**/*",
+      "!node_modules/@img/sharp-darwin-arm64/**/*",
+      "!node_modules/@emnapi/**/*"
+    ],
+    "extraFiles": [
+      {
+        "from": ".next/static",
+        "to": ".next/standalone/.next/static"
+      },
+      {
+        "from": "public",
+        "to": ".next/standalone/public"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "build/icon.ico"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "NestedUnited",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
+    "npmRebuild": false,
+    "buildDependenciesFromSource": false,
+    "nodeGypRebuild": false,
+    "forceCodeSigning": false
+  }
+}
