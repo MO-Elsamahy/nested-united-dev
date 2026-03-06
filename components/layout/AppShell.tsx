@@ -10,7 +10,7 @@ interface AppShellProps {
 
 export function AppShell({ children, sidebar, header }: AppShellProps) {
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col" dir="rtl">
+        <div className="h-screen bg-gray-50 flex flex-col overflow-hidden" dir="rtl">
             {/* Top Accent Bar with Pattern */}
             <div
                 className="h-7 w-full bg-primary/10 border-b border-primary/20 relative"

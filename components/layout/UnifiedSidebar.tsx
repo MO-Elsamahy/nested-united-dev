@@ -35,7 +35,7 @@ export function UnifiedSidebar({
     return (
         <aside
             className={cn(
-                "bg-white border-l border-gray-200 min-h-screen flex flex-col w-64 flex-shrink-0 hidden md:flex",
+                "bg-white border-l border-gray-200 h-full flex flex-col w-64 flex-shrink-0 hidden md:flex",
                 className
             )}
         >

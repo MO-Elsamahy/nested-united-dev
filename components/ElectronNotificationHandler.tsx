@@ -78,7 +78,15 @@ export function ElectronNotificationHandler() {
           playNotificationSound();
         });
       }
+      // Listen for sync completion
+      if (window.electronAPI.onSyncComplete) {
+        window.electronAPI.onSyncComplete((data: { accountId: string; platform: string }) => {
+          console.log("[Dashboard] Sync complete for:", data.platform);
+          // Optional: Add a subtle toast or refresh part of the UI
+        });
+      }
     } else {
+
       console.log("[Dashboard] Not running in Electron, notification listener disabled");
     }
   }, []);
@@ -134,10 +142,10 @@ export function ElectronNotificationHandler() {
             {/* Icon */}
             <div
               className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${notification.platform === "airbnb"
-                  ? "bg-gradient-to-br from-red-500 to-rose-600"
-                  : notification.platform === "gathern"
-                    ? "bg-gradient-to-br from-green-500 to-emerald-600"
-                    : "bg-gradient-to-br from-purple-500 to-purple-600"
+                ? "bg-gradient-to-br from-red-500 to-rose-600"
+                : notification.platform === "gathern"
+                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
+                  : "bg-gradient-to-br from-purple-500 to-purple-600"
                 }`}
             >
               <Bell className="w-6 h-6 text-white animate-pulse" />
@@ -151,10 +159,10 @@ export function ElectronNotificationHandler() {
                 </h4>
                 <span
                   className={`px-2 py-0.5 rounded-md text-xs font-medium ${notification.platform === "airbnb"
-                      ? "bg-red-100 text-red-700"
-                      : notification.platform === "gathern"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-purple-100 text-purple-700"
+                    ? "bg-red-100 text-red-700"
+                    : notification.platform === "gathern"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-purple-100 text-purple-700"
                     }`}
                 >
                   {notification.platform === "airbnb" ? "Airbnb" : notification.platform === "gathern" ? "Gathern" : "Zomrahub"}
@@ -182,10 +190,10 @@ export function ElectronNotificationHandler() {
           <div className="h-1 bg-gray-100">
             <div
               className={`h-full ${notification.platform === "airbnb"
-                  ? "bg-gradient-to-l from-red-500 to-rose-600"
-                  : notification.platform === "gathern"
-                    ? "bg-gradient-to-l from-green-500 to-emerald-600"
-                    : "bg-gradient-to-l from-purple-500 to-purple-600"
+                ? "bg-gradient-to-l from-red-500 to-rose-600"
+                : notification.platform === "gathern"
+                  ? "bg-gradient-to-l from-green-500 to-emerald-600"
+                  : "bg-gradient-to-l from-purple-500 to-purple-600"
                 }`}
               style={{
                 animation: "shrink 10s linear forwards",

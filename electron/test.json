@@ -1,0 +1,1665 @@
+[1] 🚨 INBOX BREACHED! PAYLOAD: {
+[1]   "data": {
+[1]     "threadData": {
+[1]       "__typename": "MessageThread",
+[1]       "id": "TWVzc2FnZVRocmVhZDoyNDQ2NTMzMDI4",
+[1]       "messageThreadType": "HOME_BOOKING",
+[1]       "localizationData": {
+[1]         "__typename": "MessageThreadLocalizationData",
+[1]         "autoTranslateLocale": "ar",
+[1]         "isThreadAutoTranslateEnabled": true,
+[1]         "isThreadTranslationEligible": true
+[1]       },
+[1]       "userThreadTags": [
+[1]         {
+[1]           "__typename": "UserThreadTag",
+[1]           "additionalValues": [
+[1]             "1484772458638473182"
+[1]           ],
+[1]           "userThreadTagName": "stay_listing_ids"
+[1]         },
+[1]         {
+[1]           "__typename": "UserThreadTag",
+[1]           "additionalValues": [
+[1]             "PAST_RESERVATIONS"
+[1]           ],
+[1]           "userThreadTagName": "trip_stages"
+[1]         },
+[1]         {
+[1]           "__typename": "UserThreadTag",
+[1]           "additionalValues": [],
+[1]           "userThreadTagName": "hosting"
+[1]         }
+[1]       ],
+[1]       "inboxTitle": {
+[1]         "__typename": "StandardText",
+[1]         "components": [
+[1]           {
+[1]             "__typename": "StandardTextComponent",
+[1]             "text": "Asaad",
+[1]             "type": null
+[1]           }
+[1]         ],
+[1]         "accessibilityText": "Asaad"
+[1]       },
+[1]       "inboxDescription": {
+[1]         "__typename": "StandardText",
+[1]         "components": [
+[1]           {
+[1]             "__typename": "StandardTextComponent",
+[1]             "text": "17–18 فبراير · Boho Nest",
+[1]             "type": null
+[1]           }
+[1]         ],
+[1]         "accessibilityText": "17–18 فبراير · Boho Nest"
+[1]       },
+[1]       "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484772458638473182/original/145c2637-566f-456a-9b72-30a6ce807046.jpeg?aki_policy=small",
+[1]       "inboxProfileImages": [
+[1]         {
+[1]           "__typename": "InboxProfileImage",
+[1]           "image": {
+[1]             "__typename": "InboxImage",
+[1]             "iconName": null,
+[1]             "accessibilityText": "Asaad",
+[1]             "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=A&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]           }
+[1]         }
+[1]       ],
+[1]       "inboxChips": [
+[1]         {
+[1]           "__typename": "ThreadViewChip",
+[1]           "title": "أخبرنا برأيك",
+[1]           "iconURL": "https://a0.muscache.com/pictures/6a71aaae-3fb0-4673-8ea5-09280f0cb6d5.jpg",
+[1]           "icon": null,
+[1]           "action": {
+[1]             "__typename": "StandardActionData",
+[1]             "parameters": {
+[1]               "url": "https://ar.airbnb.com/hosting/reviews/1623913379586319158/edit"
+[1]             },
+[1]             "type": "stay_host_write_review",
+[1]             "url": "https://ar.airbnb.com/hosting/reviews/1623913379586319158/edit",
+[1]             "urlNewWindowPreference": null,
+[1]             "loggingEventData": null
+[1]           },
+[1]           "id": "Thread 2446533028 stayReservationHostReviewChip",
+[1]           "renderingType": "STANDARD",
+[1]           "chipType": "stayReservationHostReviewChip"
+[1]         }
+[1]       ],
+[1]       "inboxAccessibilityTemplateText": "محادثة مع Asaad %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: تقييم الضيف. الحجز من 17 فبراير إلى 18 فبراير في Jeddah.",
+[1]       "inboxItemHighlight": null,
+[1]       "mostRecentInboxActivityAtMsFromROS": "1771750258564",
+[1]       "hiddenInInbox": false,
+[1]       "participants": {
+[1]         "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]         "edges": [
+[1]           {
+[1]             "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]             "node": {
+[1]               "__typename": "UserMessageThreadParticipantV2",
+[1]               "accountId": "588562961",
+[1]               "accountType": "USER",
+[1]               "participantRole": "GUEST",
+[1]               "userRoleForLogging": 3,
+[1]               "status": "ACTIVE",
+[1]               "roleDescription": "القائم بالحجز",
+[1]               "isRealUser": true,
+[1]               "enrichedParticipantInfo": {
+[1]                 "__typename": "EnrichedParticipantInfo",
+[1]                 "name": "Asaad",
+[1]                 "threadDisplayName": "Asaad · القائم بالحجز",
+[1]                 "userProfilePicture": {
+[1]                   "__typename": "UserProfilePicture",
+[1]                   "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=A&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                 },
+[1]                 "userProfileIcon": null
+[1]               },
+[1]               "productRole": "BOOKER",
+[1]               "contextualUser": {
+[1]                 "__typename": "ContextualUser",
+[1]                 "id": "Q29udGV4dHVhbFVzZXI6MTQ5NjUwNTcxMjUxMjE4NzAwNQ=="
+[1]               }
+[1]             }
+[1]           },
+[1]           {
+[1]             "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]             "node": {
+[1]               "__typename": "UserMessageThreadParticipantV2",
+[1]               "accountId": "665213856",
+[1]               "accountType": "USER",
+[1]               "participantRole": "HOST",
+[1]               "userRoleForLogging": 1,
+[1]               "status": "ACTIVE",
+[1]               "roleDescription": "المضيف",
+[1]               "isRealUser": true,
+[1]               "enrichedParticipantInfo": {
+[1]                 "__typename": "EnrichedParticipantInfo",
+[1]                 "name": "The Nest",
+[1]                 "threadDisplayName": "The Nest · المضيف",
+[1]                 "userProfilePicture": {
+[1]                   "__typename": "UserProfilePicture",
+[1]                   "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                 },
+[1]                 "userProfileIcon": null
+[1]               },
+[1]               "productRole": "PRIMARY_HOST",
+[1]               "contextualUser": {
+[1]                 "__typename": "ContextualUser",
+[1]                 "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]               }
+[1]             }
+[1]           }
+[1]         ]
+[1]       },
+[1]       "messages": {
+[1]         "__typename": "MessageThreadToMessagesConnection",
+[1]         "edges": [
+[1]           {
+[1]             "__typename": "MessageThreadToMessagesEdge",
+[1]             "node": {
+[1]               "__typename": "Message",
+[1]               "id": "TWVzc2FnZToyOTY5MDczMDk1Nw==",
+[1]               "createdAtMs": "1771750258564",
+[1]               "updatedAtMs": "1771750258564",
+[1]               "deletedAtMs": null,
+[1]               "isSoftDelete": null,
+[1]               "account": {
+[1]                 "__typename": "ParticipantAccount",
+[1]                 "accountId": "665213856",
+[1]                 "accountType": "USER"
+[1]               },
+[1]               "contentPreview": {
+[1]                 "__typename": "MessageContentPreview",
+[1]                 "translatedContent": null,
+[1]                 "content": "ضيفنا العزيز ما عليك امر ممكن تقيمنا بالتطبيق"
+[1]               }
+[1]             }
+[1]           }
+[1]         ]
+[1]       },
+[1]       "lastReactionV2": null,
+[1]       "status": "ACTIVE",
+[1]       "showUnsendMessageDisclosure": true,
+[1]       "showEditMessageDisclosure": false,
+[1]       "hostingResponseTime": null,
+[1]       "threadContent": {
+[1]         "__typename": "ThreadContent",
+[1]         "detailPanel": {
+[1]           "__typename": "HomeBookingDetailPanelData",
+[1]           "sidebarType": "HOST",
+[1]           "sidebarParams": {
+[1]             "__typename": "SidebarParamsForHost",
+[1]             "bessieThreadId": "2446533028",
+[1]             "confirmationCode": "HMN2E98RWK",
+[1]             "isPending": null
+[1]           }
+[1]         },
+[1]         "composeBar": {
+[1]           "__typename": "ThreadComposeBar",
+[1]           "characterLimit": 4000,
+[1]           "alwaysDisplayPlusButton": true,
+[1]           "composeBarActions": [
+[1]             {
+[1]               "__typename": "ThreadIconAction",
+[1]               "icon": "QUICK_REPLIES",
+[1]               "accessibilityText": {
+[1]                 "__typename": "I18nText",
+[1]                 "localizedString": "إرسال رد سريع"
+[1]               },
+[1]               "action": {
+[1]                 "__typename": "StandardActionData",
+[1]                 "parameters": {
+[1]                   "threadId": "2446533028"
+[1]                 },
+[1]                 "type": "messaging__open_quick_replies",
+[1]                 "url": "https://www.airbnb.com/hosting/thread/2446533028?thread_type=home_booking",
+[1]                 "urlNewWindowPreference": null,
+[1]                 "loggingEventData": {
+[1]                   "__typename": "StandardActionLoggingEventData",
+[1]                   "eventData": {
+[1]                     "thread_id": "2446533028",
+[1]                     "thread_type": "home_booking",
+[1]                     "product_id": "",
+[1]                     "icon": "QUICK_REPLIES",
+[1]                     "index": 0,
+[1]                     "topic_id": "",
+[1]                     "topic_type": ""
+[1]                   },
+[1]                   "eventDataSchemaName": "com.airbnb.jitney.event.logging.Messaging.v2.ComposerBarAction",
+[1]                   "loggingId": "messageThread.open_quick_replies"
+[1]                 }
+[1]               },
+[1]               "composeBarActionStyle": null,
+[1]               "title": {
+[1]                 "__typename": "I18nText",
+[1]                 "localizedString": "إرسال رد سريع"
+[1]               },
+[1]               "tooltipConfiguration": null
+[1]             }
+[1]           ],
+[1]           "enableMessageSending": true,
+[1]           "disableMessageSendingStyle": null,
+[1]           "panelActions": [
+[1]             [
+[1]               {
+[1]                 "__typename": "ThreadIconAction",
+[1]                 "accessibilityText": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "إرسال رد سريع"
+[1]                 },
+[1]                 "action": {
+[1]                   "__typename": "StandardActionData",
+[1]                   "parameters": {
+[1]                     "threadId": "2446533028"
+[1]                   },
+[1]                   "type": "messaging__open_quick_replies",
+[1]                   "url": "https://www.airbnb.com/hosting/thread/2446533028?thread_type=home_booking",
+[1]                   "urlNewWindowPreference": null,
+[1]                   "loggingEventData": {
+[1]                     "__typename": "StandardActionLoggingEventData",
+[1]                     "eventData": {
+[1]                       "thread_id": "2446533028",
+[1]                       "thread_type": "home_booking",
+[1]                       "product_id": "",
+[1]                       "icon": "QUICK_REPLIES",
+[1]                       "index": 0,
+[1]                       "topic_id": "",
+[1]                       "topic_type": ""
+[1]                     },
+[1]                     "eventDataSchemaName": "com.airbnb.jitney.event.logging.Messaging.v2.ComposerBarAction",
+[1]                     "loggingId": "messageThread.open_quick_replies"
+[1]                   }
+[1]                 },
+[1]                 "messagingAction": null,
+[1]                 "composeBarActionStyle": null,
+[1]                 "icon": "QUICK_REPLIES",
+[1]                 "title": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "إرسال رد سريع"
+[1]                 },
+[1]                 "tooltipConfiguration": null
+[1]               },
+[1]               {
+[1]                 "__typename": "ThreadIconAction",
+[1]                 "accessibilityText": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "عرض الردود السريعة المجدولة"
+[1]                 },
+[1]                 "action": {
+[1]                   "__typename": "StandardActionData",
+[1]                   "parameters": {
+[1]                     "threadId": "2446533028"
+[1]                   },
+[1]                   "type": "messaging__open_scheduled_messages",
+[1]                   "url": "https://www.airbnb.com/hosting/thread/2446533028?thread_type=home_booking",
+[1]                   "urlNewWindowPreference": null,
+[1]                   "loggingEventData": {
+[1]                     "__typename": "StandardActionLoggingEventData",
+[1]                     "eventData": {
+[1]                       "thread_id": "2446533028",
+[1]                       "thread_type": "home_booking",
+[1]                       "product_id": "",
+[1]                       "icon": "SCHEDULED_MESSAGES",
+[1]                       "index": 1,
+[1]                       "topic_id": "",
+[1]                       "topic_type": ""
+[1]                     },
+[1]                     "eventDataSchemaName": "com.airbnb.jitney.event.logging.Messaging.v2.ComposerBarAction",
+[1]                     "loggingId": "messageThread.open_scheduled_messages"
+[1]                   }
+[1]                 },
+[1]                 "messagingAction": null,
+[1]                 "composeBarActionStyle": null,
+[1]                 "icon": "SCHEDULED_MESSAGES",
+[1]                 "title": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "عرض الردود السريعة المجدولة"
+[1]                 },
+[1]                 "tooltipConfiguration": {
+[1]                   "__typename": "TooltipConfiguration",
+[1]                   "nuxConfiguration": {
+[1]                     "__typename": "NuxConfiguration",
+[1]                     "componentId": "HOST_INBOX_WEB_SCHEDULED_MESSAGING_TOOLTIP",
+[1]                     "placement": "HOST_INBOX_WEB"
+[1]                   }
+[1]                 }
+[1]               },
+[1]               {
+[1]                 "__typename": "ThreadIconAction",
+[1]                 "accessibilityText": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "إضافة صورة أو مقطع فيديو"
+[1]                 },
+[1]                 "action": {
+[1]                   "__typename": "StandardActionData",
+[1]                   "parameters": {
+[1]                     "mediaImageSelectionEnabled": true,
+[1]                     "source": "library",
+[1]                     "videoSelectionEnabled": true
+[1]                   },
+[1]                   "type": "messaging__open_image_upload_dialog",
+[1]                   "url": "https://www.airbnb.com/hosting/thread/2446533028?thread_type=home_booking",
+[1]                   "urlNewWindowPreference": null,
+[1]                   "loggingEventData": {
+[1]                     "__typename": "StandardActionLoggingEventData",
+[1]                     "eventData": {
+[1]                       "thread_id": "2446533028",
+[1]                       "thread_type": "home_booking",
+[1]                       "product_id": "",
+[1]                       "icon": "IMAGE_INPUT",
+[1]                       "index": 2,
+[1]                       "topic_id": "",
+[1]                       "topic_type": ""
+[1]                     },
+[1]                     "eventDataSchemaName": "com.airbnb.jitney.event.logging.Messaging.v2.ComposerBarAction",
+[1]                     "loggingId": "messageThread.open_image_picker"
+[1]                   }
+[1]                 },
+[1]                 "messagingAction": null,
+[1]                 "composeBarActionStyle": null,
+[1]                 "icon": "IMAGE_INPUT",
+[1]                 "title": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "إضافة صورة أو مقطع فيديو"
+[1]                 },
+[1]                 "tooltipConfiguration": null
+[1]               },
+[1]               {
+[1]                 "__typename": "ThreadIconAction",
+[1]                 "accessibilityText": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "مشاركة التوصيات"
+[1]                 },
+[1]                 "action": {
+[1]                   "__typename": "StandardActionData",
+[1]                   "parameters": {
+[1]                     "threadId": "2446533028"
+[1]                   },
+[1]                   "type": "messaging__open_trip_recommendation",
+[1]                   "url": "https://www.airbnb.com/hosting/thread/2446533028?thread_type=home_booking",
+[1]                   "urlNewWindowPreference": null,
+[1]                   "loggingEventData": {
+[1]                     "__typename": "StandardActionLoggingEventData",
+[1]                     "eventData": {
+[1]                       "thread_id": "2446533028",
+[1]                       "thread_type": "home_booking",
+[1]                       "product_id": "",
+[1]                       "icon": "TRIP_RECOMMENDATION",
+[1]                       "index": 3,
+[1]                       "topic_id": "",
+[1]                       "topic_type": ""
+[1]                     },
+[1]                     "eventDataSchemaName": "com.airbnb.jitney.event.logging.Messaging.v2.ComposerBarAction",
+[1]                     "loggingId": "messageThread.open_trip_recommendation"
+[1]                   }
+[1]                 },
+[1]                 "messagingAction": null,
+[1]                 "composeBarActionStyle": null,
+[1]                 "icon": "TRIP_RECOMMENDATION",
+[1]                 "title": {
+[1]                   "__typename": "I18nText",
+[1]                   "localizedString": "مشاركة التوصيات"
+[1]                 },
+[1]                 "tooltipConfiguration": {
+[1]                   "__typename": "TooltipConfiguration",
+[1]                   "nuxConfiguration": {
+[1]                     "__typename": "NuxConfiguration",
+[1]                     "componentId": "HOST_INBOX_WEB_TRIP_RECOMMENDATIONS_TOOLTIP",
+[1]                     "placement": "HOST_INBOX_WEB"
+[1]                   }
+[1]                 }
+[1]               }
+[1]             ]
+[1]           ]
+[1]         },
+[1]         "footerCTA": null,
+[1]         "alert": {
+[1]           "__typename": "ThreadAlert",
+[1]           "standardAlerts": [],
+[1]           "timeOfDayIndicators": []
+[1]         },
+[1]         "riskData": {
+[1]           "__typename": "ThreadRiskData",
+[1]           "enableMessageFlagging": true
+[1]         },
+[1]         "titleBar": {
+[1]           "__typename": "ThreadTitleBar",
+[1]           "accessibilityTitle": "محادثة مع Asaad",
+[1]           "primaryAction": null,
+[1]           "subtitle": "",
+[1]           "title": "Asaad"
+[1]         },
+[1]         "threadHeader": {
+[1]           "__typename": "ThreadHeader",
+[1]           "mainSection": {
+[1]             "__typename": "MainHeaderSection",
+[1]             "accessibilityText": "تفاصيل سلسلة الرسائل",
+[1]             "subtitle": {
+[1]               "__typename": "StandardTextData",
+[1]               "accessibilityText": "17–18 فبراير • Boho Nest",
+[1]               "components": [
+[1]                 {
+[1]                   "__typename": "StandardTextComponentData",
+[1]                   "text": "17–18 فبراير • Boho Nest"
+[1]                 }
+[1]               ]
+[1]             },
+[1]             "title": {
+[1]               "__typename": "StandardTextData",
+[1]               "accessibilityText": "Asaad",
+[1]               "components": [
+[1]                 {
+[1]                   "__typename": "StandardTextComponentData",
+[1]                   "text": "Asaad"
+[1]                 }
+[1]               ]
+[1]             }
+[1]           }
+[1]         },
+[1]         "messageListFooterSlot": null,
+[1]         "toasts": []
+[1]       },
+[1]       "suggestedReply": null,
+[1]       "threadEmptyView": {
+[1]         "__typename": "ThreadEmptyGeneralContent",
+[1]         "icon": {
+[1]           "__typename": "StandardImage",
+[1]           "accessibilityText": "Pencil image",
+[1]           "url": "https://a0.muscache.com/im/pictures/airbnb-platform-assets/AirbnbPlatformAssets-Messaging-2025/original/7d4ac655-ced2-4ecf-a599-d1db64633448.png",
+[1]           "borderStyle": null
+[1]         },
+[1]         "subtitle": "بادِر بكتابة رسالة أدناه لبدء المحادثة.",
+[1]         "title": "لا توجد رسائل حتى الآن"
+[1]       },
+[1]       "orderedParticipants": [
+[1]         {
+[1]           "__typename": "ParticipantAccount",
+[1]           "accountId": "588562961",
+[1]           "accountType": "USER"
+[1]         },
+[1]         {
+[1]           "__typename": "ParticipantAccount",
+[1]           "accountId": "665213856",
+[1]           "accountType": "USER"
+[1]         }
+[1]       ],
+[1]       "reactionConfig": {
+[1]         "__typename": "ReactionConfig",
+[1]         "supportedReactions": [
+[1]           {
+[1]             "__typename": "ReactionValue",
+[1]             "emoji": "😊"
+[1]           },
+[1]           {
+[1]             "__typename": "ReactionValue",
+[1]             "emoji": "❤️"
+[1]           },
+[1]           {
+[1]             "__typename": "ReactionValue",
+[1]             "emoji": "👍"
+[1]           },
+[1]           {
+[1]             "__typename": "ReactionValue",
+[1]             "emoji": "👏"
+[1]           },
+[1]           {
+[1]             "__typename": "ReactionValue",
+[1]             "emoji": "🤣"
+[1]           }
+[1]         ]
+[1]       },
+[1]       "messageData": {
+[1]         "__typename": "MessagesSegment",
+[1]         "messages": [
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "47b53f15-6a43-3d8c-a645-ec1633fa74db",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTYyODQzNTg2OQ==",
+[1]             "opaqueId": "$1$29628435869$1771340408927",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "TEXT_AND_REFERENCE_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "EVENT_DESCRIPTION",
+[1]               "content": {
+[1]                 "__typename": "EventDescription",
+[1]                 "airmoji": "core_belo",
+[1]                 "body": "وقت وصول Asaad: 6:00 م - 8:00 م"
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "10",
+[1]               "accountType": "SERVICE"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771340408927",
+[1]             "createdAtMs": "1771340408927",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628435869",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": false
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "e5d786a1-4a91-3f43-ae7d-f0ab56a10cf5",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTYyODQzNTk0Ng==",
+[1]             "opaqueId": "$1$29628435946$1771340409097",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "VIEWER_BASED_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "BULLETIN",
+[1]               "content": {
+[1]                 "__typename": "Bulletin",
+[1]                 "body": "تم تأكيد الحجز من طرف 1 ضيف، مع تاريخ تسجيل وصول بتاريخ Feb 17 – 18",
+[1]                 "linkText": "عرض الحجز",
+[1]                 "linkAction": null,
+[1]                 "linkMessagingAction": {
+[1]                   "__typename": "HomesHostOpenReservationDetailsAction",
+[1]                   "loggingData": {
+[1]                     "__typename": "LoggingEventData",
+[1]                     "eventData": {
+[1]                       "message_thread_id": 2446533028,
+[1]                       "message_unique_identifier": "e5d786a1-4a91-3f43-ae7d-f0ab56a10cf5",
+[1]                       "message_type": "BulletinContent",
+[1]                       "standard_action_type": "HomesHostOpenReservationDetailsAction",
+[1]                       "reference_type": "STAYS_INSTANT_BOOKED_host",
+[1]                       "reference_id": null,
+[1]                       "template_type": "STAYS_INSTANT_BOOKED",
+[1]                       "position": 0
+[1]                     },
+[1]                     "eventDataSchemaName": "Messaging.V2.InnerMessageAction",
+[1]                     "loggingId": "messaging.message.action"
+[1]                   },
+[1]                   "url": "/reservation/itinerary?code=HMN2E98RWK",
+[1]                   "urlNewWindowPreference": null,
+[1]                   "confirmationCodeMA": "HMN2E98RWK",
+[1]                   "threadId": "2446533028",
+[1]                   "isPending": null
+[1]                 }
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "95",
+[1]               "accountType": "SERVICE"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771340409097",
+[1]             "createdAtMs": "1771340409097",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628435946",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": false
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "1c1347c9-1b1d-4a16-995a-522dddf242e1",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTYyODQ2ODI0Mw==",
+[1]             "opaqueId": "$1$29628468243$1771340482660",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "TEXT_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "TEXT",
+[1]               "content": {
+[1]                 "__typename": "MessagingRichText",
+[1]                 "body": "هلا وغلا ضفنا العزيز ",
+[1]                 "bodyTranslated": null
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "665213856",
+[1]               "accountType": "USER"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771340482660",
+[1]             "createdAtMs": "1771340482660",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": null,
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "REPLY32",
+[1]                         "accessibilityText": "رد"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "رد"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReplyToMessageAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628468243",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.reply"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628468243",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": true
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "41a1da3e-39cd-48af-8b69-97975cad235a",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTYyODQ3MjM2OA==",
+[1]             "opaqueId": "$1$29628472368$1771340491985",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "TEXT_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "TEXT",
+[1]               "content": {
+[1]                 "__typename": "MessagingRichText",
+[1]                 "body": "هلا",
+[1]                 "bodyTranslated": null
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "588562961",
+[1]               "accountType": "USER"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771340491985",
+[1]             "createdAtMs": "1771340491985",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": null,
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "REPLY32",
+[1]                         "accessibilityText": "رد"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "رد"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReplyToMessageAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628472368",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.reply"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionTranslationConditionData",
+[1]                         "_unused": null
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "FLAG16",
+[1]                         "accessibilityText": "الإبلاغ عن أخطاء بالترجمة"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "الإبلاغ عن أخطاء بالترجمة"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReportTranslationIssueAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628472368",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.report_translation_issue"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628472368",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": true
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "c254b9d6-d554-4b73-b5c9-0dcba23b1f29",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTYyODQ3Mzk2Mg==",
+[1]             "opaqueId": "$1$29628473962$1771340495689",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "TEXT_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "TEXT",
+[1]               "content": {
+[1]                 "__typename": "MessagingRichText",
+[1]                 "body": "سيتم التواصل معك واتساب ",
+[1]                 "bodyTranslated": null
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "665213856",
+[1]               "accountType": "USER"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771340495689",
+[1]             "createdAtMs": "1771340495689",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": null,
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "REPLY32",
+[1]                         "accessibilityText": "رد"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "رد"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReplyToMessageAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628473962",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.reply"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628473962",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": true
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "b2e2a4d9-4002-4746-abf2-1d00f8363952",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTYyODQ4NDc2NA==",
+[1]             "opaqueId": "$1$29628484764$1771340545967",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "TEXT_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "TEXT",
+[1]               "content": {
+[1]                 "__typename": "MessagingRichText",
+[1]                 "body": "Ok",
+[1]                 "bodyTranslated": "موافق"
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "588562961",
+[1]               "accountType": "USER"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771340545967",
+[1]             "createdAtMs": "1771340545967",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": null,
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "REPLY32",
+[1]                         "accessibilityText": "رد"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "رد"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReplyToMessageAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628484764",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.reply"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionTranslationConditionData",
+[1]                         "_unused": null
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "FLAG16",
+[1]                         "accessibilityText": "الإبلاغ عن أخطاء بالترجمة"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "الإبلاغ عن أخطاء بالترجمة"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReportTranslationIssueAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628484764",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.report_translation_issue"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29628484764",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": true
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "d0bcee00-34a6-438a-a965-dcedb4e529cf",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTYyOTAyODI0OQ==",
+[1]             "opaqueId": "$1$29629028249$1771343303572",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "TEXT_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "TEXT",
+[1]               "content": {
+[1]                 "__typename": "MessagingRichText",
+[1]                 "body": "بخدمتك 🙏",
+[1]                 "bodyTranslated": null
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "665213856",
+[1]               "accountType": "USER"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771343303572",
+[1]             "createdAtMs": "1771343303572",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": null,
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "REPLY32",
+[1]                         "accessibilityText": "رد"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "رد"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReplyToMessageAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29629028249",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.reply"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29629028249",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": true
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "f4bd2ef4-ef4d-3130-86d2-ca6c82535679",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTY0MDI2ODEyMQ==",
+[1]             "opaqueId": "$1$29640268121$1771422361424",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "VIEWER_BASED_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "BULLETIN",
+[1]               "content": {
+[1]                 "__typename": "Bulletin",
+[1]                 "body": "يرجى تخصيص بعض الوقت لمشاركة آرائك بشأن ضيوفك.",
+[1]                 "linkText": "كتابة تعليق",
+[1]                 "linkAction": {
+[1]                   "__typename": "StandardActionData",
+[1]                   "parameters": {
+[1]                     "reviewId": "1623913379586319158",
+[1]                     "url": "https://www.airbnb.com/hosting/reviews/1623913379586319158/edit"
+[1]                   },
+[1]                   "type": "messaging__open_url",
+[1]                   "url": "https://www.airbnb.com/hosting/reviews/1623913379586319158/edit",
+[1]                   "urlNewWindowPreference": "CLIENT_DEFAULT",
+[1]                   "loggingEventData": {
+[1]                     "__typename": "StandardActionLoggingEventData",
+[1]                     "eventData": {
+[1]                       "message_thread_id": 2446533028,
+[1]                       "message_unique_identifier": "f4bd2ef4-ef4d-3130-86d2-ca6c82535679",
+[1]                       "message_type": "BulletinContent",
+[1]                       "position": 0,
+[1]                       "standard_action_type": "messaging__open_url",
+[1]                       "reference_type": null,
+[1]                       "reference_id": null,
+[1]                       "extras": {
+[1]                         "reviewId": "1623913379586319158",
+[1]                         "url": "https://www.airbnb.com/hosting/reviews/1623913379586319158/edit"
+[1]                       },
+[1]                       "template_type": "STAYS_REVIEW_REMINDER"
+[1]                     },
+[1]                     "eventDataSchemaName": "Messaging.V2.InnerMessageAction",
+[1]                     "loggingId": "messaging.message.action"
+[1]                   }
+[1]                 },
+[1]                 "linkMessagingAction": {
+[1]                   "__typename": "MessagingOpenUrlAction",
+[1]                   "loggingData": {
+[1]                     "__typename": "LoggingEventData",
+[1]                     "eventData": {
+[1]                       "message_thread_id": 2446533028,
+[1]                       "message_unique_identifier": "f4bd2ef4-ef4d-3130-86d2-ca6c82535679",
+[1]                       "message_type": "BulletinContent",
+[1]                       "standard_action_type": "MessagingOpenUrlAction",
+[1]                       "reference_type": null,
+[1]                       "reference_id": null,
+[1]                       "template_type": "STAYS_REVIEW_REMINDER",
+[1]                       "position": 0
+[1]                     },
+[1]                     "eventDataSchemaName": "Messaging.V2.InnerMessageAction",
+[1]                     "loggingId": "messaging.message.action"
+[1]                   },
+[1]                   "url": "https://www.airbnb.com/hosting/reviews/1623913379586319158/edit",
+[1]                   "urlNewWindowPreference": null,
+[1]                   "deeplink": "https://www.airbnb.com/hosting/reviews/1623913379586319158/edit"
+[1]                 }
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "1005",
+[1]               "accountType": "SERVICE"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771422361424",
+[1]             "createdAtMs": "1771422361424",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": null,
+[1]               "showReactionsTray": false
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           },
+[1]           {
+[1]             "__typename": "Message",
+[1]             "uuid": "9af863b0-d14a-4ca5-932f-599370f523c1",
+[1]             "threadId": "2446533028",
+[1]             "id": "TWVzc2FnZToyOTY5MDczMDk1Nw==",
+[1]             "opaqueId": "$1$29690730957$1771750258564",
+[1]             "correlationIdentifier": null,
+[1]             "contentType": "TEXT_CONTENT",
+[1]             "hydratedContent": {
+[1]               "__typename": "RichMessage",
+[1]               "contentType": "TEXT",
+[1]               "content": {
+[1]                 "__typename": "MessagingRichText",
+[1]                 "body": "ضيفنا العزيز ما عليك امر ممكن تقيمنا بالتطبيق",
+[1]                 "bodyTranslated": null
+[1]               },
+[1]               "captionText": null,
+[1]               "suggestionConfig": null,
+[1]               "loggingExtras": null,
+[1]               "plainText": null
+[1]             },
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "665213856",
+[1]               "accountType": "USER"
+[1]             },
+[1]             "captionType": null,
+[1]             "userFlagByViewer": {
+[1]               "__typename": "MessageUserFlag",
+[1]               "flagId": null,
+[1]               "redacted": null
+[1]             },
+[1]             "updatedAtMs": "1771750258564",
+[1]             "createdAtMs": "1771750258564",
+[1]             "deletedAtMs": null,
+[1]             "editedAtMs": null,
+[1]             "isSoftDelete": null,
+[1]             "localClientData": null,
+[1]             "syncCursor": "1626663990048060196",
+[1]             "contextualConfig": {
+[1]               "__typename": "MessageContextualConfig",
+[1]               "menuSections": [
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": null,
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "REPLY32",
+[1]                         "accessibilityText": "رد"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "رد"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReplyToMessageAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29690730957",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.reply"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 {
+[1]                   "__typename": "ContextualConfigMenuSection",
+[1]                   "items": [
+[1]                     {
+[1]                       "__typename": "ContextualConfigMenuItem",
+[1]                       "showIf": {
+[1]                         "__typename": "MessagingSectionReadReceiptConditionData"
+[1]                       },
+[1]                       "icon": {
+[1]                         "__typename": "MessagingIcon",
+[1]                         "name": "EYE16",
+[1]                         "accessibilityText": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "text": {
+[1]                         "__typename": "I18nText",
+[1]                         "localizedString": "تمت قراءة الرسالة من قبل"
+[1]                       },
+[1]                       "messagingAction": {
+[1]                         "__typename": "MessagingReadReceiptAction",
+[1]                         "loggingData": {
+[1]                           "__typename": "LoggingEventData",
+[1]                           "eventData": {
+[1]                             "message_id": "29690730957",
+[1]                             "thread_id": "2446533028"
+[1]                           },
+[1]                           "eventDataSchemaName": "Messaging.v1.MessageData",
+[1]                           "loggingId": "messaging.thread.message.view_read_receipts"
+[1]                         },
+[1]                         "url": "",
+[1]                         "urlNewWindowPreference": null
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 }
+[1]               ],
+[1]               "showReactionsTray": true
+[1]             },
+[1]             "reactionSummary": {
+[1]               "__typename": "ReactionSummary",
+[1]               "modalData": [],
+[1]               "reactionByCurrentAccount": null,
+[1]               "reactionCounts": [],
+[1]               "deletedReactions": [],
+[1]               "syncCursor": "1626663990048060196"
+[1]             },
+[1]             "parentMessageId": null,
+[1]             "senderInfoOverride": null
+[1]           }
+[1]         ],
+[1]         "expandedMessagesSegment": {
+[1]           "__typename": "ThreadMessagesSegment",
+[1]           "earliestMessageId": "29628435869",
+[1]           "latestMessageId": "29690730957"
+[1]         },
+[1]         "expandedCursorsSegment": {
+[1]           "__typename": "ThreadCursorsSegment",
+[1]           "earliestCursor": "1626663990048060196",
+[1]           "latestCursor": "1626663990048060196"
+[1]         },
+[1]         "upToDate": false
+[1]       },
+[1]       "lastMessageReads": {
+[1]         "__typename": "ReadReceiptsData",
+[1]         "id": "UmVhZFJlY2VpcHRzRGF0YToyNDQ2NTMzMDI4",
+[1]         "canViewReadReceipts": true,
+[1]         "receipts": [
+[1]           {
+[1]             "__typename": "LastMessageRead",
+[1]             "readReceiptCreatedAtMs": "1771721452429",
+[1]             "messageId": "29629028249",
+[1]             "originalMessageId": "29640268121",
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "588562961",
+[1]               "accountType": "USER"
+[1]             }
+[1]           },
+[1]           {
+[1]             "__typename": "LastMessageRead",
+[1]             "readReceiptCreatedAtMs": "1771435446568",
+[1]             "messageId": "29628484764",
+[1]             "originalMessageId": "29640268121",
+[1]             "account": {
+[1]               "__typename": "ParticipantAccount",
+[1]               "accountId": "665213856",
+[1]               "accountType": "USER"
+[1]             }
+[1]           }
+[1]         ]
+[1]       }
+[1]     }
+[1]   },
+[1]   "extensions": {
+[1]     "traceId": "CQGlCbv3BjtgjrVa0Rilyw=="
+[1]   }
+[1] }
+
+
+

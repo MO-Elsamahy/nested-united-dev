@@ -35,32 +35,53 @@ export default function CostCentersPage() {
                 </button>
             </div>
 
-            <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full text-right text-sm">
-                    <thead className="bg-gray-50 border-b font-medium text-gray-600">
-                        <tr>
-                            <th className="px-6 py-3">الكود</th>
-                            <th className="px-6 py-3">الاسم</th>
-                            <th className="px-6 py-3">الوصف</th>
-                            <th className="px-6 py-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                        {centers.map(c => (
-                            <tr key={c.id} className="hover:bg-gray-50">
-                                <td className="px-6 py-4 font-mono text-gray-500">{c.code}</td>
-                                <td className="px-6 py-4 font-medium flex items-center gap-2">
-                                    <Target className="w-4 h-4 text-blue-500" /> {c.name}
-                                </td>
-                                <td className="px-6 py-4 text-gray-500">{c.description}</td>
-                                <td className="px-6 py-4">
-                                    <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
-                                </td>
+            {loading ? (
+                <div className="space-y-4">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="h-16 bg-white border border-gray-100 rounded-xl animate-pulse" />
+                    ))}
+                </div>
+            ) : centers.length > 0 ? (
+                <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-right text-sm">
+                        <thead className="bg-gray-50 border-b font-medium text-gray-600">
+                            <tr>
+                                <th className="px-6 py-3">الكود</th>
+                                <th className="px-6 py-3">الاسم</th>
+                                <th className="px-6 py-3">الوصف</th>
+                                <th className="px-6 py-3"></th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="divide-y">
+                            {centers.map(c => (
+                                <tr key={c.id} className="hover:bg-gray-50">
+                                    <td className="px-6 py-4 font-mono text-gray-500">{c.code}</td>
+                                    <td className="px-6 py-4 font-medium flex items-center gap-2">
+                                        <Target className="w-4 h-4 text-blue-500" /> {c.name}
+                                    </td>
+                                    <td className="px-6 py-4 text-gray-500">{c.description}</td>
+                                    <td className="px-6 py-4">
+                                        <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:bg-red-50 p-1 rounded"><Trash2 className="w-4 h-4" /></button>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            ) : (
+                <div className="bg-white border border-dashed border-gray-300 rounded-xl py-16 text-center">
+                    <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">لا توجد مراكز تكلفة</h3>
+                    <p className="text-gray-500 mb-6">ابدأ بإضافة أول مركز تكلفة لتتبع مشاريعك وفروعك</p>
+                    <button
+                        onClick={() => setShowForm(true)}
+                        className="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 transition"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>أضف أول مركز</span>
+                    </button>
+                </div>
+            )}
 
             {showForm && (
                 <CostCenterForm onClose={() => setShowForm(false)} onSuccess={() => { setShowForm(false); fetchCenters(); }} />

@@ -268,21 +268,37 @@ export default function InvoiceDetailPage() {
                     </div>
                 </div>
 
-                {/* Notes */}
-                {invoice.notes && (
-                    <div className="mt-8 pt-8 border-t">
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">ملاحظات</h3>
-                        <p className="text-gray-700">{invoice.notes}</p>
+                {/* Notes & Attachments */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-8 pt-8 border-t">
+                    <div>
+                        {invoice.notes && (
+                            <>
+                                <h3 className="text-sm font-medium text-gray-500 mb-2">ملاحظات</h3>
+                                <p className="text-gray-700">{invoice.notes}</p>
+                            </>
+                        )}
+                        {invoice.payment_terms && (
+                            <div className="mt-4">
+                                <h3 className="text-sm font-medium text-gray-500 mb-2">شروط الدفع</h3>
+                                <p className="text-gray-700">{invoice.payment_terms}</p>
+                            </div>
+                        )}
                     </div>
-                )}
-
-                {/* Payment Terms */}
-                {invoice.payment_terms && (
-                    <div className="mt-4">
-                        <h3 className="text-sm font-medium text-gray-500 mb-2">شروط الدفع</h3>
-                        <p className="text-gray-700">{invoice.payment_terms}</p>
-                    </div>
-                )}
+                    {invoice.attachment_url && (
+                        <div className="bg-gray-50 p-4 rounded-lg border border-dashed text-left">
+                            <h3 className="text-sm font-medium text-gray-500 mb-2">المرفقات</h3>
+                            <a
+                                href={invoice.attachment_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                                <FileText className="w-5 h-5" />
+                                <span>عرض المرفق (صورة/PDF)</span>
+                            </a>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Payment History */}

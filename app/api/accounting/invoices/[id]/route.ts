@@ -103,6 +103,7 @@ export async function PUT(
             reference,
             notes,
             payment_terms,
+            attachment_url,
             lines,
         } = body;
 
@@ -178,6 +179,7 @@ export async function PUT(
                 reference = ?,
                 notes = ?,
                 payment_terms = ?,
+                attachment_url = ?,
                 updated_at = NOW()
              WHERE id = ?`,
             [
@@ -192,6 +194,7 @@ export async function PUT(
                 reference,
                 notes,
                 payment_terms,
+                attachment_url,
                 invoiceId,
             ]
         );

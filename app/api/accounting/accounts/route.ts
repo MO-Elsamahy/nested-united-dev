@@ -13,11 +13,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type");
 
-    let sql = "SELECT * FROM accounting_accounts";
+    let sql = "SELECT * FROM accounting_accounts WHERE deleted_at IS NULL";
     const params: any[] = [];
 
     if (type) {
-        sql += " WHERE type = ?";
+        sql += " AND type = ?";
         params.push(type);
     }
 

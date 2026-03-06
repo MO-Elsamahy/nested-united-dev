@@ -73,7 +73,6 @@ export const ACCOUNTING_NAV: NavSection[] = [
         title: "العمليات اليومية",
         items: [
             { label: "الفواتير", href: "/accounting/invoices", icon: FileText },
-            { label: "المدفوعات", href: "/accounting/payments", icon: DollarSign },
             { label: "دفاتر اليومية", href: "/accounting/journals", icon: ScrollText },
             { label: "قيد جديد", href: "/accounting/moves/create", icon: Calculator }
         ]

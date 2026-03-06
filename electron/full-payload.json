@@ -1,0 +1,2526 @@
+[1] 💎 FULL MASTER PAYLOAD: {
+[1]   "data": {
+[1]     "node": {
+[1]       "__typename": "Viewer",
+[1]       "id": "Vmlld2VyOjY2NTIxMzg1Ng==",
+[1]       "messagingInbox": {
+[1]         "__typename": "MessagingInbox",
+[1]         "id": "TWVzc2FnaW5nSW5ib3g6NjY1MjEzODU2",
+[1]         "threads": {
+[1]           "__typename": "MessagingInboxToMessageThreadsConnection",
+[1]           "edges": [
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyNDQ2NTMzMDI4",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484772458638473182"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "PAST_RESERVATIONS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Asaad",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Asaad"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "17–18 فبراير · Boho Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "17–18 فبراير · Boho Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484772458638473182/original/145c2637-566f-456a-9b72-30a6ce807046.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Asaad",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=A&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [
+[1]                   {
+[1]                     "__typename": "ThreadViewChip",
+[1]                     "title": "أخبرنا برأيك",
+[1]                     "iconURL": "https://a0.muscache.com/pictures/6a71aaae-3fb0-4673-8ea5-09280f0cb6d5.jpg",
+[1]                     "icon": null,
+[1]                     "action": {
+[1]                       "__typename": "StandardActionData",
+[1]                       "parameters": {
+[1]                         "url": "https://ar.airbnb.com/hosting/reviews/1623913379586319158/edit"
+[1]                       },
+[1]                       "type": "stay_host_write_review",
+[1]                       "url": "https://ar.airbnb.com/hosting/reviews/1623913379586319158/edit",
+[1]                       "urlNewWindowPreference": null,
+[1]                       "loggingEventData": null
+[1]                     },
+[1]                     "id": "Thread 2446533028 stayReservationHostReviewChip",
+[1]                     "renderingType": "STANDARD",
+[1]                     "chipType": "stayReservationHostReviewChip"
+[1]                   }
+[1]                 ],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Asaad %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: تقييم الضيف. الحجز من 17 فبراير إلى 18 فبراير في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1771750258564",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "588562961",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Asaad",
+[1]                           "threadDisplayName": "Asaad · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=A&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ5NjUwNTcxMjUxMjE4NzAwNQ=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyOTY5MDczMDk1Nw==",
+[1]                         "createdAtMs": "1771750258564",
+[1]                         "updatedAtMs": "1771750258564",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "665213856",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "ضيفنا العزيز ما عليك امر ممكن تقيمنا بالتطبيق"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyNDIyNjMyOTA2",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1605438402726852548"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "PAST_RESERVATIONS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Khalid",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Khalid"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "4–7 فبراير · Garage Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "4–7 فبراير · Garage Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1605438402726852548/original/736d3908-daee-4ebc-b682-bfff94eccc07.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Khalid",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/pictures/user/User/original/bc9b6e51-f63a-48b0-bd38-6577140c2f6a.jpeg?aki_policy=profile_x_medium"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Khalid %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: الضيف السابق. الحجز من 4 فبراير إلى 7 فبراير في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1770467429213",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "199245742",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Khalid",
+[1]                           "threadDisplayName": "Khalid · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/bc9b6e51-f63a-48b0-bd38-6577140c2f6a.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3NTA2NzYwMzg0NjE0MzQzMQ=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyOTQ4OTU0NDg0Nw==",
+[1]                         "createdAtMs": "1770467429213",
+[1]                         "updatedAtMs": "1770467429213",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "1005",
+[1]                           "accountType": "SERVICE"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "تحديث Airbnb: تذكير- الرجاء ترك ملاحظة"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyNDMyNTQ0NzAx",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484752009918646005"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "R",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "R"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "15–16 فبراير · Retro Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "15–16 فبراير · Retro Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484752009918646005/original/dda606a5-18e1-43c8-96b8-9b958f184cc7.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "R",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=R&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع R %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: التواريخ غير متاحة. الحجز من 15 فبراير إلى 16 فبراير في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1770271599221",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "740448889",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "R",
+[1]                           "threadDisplayName": "R · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=R&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTU5OTQ1MjQ2MjA4NTU4MzM1Ng=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyOTQ2MDMwMDM5Nw==",
+[1]                         "createdAtMs": "1770271599221",
+[1]                         "updatedAtMs": "1770271599221",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "1004",
+[1]                           "accountType": "SERVICE"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "‏Airbnb: إنتهت الموافقة المسبقة"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyNDE3NDUwMjQx",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484772458638473182"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Mohammed",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Mohammed"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "26–31 يناير · Boho Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "26–31 يناير · Boho Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484772458638473182/original/145c2637-566f-456a-9b72-30a6ce807046.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Mohammed",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=M&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Mohammed %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: تم سحب الطلب. الحجز من 26 يناير إلى 31 يناير في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1768935548267",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "727820533",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Mohammed",
+[1]                           "threadDisplayName": "Mohammed · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=M&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTU0ODUyOTQzOTA5OTA5OTE0Ng=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyOTI1MDcxNTYyOA==",
+[1]                         "createdAtMs": "1768935548267",
+[1]                         "updatedAtMs": "1768935548267",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "665213856",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "الوحده متاحة للحجز عزيزي "
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyNDA1NDY0MTgw",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484752009918646005"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "PAST_RESERVATIONS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Berrada",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Berrada"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "10–13 يناير · Retro Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "10–13 يناير · Retro Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484752009918646005/original/dda606a5-18e1-43c8-96b8-9b958f184cc7.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Berrada",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/pictures/user/User/original/9f9d936f-2273-41f4-b4a4-f4ce9600ef3f.jpeg?aki_policy=profile_x_medium"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Berrada %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: الضيف السابق. الحجز من 10 يناير إلى 13 يناير في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1768311563495",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "594827439",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Berrada",
+[1]                           "threadDisplayName": "Berrada · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/9f9d936f-2273-41f4-b4a4-f4ce9600ef3f.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ4NjI5Njc2Mjc3NzE2OTk0NA=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyOTE1MDMwNzQ0Mw==",
+[1]                         "createdAtMs": "1768311563495",
+[1]                         "updatedAtMs": "1768311563495",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "1005",
+[1]                           "accountType": "SERVICE"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "تحديث Airbnb: تذكير- الرجاء ترك ملاحظة"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": {
+[1]                   "__typename": "MessageReaction",
+[1]                   "creator": {
+[1]                     "__typename": "ParticipantAccount",
+[1]                     "accountType": "USER",
+[1]                     "accountId": "665213856"
+[1]                   },
+[1]                   "emoji": "❤️",
+[1]                   "updatedAtMs": "1768046190449",
+[1]                   "reactionPreview": {
+[1]                     "__typename": "ReactionPreview",
+[1]                     "previewContent": "تفاعلت مع الرسالة \"+1 (872) 282-1885\" باستخدام ...",
+[1]                     "previewContentWithAutoTranslatedUGC": "تفاعلت مع الرسالة \"‎+1 (872) 282-1885\" باستخدام..."
+[1]                   }
+[1]                 }
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyNDAzNTQxODUx",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484772458638473182"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "CANCELED_RESERVATIONS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Dareen",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Dareen"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "8–9 يناير · Boho Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "8–9 يناير · Boho Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484772458638473182/original/145c2637-566f-456a-9b72-30a6ce807046.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Dareen",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=D&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Dareen %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: تم الإلغاء بواسطة الضيف. الحجز من 8 يناير إلى 9 يناير في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1767961135502",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "674722463",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Dareen",
+[1]                           "threadDisplayName": "Dareen · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=D&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ4OTQ4NDQ5ODM1MDQ1NzA4Mw=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyOTA5NDAyMDQxMA==",
+[1]                         "createdAtMs": "1767961135502",
+[1]                         "updatedAtMs": "1767961135502",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "1005",
+[1]                           "accountType": "SERVICE"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "تحديث Airbnb: تذكير- الرجاء ترك ملاحظة"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": {
+[1]                   "__typename": "MessageReaction",
+[1]                   "creator": {
+[1]                     "__typename": "ParticipantAccount",
+[1]                     "accountType": "USER",
+[1]                     "accountId": "665213856"
+[1]                   },
+[1]                   "emoji": "❤️",
+[1]                   "updatedAtMs": "1767872736893",
+[1]                   "reactionPreview": {
+[1]                     "__typename": "ReactionPreview",
+[1]                     "previewContent": "تفاعلت مع الرسالة \"0566424561\" باستخدام الرمز ا...",
+[1]                     "previewContentWithAutoTranslatedUGC": "تفاعلت مع الرسالة \"0566424561\" باستخدام الرمز ا..."
+[1]                   }
+[1]                 }
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyNDAxOTMyMzY5",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1308855745789786307"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "عزام",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "عزام"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "7–8 يناير · The Lounge Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "7–8 يناير · The Lounge Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/miso/Hosting-1308855745789786307/original/27daf9d3-b679-40c5-b490-f07ebcafaf09.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "عزام",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ع&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع عزام %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: التواريخ غير متاحة. الحجز من 7 يناير إلى 8 يناير في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1767747171383",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "650332298",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "عزام",
+[1]                           "threadDisplayName": "عزام · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ع&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ4NjgzNTE2NTE2NzEzMDM5Mg=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyOTA2MDY5MjQ4MA==",
+[1]                         "createdAtMs": "1767747171383",
+[1]                         "updatedAtMs": "1767747171383",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "665213856",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "بعتذر منك محجوزة"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMDA5NDM1NDIy",
+[1]                 "messageThreadType": "HOST_REFERRAL",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": false,
+[1]                   "isThreadTranslationEligible": false
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "ambassador"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Maha",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Maha"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "مُغلقة",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "مُغلقة"
+[1]                 },
+[1]                 "inboxListingImageUrl": null,
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Maha",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/pictures/user/9fae84f6-dba0-4784-accd-346ae1f0e2aa.jpg?aki_policy=profile_x_medium"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع السفير المتميز Maha %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1765417273799",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "450886579",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "AMBASSADOR",
+[1]                         "userRoleForLogging": 11,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "السفير المتميز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Maha",
+[1]                           "threadDisplayName": "Maha · السفير المتميز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/9fae84f6-dba0-4784-accd-346ae1f0e2aa.jpg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "AMBASSADOR",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ4NDk4ODUxMTgyNDQyNjIwNw=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "NEW_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTUwMzgxNjExMjkyNjQ5ODg0OQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyODY3NDM4NjQwNQ==",
+[1]                         "createdAtMs": "1765417273799",
+[1]                         "updatedAtMs": "1765417273799",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "112",
+[1]                           "accountType": "SERVICE"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "هذه المحادثة مغلقة."
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": {
+[1]                   "__typename": "MessageReaction",
+[1]                   "creator": {
+[1]                     "__typename": "ParticipantAccount",
+[1]                     "accountType": "USER",
+[1]                     "accountId": "450886579"
+[1]                   },
+[1]                   "emoji": "❤️",
+[1]                   "updatedAtMs": "1764513704970",
+[1]                   "reactionPreview": {
+[1]                     "__typename": "ReactionPreview",
+[1]                     "previewContent": "تفاعَلَ Maha مع الرسالة \"تمام حبيبتي\" من خلال ❤️",
+[1]                     "previewContentWithAutoTranslatedUGC": null
+[1]                   }
+[1]                 }
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMzc0NTA0MzA2",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484772458638473182"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "حمد بن فهد",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "حمد بن فهد"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "13–14 ديسمبر 2025 · Boho Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "13–14 ديسمبر 2025 · Boho Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484772458638473182/original/145c2637-566f-456a-9b72-30a6ce807046.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "حمد بن فهد",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ح&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع حمد بن فهد %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: التواريخ غير متاحة. الحجز من 13 ديسمبر إلى 14 ديسمبر في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1765362406932",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "727468733",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "حمد بن فهد",
+[1]                           "threadDisplayName": "حمد بن فهد · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ح&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTU0NzEwNDUwMDg0ODA1MTYzMA=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyODY2NjAxNzEzNA==",
+[1]                         "createdAtMs": "1765362406932",
+[1]                         "updatedAtMs": "1765362406932",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "665213856",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "وعليكم السلام"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMzY3MzY5MTY2",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1308855745789786307"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "PAST_RESERVATIONS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Abdullah",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Abdullah"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "2–3 ديسمبر 2025 · The Lounge Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "2–3 ديسمبر 2025 · The Lounge Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/miso/Hosting-1308855745789786307/original/27daf9d3-b679-40c5-b490-f07ebcafaf09.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Abdullah",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=A&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Abdullah %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: الضيف السابق. الحجز من 2 ديسمبر إلى 3 ديسمبر في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1764812827865",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "443215600",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Abdullah",
+[1]                           "threadDisplayName": "Abdullah · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=A&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ5NTM2NDIxMjIzNDUyODc4Nw=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyODU4ODkxNDQ0MQ==",
+[1]                         "createdAtMs": "1764812827865",
+[1]                         "updatedAtMs": "1764812827865",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "665213856",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "هلا وسهلا أ. عبد الله 🤎 تشرفنا بأستضافتك 😍  س..."
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMzYwODI0ODcz",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484772458638473182"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Mohammed",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Mohammed"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "25–26 نوفمبر 2025 · Boho Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "25–26 نوفمبر 2025 · Boho Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484772458638473182/original/145c2637-566f-456a-9b72-30a6ce807046.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Mohammed",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=M&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Mohammed %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: التواريخ غير متاحة. الحجز من 25 نوفمبر إلى 26 نوفمبر في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1764045851040",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "153902625",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Mohammed",
+[1]                           "threadDisplayName": "Mohammed · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=M&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTUwMjc4NzExNTg2OTkyOTQyOA=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyODQ3OTg2MzE1NA==",
+[1]                         "createdAtMs": "1764045851040",
+[1]                         "updatedAtMs": "1764045851040",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "153902625",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "ينفع احجز وادخل ذحين"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMzU0NjIwMjY0",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1484772458638473182"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Dayf Stays SA",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Dayf Stays SA"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "8–9 ديسمبر 2025 · Boho Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "8–9 ديسمبر 2025 · Boho Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1484772458638473182/original/145c2637-566f-456a-9b72-30a6ce807046.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Dayf Stays SA",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=D&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Dayf Stays SA %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: التواريخ غير متاحة. الحجز من 8 ديسمبر إلى 9 ديسمبر في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1763456230288",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "102255256",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Dayf Stays SA",
+[1]                           "threadDisplayName": "Dayf Stays SA · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=D&im_w=240&im_f=airbnb-cereal-medium.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ4MzY5NDg4MTQ4NzY1MDcxMQ=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyODM5NDU0NTU4NQ==",
+[1]                         "createdAtMs": "1763456230288",
+[1]                         "updatedAtMs": "1763456230288",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "102255256",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "تم إرسال الاستفسار"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMzMxNDQ2OTYz",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1532748809880930697"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "traveling"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "Brassbell",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "Brassbell"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "29 أكتوبر – 1 نوفمبر 2025 · Bab Al Louq",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "حالة الحجز التواريخ غير متاحة هي 29 أكتوبر – 1 نوفمبر 2025 للإقامة"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/hosting/Hosting-1532748809880930697/original/178438f1-b6a7-49c1-8032-e606283afb0a.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "Brassbell",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/pictures/user/fc6d49ab-0196-40e4-aa08-f3da82e42ce3.jpg?aki_policy=profile_x_medium"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع Brassbell %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: التواريخ غير متاحة. الحجز من 29 أكتوبر إلى 1 نوفمبر في Bab Al Louq.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1761301305966",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTUwMzgxNjExMjkyNjQ5ODg0OQ=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "21353695",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "Brassbell",
+[1]                           "threadDisplayName": "Brassbell · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/fc6d49ab-0196-40e4-aa08-f3da82e42ce3.jpg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ2MjYxNjg3NTk2NTMzMDE0MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyODA2NTA3ODI0OQ==",
+[1]                         "createdAtMs": "1761301305966",
+[1]                         "updatedAtMs": "1761301305966",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "21353695",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "لا يوجد"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMzI2ODU2NDMy",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1308855745789786307"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "عبدالسلام",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "عبدالسلام"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "20–21 أكتوبر 2025 · The Lounge Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "20–21 أكتوبر 2025 · The Lounge Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/miso/Hosting-1308855745789786307/original/27daf9d3-b679-40c5-b490-f07ebcafaf09.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "عبدالسلام",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ع&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع عبدالسلام %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: تم سحب الطلب. الحجز من 20 أكتوبر إلى 21 أكتوبر في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1760875186106",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "564696362",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "عبدالسلام",
+[1]                           "threadDisplayName": "عبدالسلام · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ع&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ4MzAxNzM3NjM0ODEwNTc2Mg=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyNzk5NjAxMTY0Nw==",
+[1]                         "createdAtMs": "1760875186106",
+[1]                         "updatedAtMs": "1760875186106",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "665213856",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "للاسف عزيزنا الشقه محجوزه الدخول ٤ مساءًا"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             },
+[1]             {
+[1]               "__typename": "MessagingInboxToMessageThreadEdge",
+[1]               "node": {
+[1]                 "__typename": "MessageThread",
+[1]                 "id": "TWVzc2FnZVRocmVhZDoyMjcwMTk0NzIz",
+[1]                 "messageThreadType": "HOME_BOOKING",
+[1]                 "localizationData": {
+[1]                   "__typename": "MessageThreadLocalizationData",
+[1]                   "autoTranslateLocale": "ar",
+[1]                   "isThreadAutoTranslateEnabled": true,
+[1]                   "isThreadTranslationEligible": true
+[1]                 },
+[1]                 "userThreadTags": [
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "1308855745789786307"
+[1]                     ],
+[1]                     "userThreadTagName": "stay_listing_ids"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [
+[1]                       "RESERVATION_REQUESTS"
+[1]                     ],
+[1]                     "userThreadTagName": "trip_stages"
+[1]                   },
+[1]                   {
+[1]                     "__typename": "UserThreadTag",
+[1]                     "additionalValues": [],
+[1]                     "userThreadTagName": "hosting"
+[1]                   }
+[1]                 ],
+[1]                 "inboxTitle": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "رحال",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "رحال"
+[1]                 },
+[1]                 "inboxDescription": {
+[1]                   "__typename": "StandardText",
+[1]                   "components": [
+[1]                     {
+[1]                       "__typename": "StandardTextComponent",
+[1]                       "text": "21–22 أغسطس 2025 · The Lounge Nest",
+[1]                       "type": null
+[1]                     }
+[1]                   ],
+[1]                   "accessibilityText": "21–22 أغسطس 2025 · The Lounge Nest"
+[1]                 },
+[1]                 "inboxListingImageUrl": "https://a0.muscache.com/im/pictures/miso/Hosting-1308855745789786307/original/27daf9d3-b679-40c5-b490-f07ebcafaf09.jpeg?aki_policy=small",
+[1]                 "inboxProfileImages": [
+[1]                   {
+[1]                     "__typename": "InboxProfileImage",
+[1]                     "image": {
+[1]                       "__typename": "InboxImage",
+[1]                       "iconName": null,
+[1]                       "accessibilityText": "رحال",
+[1]                       "sourceUrl": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ر&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                     }
+[1]                   }
+[1]                 ],
+[1]                 "inboxChips": [],
+[1]                 "inboxAccessibilityTemplateText": "محادثة مع رحال %{state}. آخر رسالة تم إرسالها %{updatedAt} هي: %{message}. حالة الحجز: تم رفض الطلب. الحجز من 21 أغسطس إلى 22 أغسطس في Jeddah.",
+[1]                 "inboxItemHighlight": null,
+[1]                 "mostRecentInboxActivityAtMsFromROS": "1755782034019",
+[1]                 "hiddenInInbox": false,
+[1]                 "inboxSearchResult": null,
+[1]                 "participants": {
+[1]                   "__typename": "MessageThreadToMessageThreadParticipantsV2Connection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "512043641",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "GUEST",
+[1]                         "userRoleForLogging": 3,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "القائم بالحجز",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "رحال",
+[1]                           "threadDisplayName": "رحال · القائم بالحجز",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/Portrait/Avatars/messaging/b3e03835-ade9-4eb7-a0bb-2466ab9a534d.jpg?im_t=ر&im_w=240&im_f=klokan-tech-noto-sans-regular.ttf&im_c=ffffff"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "BOOKER",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ5MjYyNTMyNzk2MTY5OTY3NQ=="
+[1]                         }
+[1]                       }
+[1]                     },
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessageThreadParticipantsV2Edge",
+[1]                       "node": {
+[1]                         "__typename": "UserMessageThreadParticipantV2",
+[1]                         "accountId": "665213856",
+[1]                         "accountType": "USER",
+[1]                         "participantRole": "HOST",
+[1]                         "userRoleForLogging": 1,
+[1]                         "status": "ACTIVE",
+[1]                         "roleDescription": "المضيف",
+[1]                         "isRealUser": true,
+[1]                         "enrichedParticipantInfo": {
+[1]                           "__typename": "EnrichedParticipantInfo",
+[1]                           "name": "The Nest",
+[1]                           "threadDisplayName": "The Nest · المضيف",
+[1]                           "userProfilePicture": {
+[1]                             "__typename": "UserProfilePicture",
+[1]                             "thumbnailUrlMedium": "https://a0.muscache.com/im/pictures/user/User/original/5a33436b-0dfc-406a-aa30-e506f6daa8a1.jpeg?aki_policy=profile_medium"
+[1]                           },
+[1]                           "userProfileIcon": null
+[1]                         },
+[1]                         "productRole": "PRIMARY_HOST",
+[1]                         "contextualUser": {
+[1]                           "__typename": "ContextualUser",
+[1]                           "id": "Q29udGV4dHVhbFVzZXI6MTQ3MDY2OTE5MzUxMTYzMTg3MQ=="
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "messages": {
+[1]                   "__typename": "MessageThreadToMessagesConnection",
+[1]                   "edges": [
+[1]                     {
+[1]                       "__typename": "MessageThreadToMessagesEdge",
+[1]                       "node": {
+[1]                         "__typename": "Message",
+[1]                         "id": "TWVzc2FnZToyNzEwODIwNjcwMQ==",
+[1]                         "createdAtMs": "1755782034019",
+[1]                         "updatedAtMs": "1755782034019",
+[1]                         "deletedAtMs": null,
+[1]                         "isSoftDelete": null,
+[1]                         "account": {
+[1]                           "__typename": "ParticipantAccount",
+[1]                           "accountId": "665213856",
+[1]                           "accountType": "USER"
+[1]                         },
+[1]                         "contentPreview": {
+[1]                           "__typename": "MessageContentPreview",
+[1]                           "translatedContent": null,
+[1]                           "content": "تم رفض طلب الحجز"
+[1]                         }
+[1]                       }
+[1]                     }
+[1]                   ]
+[1]                 },
+[1]                 "lastReactionV2": null
+[1]               }
+[1]             }
+[1]           ],
+[1]           "pageInfo": {
+[1]             "__typename": "InboxPageInfo",
+[1]             "footer": null,
+[1]             "startCursor": "eyJzeW5jVG9rZW4iOm51bGwsImRpcmVjdGlvbiI6IkZPUldBUkRTIiwibmV3ZXN0TW9zdFJlY2VudE1lc3NhZ2VBdCI6MTc3MTc1MDI1OC41NjQwMDAwMDAsIm9sZGVzdE1vc3RSZWNlbnRNZXNzYWdlQXQiOjE3NTU3ODIwMzQuMDE5MDAwMDAwLCJuZXdlc3RVcGRhdGVkQXQiOjE3NzE3NTAyNTkuNzYwMDAwMDAwLCJzZWFyY2hJZCI6bnVsbCwibmV4dFBhZ2VTdGFydGluZ1JhbmsiOm51bGwsInZlcnNpb24iOjF9",
+[1]             "endCursor": "eyJzeW5jVG9rZW4iOm51bGwsImRpcmVjdGlvbiI6IkJBQ0tXQVJEUyIsIm5ld2VzdE1vc3RSZWNlbnRNZXNzYWdlQXQiOjE3NzE3NTAyNTguNTY0MDAwMDAwLCJvbGRlc3RNb3N0UmVjZW50TWVzc2FnZUF0IjoxNzU1NzgyMDM0LjAxOTAwMDAwMCwibmV3ZXN0VXBkYXRlZEF0IjoxNzcxNzUwMjU5Ljc2MDAwMDAwMCwic2VhcmNoSWQiOm51bGwsIm5leHRQYWdlU3RhcnRpbmdSYW5rIjpudWxsLCJ2ZXJzaW9uIjoxfQ==",
+[1]             "hasNextPage": true,
+[1]             "hasPreviousPage": false,
+[1]             "initialLoad": false
+[1]           }
+[1]         }
+[1]       }
+[1]     }
+[1]   },
+[1]   "extensions": {
+[1]     "traceId": "gj_vv2h7u_Ibt1tdId_S4g=="
+[1]   }
+[1] }
+[1] 🚨 MASTER INBOX ATTEMPTED! Threads found: Unknown (Check Logs)
+
+
+

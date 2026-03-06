@@ -56,7 +56,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, initialBo
 
       if (data.success && data.booking_id) {
         // Redirect to edit page
-        router.push(`/dashboard/bookings/${data.booking_id}`);
+        router.push(`/dashboard/bookings/edit/${data.booking_id}`);
       } else {
         alert('فشل تحويل الحجز');
       }
@@ -307,7 +307,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, initialBo
                     </span>
                     {booking.type === "manual" && (
                       <Link
-                        href={`/dashboard/bookings/${booking.id}`}
+                        href={`/dashboard/bookings/edit/${booking.id}`}
                         className="flex items-center gap-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition"
                       >
                         <Edit className="w-3 h-3" />

@@ -39,6 +39,7 @@ CREATE TABLE accounting_invoices (
     reference VARCHAR(255), -- Customer PO number, reference
     notes TEXT,
     payment_terms TEXT, -- "Net 30", custom terms
+    attachment_url TEXT, -- Link to uploaded file (Image/PDF)
     
     -- Accounting Integration
     accounting_move_id CHAR(36), -- Links to journal entry when confirmed (nullable)

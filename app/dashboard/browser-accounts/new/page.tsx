@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight, AlertCircle, Monitor, Globe, CheckCircle2, MessageCircle } from "lucide-react";
 import Link from "next/link";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 
 interface PlatformAccount {
   id: string;
@@ -123,8 +124,8 @@ export default function NewBrowserAccountPage() {
     <div className="max-w-2xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
-        <Link 
-          href="/dashboard/browser-accounts" 
+        <Link
+          href="/dashboard/browser-accounts"
           className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
         >
           <ArrowRight className="w-6 h-6" />
@@ -172,23 +173,22 @@ export default function NewBrowserAccountPage() {
                 <button
                   type="button"
                   onClick={() => setMode("platform")}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    mode === "platform"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${mode === "platform"
                       ? "bg-blue-600 text-white shadow"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                    }`}
                 >
                   ربط حساب منصة (Airbnb / Gathern)
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("whatsapp")}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                    mode === "whatsapp"
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 ${mode === "whatsapp"
                       ? "bg-emerald-600 text-white shadow"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                    }`}
                 >
+                  <WhatsAppIcon size={18} className={mode === "whatsapp" ? "text-white" : "text-emerald-600"} />
                   إضافة واتساب بدون ربط
                 </button>
               </div>
@@ -199,7 +199,7 @@ export default function NewBrowserAccountPage() {
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     اختر حساب المنصة
                   </label>
-                  
+
                   {loadingAccounts ? (
                     <div className="h-32 flex items-center justify-center text-gray-400">
                       جاري التحميل...
@@ -216,11 +216,10 @@ export default function NewBrowserAccountPage() {
                             {airbnbAccounts.map((account) => (
                               <label
                                 key={account.id}
-                                className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                  selectedPlatform === account.id
+                                className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlatform === account.id
                                     ? 'border-red-500 bg-red-50'
                                     : 'border-gray-200 hover:border-red-200 hover:bg-red-50/50'
-                                }`}
+                                  }`}
                               >
                                 <input
                                   type="radio"
@@ -255,11 +254,10 @@ export default function NewBrowserAccountPage() {
                             {gathernAccounts.map((account) => (
                               <label
                                 key={account.id}
-                                className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                                  selectedPlatform === account.id
+                                className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedPlatform === account.id
                                     ? 'border-green-500 bg-green-50'
                                     : 'border-gray-200 hover:border-green-200 hover:bg-green-50/50'
-                                }`}
+                                  }`}
                               >
                                 <input
                                   type="radio"

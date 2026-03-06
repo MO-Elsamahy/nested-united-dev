@@ -9,6 +9,11 @@ interface ElectronAPI {
       isOpen?: boolean;
     }>
   >;
+  openAuthWindow: (data: {
+    platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+    accountId: string;
+    partition: string;
+  }) => Promise<{ success: boolean; error?: string }>;
   addBrowserAccount: (account: {
     id: string;
     platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
@@ -44,6 +49,8 @@ interface ElectronAPI {
   onTabsChanged: (callback: () => void) => void;
   onDatabaseNotification: (callback: (data: { title: string; body: string; id: string }) => void) => void;
   sendDatabaseNotification: (data: { title: string; body: string; id: string }) => void;
+  forcePlatformSync: (accountId: string) => Promise<{ success: boolean; error?: string }>;
+  onSyncComplete: (callback: (data: { accountId: string; platform: string }) => void) => void;
   isElectron: boolean;
 }
 

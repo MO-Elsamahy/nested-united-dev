@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Save } from "lucide-react";
+import {
+    Plus,
+    Trash2,
+    Save,
+    X,
+    Upload,
+    Paperclip,
+    FileText,
+} from "lucide-react";
 
 interface InvoiceLine {
     description: string;
@@ -34,11 +42,13 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
         invoice_date: initialData?.invoice_date || new Date().toISOString().split("T")[0],
         due_date: initialData?.due_date || "",
         reference: initialData?.reference || "",
-        notes: initialData?.notes || "",
-        payment_terms: initialData?.payment_terms || "Net 30",
     });
+    const [notes, setNotes] = useState(initialData?.notes || "");
+    const [paymentTerms, setPaymentTerms] = useState(initialData?.payment_terms || "Net 30");
+    const [attachmentUrl, setAttachmentUrl] = useState(initialData?.attachment_url || "");
+    const [isUploading, setIsUploading] = useState(false);
 
-    const [lines, setLines] = useState<InvoiceLine[]>(
+    const [items, setItems] = useState<InvoiceLine[]>(
         initialData?.lines || [
             {
                 description: "",
@@ -64,8 +74,8 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
     }
 
     const addLine = () => {
-        setLines([
-            ...lines,
+        setItems([
+            ...items,
             {
                 description: "",
                 quantity: 1,
@@ -78,13 +88,13 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
     };
 
     const removeLine = (index: number) => {
-        setLines(lines.filter((_, i) => i !== index));
+        setItems(items.filter((_, i) => i !== index));
     };
 
     const updateLine = (index: number, field: string, value: any) => {
-        const updated = [...lines];
+        const updated = [...items];
         updated[index] = { ...updated[index], [field]: value };
-        setLines(updated);
+        setItems(updated);
     };
 
     const calculateLineTotal = (line: InvoiceLine) => {
@@ -105,7 +115,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
         let totalDiscount = 0;
         let totalTax = 0;
 
-        lines.forEach((line) => {
+        items.forEach((line) => {
             const lineSubtotal = line.quantity * line.unit_price;
             subtotal += lineSubtotal;
 
@@ -130,14 +140,45 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
         };
     };
 
-    const handleSubmit = async (e: React.FormEvent, confirm = false) => {
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setAttachmentUrl(data.url);
+            } else {
+                alert("فشل رفع الملف");
+            }
+        } catch (error) {
+            console.error("Upload error:", error);
+            alert("حدث خطأ أثناء الرفع");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent, confirmAction = false) => {
         e.preventDefault();
         setLoading(true);
 
         try {
             const body = {
                 ...formData,
-                lines,
+                notes,
+                payment_terms: paymentTerms,
+                attachment_url: attachmentUrl,
+                lines: items,
             };
 
             let res;
@@ -161,7 +202,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                 const invoice = await res.json();
 
                 // If confirm flag is set, confirm the invoice
-                if (confirm && invoice.id) {
+                if (confirmAction && invoice.id) {
                     const confirmRes = await fetch(`/api/accounting/invoices/${invoice.id}/confirm`, {
                         method: "POST",
                     });
@@ -244,28 +285,6 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                             placeholder="رقم أمر الشراء..."
                         />
                     </div>
-
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium mb-1">شروط الدفع</label>
-                        <input
-                            type="text"
-                            value={formData.payment_terms}
-                            onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="Net 30"
-                        />
-                    </div>
-
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium mb-1">ملاحظات</label>
-                        <textarea
-                            rows={3}
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="ملاحظات إضافية..."
-                        />
-                    </div>
                 </div>
             </div>
 
@@ -297,7 +316,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                             </tr>
                         </thead>
                         <tbody className="divide-y">
-                            {lines.map((line, index) => (
+                            {items.map((line, index) => (
                                 <tr key={index}>
                                     <td className="px-3 py-2">
                                         <input
@@ -366,7 +385,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                                         {calculateLineTotal(line).toFixed(2)} ر.س
                                     </td>
                                     <td className="px-3 py-2">
-                                        {lines.length > 1 && (
+                                        {items.length > 1 && (
                                             <button
                                                 type="button"
                                                 onClick={() => removeLine(index)}
@@ -405,12 +424,96 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                 </div>
             </div>
 
+            {/* Notes & Attachments */}
+            <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6">
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">شروط الدفع</label>
+                            <textarea
+                                value={paymentTerms}
+                                onChange={(e) => setPaymentTerms(e.target.value)}
+                                className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                rows={2}
+                                placeholder="مثال: الدفع خلال 30 يوم"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+                            <textarea
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                className="w-full border rounded-lg p-2 text-sm focus:ring-2 focus:ring-blue-500"
+                                rows={3}
+                                placeholder="ملاحظات إضافية على الفاتورة..."
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">المرفقات (صورة الفاتورة الأصلية)</label>
+                        <div className="border-2 border-dashed rounded-xl p-6 flex flex-col items-center justify-center bg-gray-50 text-center transition-colors hover:bg-gray-100">
+                            {attachmentUrl ? (
+                                <div className="space-y-2 w-full">
+                                    <div className="flex items-center justify-center gap-2 text-green-600 bg-green-50 px-3 py-2 rounded-lg text-sm font-medium">
+                                        <Paperclip className="w-4 h-4" />
+                                        <span>تم إرفاق ملف</span>
+                                    </div>
+                                    <div className="flex gap-4 justify-center pt-2">
+                                        <a
+                                            href={attachmentUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                                        >
+                                            <FileText className="w-4 h-4" />
+                                            عرض الملف
+                                        </a>
+                                        <button
+                                            type="button"
+                                            onClick={() => setAttachmentUrl("")}
+                                            className="text-sm text-red-600 hover:text-red-800 font-medium flex items-center gap-1"
+                                        >
+                                            <X className="w-4 h-4" />
+                                            حذف
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                                        <Upload className={`w-6 h-6 text-gray-400 ${isUploading ? 'animate-bounce' : ''}`} />
+                                    </div>
+                                    <p className="text-sm text-gray-500 mb-4">
+                                        {isUploading ? 'جاري الرفع...' : 'ارفع صورة أو ملف PDF الفاتورة'}
+                                    </p>
+                                    <input
+                                        type="file"
+                                        onChange={handleFileUpload}
+                                        className="hidden"
+                                        id="invoice-attachment"
+                                        accept="image/*,.pdf"
+                                        disabled={isUploading}
+                                    />
+                                    <label
+                                        htmlFor="invoice-attachment"
+                                        className="cursor-pointer bg-white border border-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-white hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm"
+                                    >
+                                        اختر ملف
+                                    </label>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Actions */}
             <div className="flex gap-3 justify-end">
                 <button
                     type="button"
                     onClick={() => router.back()}
-                    className="px-6 py-2 border rounded-lg hover:bg-gray-50"
+                    className="px-6 py-2 border rounded-lg hover:bg-gray-50 font-medium"
                     disabled={loading}
                 >
                     إلغاء
@@ -418,7 +521,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="flex items-center gap-2 bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50"
+                    className="flex items-center gap-2 bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700 disabled:opacity-50 transition shadow-sm font-medium"
                 >
                     <Save className="w-4 h-4" />
                     {loading ? "جاري الحفظ..." : "حفظ كمسودة"}
@@ -428,7 +531,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                         type="button"
                         onClick={(e) => handleSubmit(e, true)}
                         disabled={loading}
-                        className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition shadow-sm font-medium"
                     >
                         <Save className="w-4 h-4" />
                         {loading ? "جاري الحفظ..." : "حفظ وتأكيد"}

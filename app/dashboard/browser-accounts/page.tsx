@@ -9,6 +9,10 @@ import { TestNotificationButton } from "./TestNotificationButton";
 import { getCurrentUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/server-permissions";
 import { BrowserAccountsPageClient } from "./BrowserAccountsPageClient";
+import { AuthenticateButton } from "./AuthenticateButton";
+import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
+import { AirbnbIcon } from "@/components/icons/AirbnbIcon";
+import { GathernIcon } from "@/components/icons/GathernIcon";
 
 async function getBrowserAccounts() {
   try {
@@ -77,8 +81,8 @@ export default async function BrowserAccountsPage() {
               <p className="text-gray-500 text-sm">Airbnb</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">{airbnbAccounts.length}</p>
             </div>
-            <div className="bg-red-50 p-3 rounded-xl">
-              <Globe className="w-6 h-6 text-red-500" />
+            <div className="bg-red-50 p-3 rounded-xl flex items-center justify-center">
+              <AirbnbIcon size={24} className="text-red-500" />
             </div>
           </div>
         </div>
@@ -89,8 +93,8 @@ export default async function BrowserAccountsPage() {
               <p className="text-gray-500 text-sm">Gathern</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">{gathernAccounts.length}</p>
             </div>
-            <div className="bg-green-50 p-3 rounded-xl">
-              <Globe className="w-6 h-6 text-green-500" />
+            <div className="bg-green-50 p-3 rounded-xl flex items-center justify-center">
+              <GathernIcon size={24} className="text-green-500" />
             </div>
           </div>
         </div>
@@ -102,7 +106,7 @@ export default async function BrowserAccountsPage() {
               <p className="text-3xl font-bold text-gray-900 mt-1">{whatsappAccounts.length}</p>
             </div>
             <div className="bg-emerald-50 p-3 rounded-xl">
-              <Globe className="w-6 h-6 text-emerald-500" />
+              <WhatsAppIcon size={24} className="text-emerald-500" />
             </div>
           </div>
         </div>
@@ -144,7 +148,15 @@ export default async function BrowserAccountsPage() {
                         ? 'bg-gradient-to-br from-green-500 to-emerald-600'
                         : 'bg-gradient-to-br from-emerald-500 to-green-600'
                       }`}>
-                      <Globe className="w-7 h-7 text-white" />
+                      {account.platform === 'whatsapp' ? (
+                        <WhatsAppIcon size={28} className="text-white" />
+                      ) : account.platform === 'airbnb' ? (
+                        <AirbnbIcon size={28} className="text-white" />
+                      ) : account.platform === 'gathern' ? (
+                        <GathernIcon size={28} className="text-white" />
+                      ) : (
+                        <Globe className="w-7 h-7 text-white" />
+                      )}
                       {account.has_unread_notifications && (
                         <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-pulse" />
                       )}
@@ -215,6 +227,12 @@ export default async function BrowserAccountsPage() {
                     </div>
 
                     <OpenAccountButton
+                      accountId={account.id}
+                      accountName={account.account_name}
+                      platform={account.platform}
+                      partition={account.session_partition}
+                    />
+                    <AuthenticateButton
                       accountId={account.id}
                       accountName={account.account_name}
                       platform={account.platform}

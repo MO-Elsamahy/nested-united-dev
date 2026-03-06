@@ -84,6 +84,7 @@ export async function POST(req: NextRequest) {
             reference,
             notes,
             payment_terms,
+            attachment_url,
             lines, // Array of invoice lines
         } = body;
 
@@ -156,7 +157,7 @@ export async function POST(req: NextRequest) {
                 invoice_date, due_date, subtotal, tax_amount,
                 discount_amount, total_amount, amount_paid, amount_due,
                 state, reference, notes, payment_terms, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'draft', ?, ?, ?, ?)`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 invoiceId,
                 invoiceNumber,
@@ -172,6 +173,7 @@ export async function POST(req: NextRequest) {
                 reference,
                 notes,
                 payment_terms,
+                attachment_url || null,
                 session.user.id,
             ]
         );

@@ -20,7 +20,7 @@ export function EditBookingButton({ bookingId, canEdit = false }: EditBookingBut
   // For reservations, link to convert page; for bookings, link to edit page
   const href = isReservation
     ? `/dashboard/bookings/convert/${actualId}`
-    : `/dashboard/bookings/${actualId}`;
+    : `/dashboard/bookings/edit/${actualId}`;
 
   return (
     <Link
