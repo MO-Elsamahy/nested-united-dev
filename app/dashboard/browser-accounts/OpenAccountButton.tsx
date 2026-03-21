@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Monitor, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Monitor, AlertCircle, ExternalLink } from "lucide-react";
+import { isElectron } from "@/lib/utils/isElectron";
 
 interface OpenAccountButtonProps {
   accountId: string;
@@ -18,26 +19,53 @@ export function OpenAccountButton({
 }: OpenAccountButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [electronEnv, setElectronEnv] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setElectronEnv(isElectron());
+  }, []);
+
+  const platformUrl = platform === "airbnb"
+    ? "https://www.airbnb.com/hosting/inbox"
+    : platform === "gathern"
+      ? "https://business.gathern.co"
+      : "https://web.whatsapp.com";
+
+  // Web version — show disabled button with tooltip
+  if (electronEnv === false) {
+    return (
+      <div className="relative group">
+        <button
+          disabled
+          className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-400 rounded-xl text-sm font-medium cursor-not-allowed"
+        >
+          <Monitor className="w-4 h-4" />
+          <span>فتح</span>
+        </button>
+        {/* Tooltip */}
+        <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap z-20 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+          افتح تطبيق سطح المكتب لاستخدام هذه الميزة
+        </div>
+      </div>
+    );
+  }
 
   const handleOpen = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Call Server API to open browser
-      const response = await fetch("/api/browser/open", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId }),
+      // Call local Electron IPC to open browser instead of server API
+      const result = await (window as any).electronAPI.openBrowserAccount({
+        id: accountId,
+        platform,
+        accountName,
+        partition
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "فشل في فتح الحساب");
+      if (!result?.success) {
+        throw new Error(result?.error || "فشل في فتح الحساب");
       }
-
-      // Success feedback (optional: toast notification)
     } catch (err: any) {
       console.error("Error opening browser:", err);
       setError(err.message || "خطأ في الاتصال بالسيرفر");
@@ -51,7 +79,7 @@ export function OpenAccountButton({
     <div className="relative">
       <button
         onClick={handleOpen}
-        disabled={loading}
+        disabled={loading || electronEnv === null}
         className="flex items-center gap-2 px-4 py-2 bg-gradient-to-l from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-xl text-sm font-medium transition-all disabled:opacity-50 shadow-sm hover:shadow-md"
       >
         {loading ? (

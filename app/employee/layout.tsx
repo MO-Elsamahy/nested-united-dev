@@ -10,12 +10,16 @@ import {
     User,
     LogOut,
     Bell,
+    MessageSquare,
+    Trophy,
 } from "lucide-react";
 
 const navItems = [
     { href: "/employee", label: "الرئيسية", icon: LayoutDashboard },
     { href: "/employee/attendance", label: "الحضور والانصراف", icon: Clock },
     { href: "/employee/requests", label: "طلباتي", icon: FileText },
+    { href: "/employee/messages", label: "رسائل الإدارة", icon: MessageSquare },
+    { href: "/employee/evaluations", label: "تقييماتي", icon: Trophy },
     { href: "/employee/payslips", label: "كشوف الراتب", icon: Receipt },
     { href: "/employee/profile", label: "ملفي الشخصي", icon: User },
 ];

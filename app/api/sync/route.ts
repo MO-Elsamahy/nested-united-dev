@@ -54,29 +54,12 @@ async function parseICalUrl(url: string): Promise<ParsedEvent[]> {
         let startStr: string;
         let endStr: string;
 
-        if (isDateOnly) {
-          // For DATE-only values (no time component), use the date components directly
-          // This prevents timezone conversion issues
-          const startInfo = event.startDate;
-          const endInfo = event.endDate;
+        // ALWAYS use components to avoid timezone shifts during JS Date conversion
+        const startInfo = event.startDate;
+        const endInfo = event.endDate;
 
-          startStr = `${startInfo.year}-${pad(startInfo.month)}-${pad(startInfo.day)}`;
-          endStr = `${endInfo.year}-${pad(endInfo.month)}-${pad(endInfo.day)}`;
-        } else {
-          // For DATETIME values, convert to local date
-          const startDate = event.startDate.toJSDate();
-          const endDate = event.endDate.toJSDate();
-
-          const sy = startDate.getFullYear();
-          const sm = startDate.getMonth() + 1;
-          const sd = startDate.getDate();
-          startStr = `${sy}-${pad(sm)}-${pad(sd)}`;
-
-          const ey = endDate.getFullYear();
-          const em = endDate.getMonth() + 1;
-          const ed = endDate.getDate();
-          endStr = `${ey}-${pad(em)}-${pad(ed)}`;
-        }
+        startStr = `${startInfo.year}-${pad(startInfo.month)}-${pad(startInfo.day)}`;
+        endStr = `${endInfo.year}-${pad(endInfo.month)}-${pad(endInfo.day)}`;
 
         const statusVal = vevent.getFirstPropertyValue("status");
         const transpVal = vevent.getFirstPropertyValue("transp");

@@ -77,6 +77,45 @@ export async function fetchAirbnbReservations(account: PlatformAccount) {
 }
 
 export async function fetchGathernMessages(account: PlatformAccount) {
+    const cookieString = await getCookiesForPlatform(account);
     console.log(`[Gathern] Fetching messages for ${account.id}...`);
+    // Placeholder until discovery is complete
     return [];
 }
+
+export async function fetchGathernReservations(account: PlatformAccount) {
+    const cookieString = await getCookiesForPlatform(account);
+    console.log(`[Gathern] Fetching reservations for ${account.id}...`);
+    // Placeholder until discovery is complete
+    return [];
+}
+
+export async function checkSessionHealth(account: PlatformAccount): Promise<'healthy' | 'expired' | 'error'> {
+    try {
+        const cookieString = await getCookiesForPlatform(account);
+        if (!cookieString || cookieString.length < 10) return 'expired';
+
+        const testUrl = account.platform === 'airbnb'
+            ? 'https://www.airbnb.com/api/v2/heartbeat'
+            : 'https://business.gathern.co/api/v1/user/profile'; // Common user profile endpoint
+
+        const response = await axios.get(testUrl, {
+            headers: {
+                'Cookie': cookieString,
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'X-Airbnb-API-Key': AIRBNB_API_KEY
+            },
+            timeout: 5000,
+            validateStatus: (status) => status < 500 // 401/403 means expired
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            return 'expired';
+        }
+
+        return 'healthy';
+    } catch (error) {
+        console.error(`[Health Check] Failed for ${account.id}:`, error);
+        return 'error';
+    }
+}

@@ -48,7 +48,11 @@ function formatArDate(dateStr: string | Date) {
   // Handle Date objects from MySQL
   let dateString: string;
   if (dateStr instanceof Date) {
-    dateString = dateStr.toISOString().split("T")[0];
+    // Correctly get YYYY-MM-DD from local date to avoid timezone shifts
+    const y = dateStr.getFullYear();
+    const m = String(dateStr.getMonth() + 1).padStart(2, '0');
+    const d = String(dateStr.getDate()).padStart(2, '0');
+    dateString = `${y}-${m}-${d}`;
   } else if (typeof dateStr === "string") {
     dateString = dateStr.split("T")[0]; // Handle ISO strings with time
   } else {

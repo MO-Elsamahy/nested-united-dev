@@ -1,5 +1,6 @@
 import { BrowserWindow } from 'electron';
-import { fetchAirbnbInboxList, fetchAirbnbMessages, PlatformAccount } from './platform-api';
+import axios from 'axios';
+import { fetchAirbnbInboxList, fetchAirbnbMessages, fetchGathernMessages, fetchGathernReservations, checkSessionHealth, PlatformAccount } from './platform-api';
 import mysql from 'mysql2/promise';
 import crypto from 'crypto';
 
@@ -41,7 +42,7 @@ export class PollingService {
 
             if (account.platform === 'airbnb') {
                 // 1. Get the list of all 21+ threads
-                const inboxData = await fetchAirbnbInboxList(account);
+                const inboxData = await fetchAirbnbInboxList(account) as any;
                 const threadEdges = inboxData?.data?.node?.messagingInbox?.threads?.edges || [];
                 
                 console.log(`[PollingService] Found ${threadEdges.length} threads to process.`);
@@ -59,7 +60,19 @@ export class PollingService {
                     // 3. Save to MySQL
                     await this.saveAirbnbMessages(account.id, fullThreadData);
                 }
+            } else if (account.platform === 'gathern') {
+                // 1. Fetch Gathern messages
+                const messages = await fetchGathernMessages(account);
+                await this.saveGathernMessages(account.id, messages);
+
+                // 2. Fetch Gathern reservations
+                const reservations = await fetchGathernReservations(account);
+                await this.saveGathernReservations(account.id, reservations);
             }
+
+            // Health check
+            const healthStatus = await checkSessionHealth(account);
+            await this.logHealth(account.id, account.platform, healthStatus);
 
             await this.updateLastSync(account.id);
 
@@ -135,4 +148,41 @@ export class PollingService {
             await connection.end();
         }
     }
-}
+
+    private async saveGathernMessages(accountId: string, messages: any[]) {
+        if (!messages || messages.length === 0) return;
+        const connection = await mysql.createConnection(dbConfig);
+        try {
+            console.log(`[PollingService] Saving ${messages.length} Gathern messages for ${accountId}...`);
+        } finally {
+            await connection.end();
+        }
+    }
+
+    private async saveGathernReservations(accountId: string, reservations: any[]) {
+        if (!reservations || reservations.length === 0) return;
+        const connection = await mysql.createConnection(dbConfig);
+        try {
+            console.log(`[PollingService] Saving ${reservations.length} Gathern reservations for ${accountId}...`);
+        } finally {
+            await connection.end();
+        }
+    }
+
+    private async keepalive(account: PlatformAccount) {
+        if (account.platform !== 'airbnb') return;
+        try {
+            const { getCookiesForPlatform } = require('./platform-api');
+            const cookieString = await getCookiesForPlatform(account);
+            await axios.get('https://www.airbnb.com/api/v2/heartbeat', {
+                headers: {
+                    'Cookie': cookieString,
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'X-Airbnb-API-Key': 'd306zoyjsyarp7ifhu67rjxn52tv0t20'
+                }
+            });
+        } catch (error) {
+            console.warn(`[PollingService] Heartbeat failed for ${account.id}`);
+        }
+    }
+}

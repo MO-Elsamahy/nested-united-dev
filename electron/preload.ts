@@ -12,8 +12,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   }) => ipcRenderer.invoke("add-browser-account", account),
   removeBrowserAccount: (accountId: string) =>
     ipcRenderer.invoke("remove-browser-account", accountId),
-  openBrowserAccount: (accountId: string) =>
-    ipcRenderer.invoke("open-browser-account", accountId),
+  openBrowserAccount: (data: {
+    id: string;
+    platform: string;
+    accountName: string;
+    partition: string;
+  }) => ipcRenderer.invoke("open-browser-account", data),
   closeBrowserAccount: (accountId: string) =>
     ipcRenderer.invoke("close-browser-account", accountId),
   openAuthWindow: (data: {

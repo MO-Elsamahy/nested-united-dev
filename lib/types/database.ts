@@ -1,6 +1,6 @@
 // Database types for the rentals dashboard
 
-export type UserRole = "super_admin" | "admin" | "maintenance_worker";
+export type UserRole = "super_admin" | "admin" | "accountant" | "hr_manager" | "maintenance_worker" | "employee";
 export type Platform = "airbnb" | "gathern" | "whatsapp" | "zomrahub";
 export type PlatformExtended = "airbnb" | "gathern" | "whatsapp" | "zomrahub" | "general" | "manual" | "unknown";
 export type UnitStatus = "active" | "inactive";

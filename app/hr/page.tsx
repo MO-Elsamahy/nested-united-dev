@@ -112,7 +112,7 @@ export default async function HRDashboardPage() {
     if (!session?.user) redirect("/login");
 
     const stats = await getHRStats();
-    const today = new Date().toLocaleDateString("ar-EG", {
+    const today = new Date().toLocaleDateString("ar-SA", {
         weekday: "long",
         year: "numeric",
         month: "long",

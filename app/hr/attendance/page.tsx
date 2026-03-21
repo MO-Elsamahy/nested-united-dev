@@ -36,7 +36,7 @@ export default async function AttendancePage() {
     if (!session?.user) redirect("/login");
 
     const employees = await getAttendanceData();
-    const today = new Date().toLocaleDateString("ar-EG", {
+    const today = new Date().toLocaleDateString("ar-SA", {
         weekday: "long",
         year: "numeric",
         month: "long",
@@ -52,7 +52,7 @@ export default async function AttendancePage() {
 
     const formatTime = (dateStr: string | null) => {
         if (!dateStr) return "—";
-        return new Date(dateStr).toLocaleTimeString("ar-EG", {
+        return new Date(dateStr).toLocaleTimeString("ar-SA", {
             hour: "2-digit",
             minute: "2-digit",
         });

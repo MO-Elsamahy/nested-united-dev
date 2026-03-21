@@ -79,7 +79,7 @@ export default function EmployeeProfilePage() {
                             <div>
                                 <p className="text-xs text-gray-400">تاريخ التعيين</p>
                                 <p className="text-gray-900">
-                                    {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString("ar-EG") : "—"}
+                                    {employee.hire_date ? new Date(employee.hire_date).toLocaleDateString("ar-SA") : "—"}
                                 </p>
                             </div>
                         </div>

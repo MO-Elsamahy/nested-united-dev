@@ -65,10 +65,16 @@ async function getUnit(id: string) {
 
 export default async function UnitDetailsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
 }) {
   const { id } = await params;
+  const { from } = await searchParams;
+  const isFromReadiness = from === "readiness";
+  const backHref = isFromReadiness ? "/dashboard/unit-readiness" : "/dashboard/units";
+  const backLabel = isFromReadiness ? "الرجوع للجاهزية" : "الرجوع للوحدات";
   const canEdit = await hasPermission("/dashboard/units", "edit");
 
   let unit = null;
@@ -86,11 +92,11 @@ export default async function UnitDetailsPage({
           لم نتمكن من الوصول إلى بيانات هذه الوحدة. تأكد أن لديك صلاحية الوصول وأن الوحدة موجودة فعلياً.
         </p>
         <Link
-          href="/dashboard/units"
+          href={backHref}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <ArrowRight className="w-4 h-4" />
-          الرجوع للوحدات
+          {backLabel}
         </Link>
       </div>
     );
@@ -161,7 +167,7 @@ export default async function UnitDetailsPage({
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/units" className="p-2 hover:bg-gray-100 rounded-lg">
+          <Link href={backHref} className="p-2 hover:bg-gray-100 rounded-lg">
             <ArrowRight className="w-6 h-6" />
           </Link>
           <div>

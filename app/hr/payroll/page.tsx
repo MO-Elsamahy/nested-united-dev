@@ -63,7 +63,7 @@ export default function PayrollListPage() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 font-bold text-gray-900">
                                                 <Calendar className="w-4 h-4 text-gray-400" />
-                                                <span>{new Date(run.period_year, run.period_month - 1).toLocaleString('ar-EG', { month: 'long', year: 'numeric' })}</span>
+                                                <span>{new Date(run.period_year, run.period_month - 1).toLocaleString('ar-SA', { month: 'long', year: 'numeric' })}</span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-center">{run.total_employees}</td>
@@ -75,7 +75,7 @@ export default function PayrollListPage() {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             {run.created_by_name}
-                                            <div className="text-xs text-gray-400">{new Date(run.created_at).toLocaleDateString("ar-EG")}</div>
+                                            <div className="text-xs text-gray-400">{new Date(run.created_at).toLocaleDateString("ar-SA")}</div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             <Link

@@ -40,7 +40,7 @@ export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButt
             const data = await response.json();
 
             if (data.success) {
-                const timeLabel = new Date().toLocaleTimeString("ar-EG", {
+                const timeLabel = new Date().toLocaleTimeString("ar-SA", {
                     hour: "2-digit",
                     minute: "2-digit",
                 });
@@ -62,7 +62,7 @@ export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButt
 
     const formatTime = (dateStr: string | null) => {
         if (!dateStr) return "--:--";
-        return new Date(dateStr).toLocaleTimeString("ar-EG", {
+        return new Date(dateStr).toLocaleTimeString("ar-SA", {
             hour: "2-digit",
             minute: "2-digit",
         });
@@ -74,7 +74,7 @@ export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButt
                 <div>
                     <h2 className="text-lg font-bold text-gray-900">تسجيل الحضور</h2>
                     <p className="text-gray-500 text-sm">
-                        {currentTime.toLocaleDateString("ar-EG", {
+                        {currentTime.toLocaleDateString("ar-SA", {
                             weekday: "long",
                             year: "numeric",
                             month: "long",
@@ -84,7 +84,7 @@ export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButt
                 </div>
                 <div className="text-left">
                     <p className="text-3xl font-bold text-violet-600 font-mono">
-                        {currentTime.toLocaleTimeString("ar-EG", {
+                        {currentTime.toLocaleTimeString("ar-SA", {
                             hour: "2-digit",
                             minute: "2-digit",
                             second: "2-digit",

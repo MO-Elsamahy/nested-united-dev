@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, LogOut, User as UserIcon, Info } from "lucide-react";
+import { Bell, LogOut, User as UserIcon, Info, Menu } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -10,16 +10,10 @@ import { Breadcrumbs } from "./Breadcrumbs";
 import { GlobalSearch } from "./GlobalSearch";
 import { AppFeatures } from "@/lib/features";
 
-interface UserData {
-  id: string;
-  email: string;
-  name: string;
-  role: "super_admin" | "admin" | "maintenance_worker";
-  is_active: boolean | number;
-}
+import { User as DBUser } from "@/lib/types/database";
 
 interface HeaderProps {
-  user: UserData | null;
+  user: DBUser | null;
   unreadCount?: number;
   features?: AppFeatures;
 }
@@ -48,17 +42,31 @@ export function Header({ user, unreadCount: initialUnreadCount = 0, features }: 
     await signOut({ callbackUrl: "/login" });
   };
 
-  const roleLabel = user?.role === "super_admin"
-    ? "مشرف أعلى"
-    : user?.role === "maintenance_worker"
-      ? "عامل صيانة"
-      : "مشرف";
+  const roleLabel = 
+    user?.role === "super_admin" ? "مشرف أعلى" :
+    user?.role === "maintenance_worker" ? "عامل صيانة" :
+    user?.role === "hr_manager" ? "مدير HR" :
+    user?.role === "accountant" ? "محاسب" :
+    user?.role === "employee" ? "موظف" :
+    "مشرف";
 
   return (
     <header className="bg-white border-b border-gray-200 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
       <div className="flex items-center justify-between gap-2 sm:gap-4">
         <div className="flex items-center gap-4 min-w-0 flex-1">
-          <AppSwitcher features={features} />
+          {/* Mobile Menu Button - Shown only on small screens */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent("toggle-mobile-menu"))}
+            className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            title="القائمة"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+
+          {/* App Switcher - Hidden on mobile, show on tablet+ */}
+          <div className="hidden md:block">
+            <AppSwitcher features={features} />
+          </div>
           <Breadcrumbs />
         </div>
 

@@ -21,7 +21,8 @@ import {
     Settings,
     Trophy,
     PieChart,
-    Shield
+    Shield,
+    MessageSquare
 } from "lucide-react";
 
 export interface NavItem {
@@ -101,7 +102,15 @@ export const HR_NAV: NavSection[] = [
             { label: "لوحة التحكم", href: "/hr", icon: LayoutDashboard },
             { label: "الموظفين", href: "/hr/employees", icon: Users },
             { label: "الحضور والانصراف", href: "/hr/attendance", icon: Clock },
-            { label: "الطلبات", href: "/hr/requests", icon: FileText }
+            { label: "تقارير الحضور", href: "/hr/attendance/reports", icon: FileBarChart },
+            { label: "الطلبات والاجازات", href: "/hr/requests", icon: FileText }
+        ]
+    },
+    {
+        title: "الأداء والتقييم",
+        items: [
+            { label: "تقييمات الموظفين", href: "/hr/evaluations", icon: ClipboardCheck },
+            { label: "قوالب التقييم", href: "/hr/evaluations/templates", icon: Target }
         ]
     },
     {
@@ -113,7 +122,8 @@ export const HR_NAV: NavSection[] = [
     {
         title: "الاتصالات",
         items: [
-            { label: "الإعلانات", href: "/hr/announcements", icon: Megaphone }
+            { label: "الإعلانات", href: "/hr/announcements", icon: Megaphone },
+            { label: "المراسلات", href: "/hr/messages", icon: MessageSquare }
         ]
     },
     {
@@ -183,7 +193,7 @@ export const PATH_NAME_MAP: Record<string, string> = {
     "browser-accounts": "حسابات المتصفح",
     "activity-logs": "سجل الأنشطة",
     journals: "دفاتر اليومية",
-    accounts: "حسابات المنصات", // Updated
+    accounts: "حسابات المنصات", 
     partners: "الشركاء والموردين",
     "cost-centers": "مراكز التكلفة",
     backlog: "سجل الأحداث",
@@ -191,6 +201,12 @@ export const PATH_NAME_MAP: Record<string, string> = {
     requests: "الطلبات",
     payroll: "الرواتب",
     announcements: "الإعلانات",
+    messages: "المراسلات الإدارية",
+    evaluations: "التقييمات الشهرية",
+    templates: "قوالب التقييم",
+    new: "إضافة جديد",
+    profile: "الملف الشخصي",
+    payslips: "مسيرات الرواتب",
     customers: "العملاء",
     deals: "الصفقات",
     roles: "صلاحيات الأدوار",

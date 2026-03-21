@@ -70,7 +70,7 @@ export default function NewPayrollPage() {
                                 className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-violet-500"
                             >
                                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-                                    <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('ar-EG', { month: 'long' })}</option>
+                                    <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('ar-SA', { month: 'long' })}</option>
                                 ))}
                             </select>
                         </div>

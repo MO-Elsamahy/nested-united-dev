@@ -129,7 +129,7 @@ export default function HRRequestsPage() {
                                         </span>
                                         <span className="flex items-center gap-1 text-gray-500 text-sm">
                                             <Calendar className="w-4 h-4" />
-                                            {new Date(req.start_date).toLocaleDateString("ar-EG")}
+                                            {new Date(req.start_date).toLocaleDateString("ar-SA")}
                                         </span>
                                         {req.days_count > 0 && (
                                             <span className="text-sm text-gray-400">({req.days_count} يوم)</span>

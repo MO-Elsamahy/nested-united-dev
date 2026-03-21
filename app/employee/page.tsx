@@ -13,11 +13,11 @@ import {
     AlertCircle,
     Calendar,
     Megaphone,
+    MessageSquare,
 } from "lucide-react";
 import { AttendanceButton } from "./AttendanceButton";
 
 async function getEmployeeData(userId: string) {
-    // Get employee record linked to this user
     const employee = await queryOne<any>(
         `SELECT * FROM hr_employees WHERE user_id = ? AND status = 'active'`,
         [userId]
@@ -27,29 +27,30 @@ async function getEmployeeData(userId: string) {
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Get today's attendance
     const todayAttendance = await queryOne<any>(
         `SELECT * FROM hr_attendance WHERE employee_id = ? AND date = ?`,
         [employee.id, today]
     );
 
-    // Get pending requests count
     const pendingRequests = await queryOne<{ count: number }>(
         `SELECT COUNT(*) as count FROM hr_requests WHERE employee_id = ? AND status = 'pending'`,
         [employee.id]
     );
 
-    // Get recent requests
     const recentRequests = await query<any>(
         `SELECT * FROM hr_requests WHERE employee_id = ? ORDER BY created_at DESC LIMIT 3`,
         [employee.id]
     );
 
-    // Get active announcements
     const announcements = await query<any>(
         `SELECT * FROM hr_announcements 
      WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > NOW())
      ORDER BY is_pinned DESC, published_at DESC LIMIT 3`
+    );
+
+    const unreadMessages = await queryOne<{ count: number }>(
+        `SELECT COUNT(*) as count FROM hr_employee_messages WHERE employee_id = ? AND is_read = FALSE`,
+        [employee.id]
     );
 
     return {
@@ -58,6 +59,7 @@ async function getEmployeeData(userId: string) {
         pendingRequests: pendingRequests?.count || 0,
         recentRequests: recentRequests || [],
         announcements: announcements || [],
+        unreadMessagesCount: unreadMessages?.count || 0,
     };
 }
 
@@ -79,7 +81,7 @@ export default async function EmployeeDashboardPage() {
         );
     }
 
-    const { employee, todayAttendance, pendingRequests, recentRequests, announcements } = data;
+    const { employee, todayAttendance, pendingRequests, recentRequests, announcements, unreadMessagesCount } = data;
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -125,6 +127,21 @@ export default async function EmployeeDashboardPage() {
                 </div>
             </div>
 
+            {/* Unread Messages Alert */}
+            {unreadMessagesCount > 0 && (
+                <Link href="/employee/messages" className="block bg-orange-50 border border-orange-200 rounded-2xl p-4 hover:bg-orange-100 transition shadow-sm">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center text-orange-600">
+                            <MessageSquare className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-orange-900">رسائل إدارية جديدة</h3>
+                            <p className="text-orange-700 text-sm">لديك عدد ({unreadMessagesCount}) رسالة غير مقروءة من الإدارة، يرجى الاطلاع عليها.</p>
+                        </div>
+                    </div>
+                </Link>
+            )}
+
             {/* Attendance Button */}
             <AttendanceButton
                 employeeId={employee.id}
@@ -149,9 +166,9 @@ export default async function EmployeeDashboardPage() {
                                     <div>
                                         <p className="font-medium text-gray-900">{getRequestType(req.request_type)}</p>
                                         <p className="text-gray-500 text-sm">
-                                            {new Date(req.start_date).toLocaleDateString("ar-EG")}
+                                            {new Date(req.start_date).toLocaleDateString("ar-SA")}
                                             {req.end_date && req.end_date !== req.start_date &&
-                                                ` - ${new Date(req.end_date).toLocaleDateString("ar-EG")}`
+                                                ` - ${new Date(req.end_date).toLocaleDateString("ar-SA")}`
                                             }
                                         </p>
                                     </div>
@@ -196,7 +213,7 @@ export default async function EmployeeDashboardPage() {
                                     <h3 className="font-semibold text-gray-900">{ann.title}</h3>
                                     <p className="text-gray-600 text-sm mt-1 line-clamp-2">{ann.content}</p>
                                     <p className="text-gray-400 text-xs mt-2">
-                                        {ann.published_at && new Date(ann.published_at).toLocaleDateString("ar-EG")}
+                                        {ann.published_at && new Date(ann.published_at).toLocaleDateString("ar-SA")}
                                     </p>
                                 </div>
                             ))}

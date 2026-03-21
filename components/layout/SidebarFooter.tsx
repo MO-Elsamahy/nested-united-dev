@@ -33,11 +33,11 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
             {/* Back to Portal */}
             <Link
                 href="/portal"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition"
+                className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 hover:text-primary transition-all group"
             >
-                <Building2 className="w-4 h-4 text-gray-400" />
-                <span>العودة للبوابة</span>
-                <ArrowRight className="w-3 h-3 mr-auto text-gray-400" />
+                <Building2 className="w-5 h-5 text-gray-400 group-hover:text-primary transition-colors" />
+                <span className="flex-1">العودة للبوابة</span>
+                <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-primary transition-transform group-hover:translate-x-[-4px]" />
             </Link>
         </div>
     );

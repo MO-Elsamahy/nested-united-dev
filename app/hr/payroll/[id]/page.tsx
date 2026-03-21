@@ -85,7 +85,7 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                             </span>
                         </div>
                         <p className="text-gray-500">
-                            {new Date(run.period_year, run.period_month - 1).toLocaleString('ar-EG', { month: 'long', year: 'numeric' })}
+                            {new Date(run.period_year, run.period_month - 1).toLocaleString('ar-SA', { month: 'long', year: 'numeric' })}
                         </p>
                     </div>
                 </div>

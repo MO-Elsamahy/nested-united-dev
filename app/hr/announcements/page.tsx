@@ -173,7 +173,7 @@ export default function AnnouncementsPage() {
                                     {ann.priority === 'urgent' && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs font-bold">عاجل</span>}
                                     <span className="text-gray-400 text-sm flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {new Date(ann.published_at).toLocaleDateString("ar-EG")}
+                                        {new Date(ann.published_at).toLocaleDateString("ar-SA")}
                                     </span>
                                 </div>
                                 <h3 className="font-bold text-gray-900 text-lg mb-1">{ann.title}</h3>

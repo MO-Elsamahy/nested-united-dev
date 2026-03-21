@@ -21,7 +21,7 @@ interface BookingsFilterProps {
     accounts: Account[];
 }
 
-type DatePreset = "today" | "week" | "month" | "next_month" | "custom";
+type DatePreset = "today" | "checkin_today" | "checkout_today" | "week" | "month" | "next_month" | "custom";
 type BookingStatus = "all" | "upcoming" | "current" | "past";
 type BookingType = "all" | "manual" | "ical";
 
@@ -31,9 +31,13 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
 
     const [isExpanded, setIsExpanded] = useState(true);
     const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
-    const [dateFrom, setDateFrom] = useState(searchParams.get("from") || "");
-    const [dateTo, setDateTo] = useState(searchParams.get("to") || "");
-    const [datePreset, setDatePreset] = useState<DatePreset>("custom");
+    const [dateFrom, setDateFrom] = useState(searchParams.get("from") || searchParams.get("today") || searchParams.get("checkin_today") || "");
+    const [dateTo, setDateTo] = useState(searchParams.get("to") || searchParams.get("today") || searchParams.get("checkout_today") || "");
+    const [datePreset, setDatePreset] = useState<DatePreset>(
+        searchParams.get("checkin_today") ? "checkin_today" :
+        searchParams.get("checkout_today") ? "checkout_today" :
+        searchParams.get("today") ? "today" : "custom"
+    );
     const [selectedUnits, setSelectedUnits] = useState<string[]>(
         searchParams.getAll("unit_id") || []
     );
@@ -54,11 +58,25 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
     const applyDatePreset = (preset: DatePreset) => {
         setDatePreset(preset);
         const today = new Date();
-        const formatDate = (d: Date) => d.toISOString().split("T")[0];
+        const formatDate = (d: Date) => {
+            // Get the date in YYYY-MM-DD format based on the local timezone
+            const year = d.getFullYear();
+            const month = (d.getMonth() + 1).toString().padStart(2, '0');
+            const day = d.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
 
         switch (preset) {
             case "today":
                 setDateFrom(formatDate(today));
+                setDateTo(formatDate(today));
+                break;
+            case "checkin_today":
+                setDateFrom(formatDate(today));
+                setDateTo("");
+                break;
+            case "checkout_today":
+                setDateFrom("");
                 setDateTo(formatDate(today));
                 break;
             case "week":
@@ -92,8 +110,19 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
         const params = new URLSearchParams();
 
         if (searchQuery) params.set("search", searchQuery);
-        if (dateFrom) params.set("from", dateFrom);
-        if (dateTo) params.set("to", dateTo);
+        if (searchQuery) params.set("search", searchQuery);
+        
+        if (datePreset === "today") {
+            params.set("today", dateFrom);
+        } else if (datePreset === "checkin_today") {
+            params.set("checkin_today", dateFrom);
+        } else if (datePreset === "checkout_today") {
+            params.set("checkout_today", dateTo);
+        } else {
+            if (dateFrom) params.set("from", dateFrom);
+            if (dateTo) params.set("to", dateTo);
+        }
+
         if (bookingType !== "all") params.set("booking_type", bookingType);
         if (bookingStatus !== "all") params.set("status", bookingStatus);
 
@@ -200,6 +229,8 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
                         <div className="flex gap-2 flex-wrap">
                             {[
                                 { value: "today", label: "اليوم" },
+                                { value: "checkin_today", label: "دخول اليوم" },
+                                { value: "checkout_today", label: "خروج اليوم" },
                                 { value: "week", label: "هذا الأسبوع" },
                                 { value: "month", label: "هذا الشهر" },
                                 { value: "next_month", label: "الشهر القادم" },

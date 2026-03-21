@@ -26,9 +26,10 @@ export default async function DashboardLayout({
   }
 
   // Get user data from users table
+  console.log("Session User ID:", session.user.id);
   const user = await queryOne<User>(
     "SELECT * FROM users WHERE id = ?",
-    [session.user.id]
+    [String(session.user.id)]
   );
 
   if (!user || (user && !user.is_active)) {
@@ -54,6 +55,8 @@ export default async function DashboardLayout({
       <NotificationManager />
       <ActivityLogger />
       <AutoSync />
+
+      <TabBar />
 
       <AppShell
         header={<Header user={user} unreadCount={unreadCount} features={features} />}

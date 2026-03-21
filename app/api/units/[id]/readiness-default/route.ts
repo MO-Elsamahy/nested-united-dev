@@ -19,7 +19,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    // Local today based on server/local system time (e.g. Saudi/Egypt)
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     let checkin_date: string | null = null;
     let checkout_date: string | null = null;

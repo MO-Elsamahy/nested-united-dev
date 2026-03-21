@@ -9,6 +9,7 @@ import {
   Tray,
   nativeImage,
   shell,
+  dialog,
 } from "electron";
 import * as path from "path";
 import * as fs from "fs";
@@ -105,7 +106,7 @@ let tray: Tray | null = null;
 let pollingService: PollingService | null = null;
 const browserSessions: Map<string, BrowserAccountSession> = new Map();
 const isDev = !app.isPackaged;
-const PROD_APP_URL = process.env.APP_URL || "https://nestedunited.netlify.app/";
+const PROD_APP_URL = process.env.APP_URL || "https://go.nestedunited.com/";
 let isAppQuitting = false;
 const APP_USER_MODEL_ID = "com.rentals.dashboard";
 
@@ -168,7 +169,7 @@ function createMainWindow() {
   });
 
   const iconPath = isDev
-    ? path.join(__dirname, "../build/icon.ico")
+    ? path.join(__dirname, "../../build/icon.ico") // __dirname = electron/dist/, so ../../ = project root
     : path.join(process.resourcesPath, "build", "icon.ico");
 
   mainWindow = new BrowserWindow({
@@ -243,7 +244,7 @@ function createMainWindow() {
 
 function createTray() {
   const iconPath = isDev
-    ? path.join(__dirname, "../build/icon.ico")
+    ? path.join(__dirname, "../../build/icon.ico") // __dirname = electron/dist/, so ../../ = project root
     : path.join(process.resourcesPath, "build", "icon.ico");
   const icon = nativeImage.createFromPath(iconPath);
   tray = new Tray(icon.resize({ width: 16, height: 16 }));
@@ -337,6 +338,16 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
   browserWindow.loadURL(platformUrl, {
     userAgent: chromeUserAgent,
   });
+
+  // Discovery: Log Gathern API requests to help identify endpoints
+  if (accountSession.platform === "gathern") {
+    ses.webRequest.onCompleted(
+      { urls: ['*://business.gathern.co/api/*', '*://api.gathern.co/*'] },
+      (details) => {
+        console.log(`[Gathern API Discovery] ${details.method} ${details.url} → ${details.statusCode}`);
+      }
+    );
+  }
 
   // Enable F12 to open DevTools
   browserWindow.webContents.on("before-input-event", (event, input) => {
@@ -1180,9 +1191,33 @@ ipcMain.handle("remove-browser-account", (_, accountId: string) => {
   return { success: true };
 });
 
-ipcMain.handle("open-browser-account", (_, accountId: string) => {
-  const account = browserSessions.get(accountId);
-  if (!account) return { success: false, error: "Account not found" };
+ipcMain.handle("open-browser-account", (_, accountData: any) => {
+  // Graceful fallback for stale frontend builds that only send the ID
+  if (typeof accountData === "string") {
+    dialog.showErrorBox(
+      "تحديث مطلوب للسيرفر",
+      "تم اكتشاف كود قديم قادم من الموقع. السيرفر بتاعك محتاج يتعمله (npm run build) عشان يبعت البيانات كاملة للبرنامج بدل ما يبعت ID فقط (واللي بيخليه يفتح واتساب بالغلط)."
+    );
+    return { success: false, error: "Stale frontend build detected. Please run npm run build on your server." };
+  }
+
+  let account = browserSessions.get(accountData.id);
+
+  // If the account was created remotely and doesn't exist locally, add it
+  if (!account) {
+    if (!accountData.platform) {
+      return { success: false, error: "Invalid account data. Missing platform." };
+    }
+    const newAccount: BrowserAccountSession = {
+      id: accountData.id,
+      platform: accountData.platform,
+      accountName: accountData.accountName || "Unknown",
+      partition: accountData.partition || `persist:fallback-${Date.now()}`
+    };
+    browserSessions.set(accountData.id, newAccount);
+    account = newAccount;
+    saveSessions(); // Save to local storage so it persists
+  }
 
   // If window exists and not destroyed, focus it
   if (account.window && !account.window.isDestroyed()) {

@@ -33,6 +33,8 @@ async function getBookings(searchParams?: {
   status?: string;
   search?: string;
   today?: string;
+  checkin_today?: string;
+  checkout_today?: string;
 }) {
   const filters = searchParams || {};
 
@@ -85,6 +87,12 @@ async function getBookings(searchParams?: {
     if (filters.today) {
       bookingsSql += " AND b.checkin_date <= ? AND b.checkout_date >= ?";
       bookingsParams.push(filters.today, filters.today);
+    } else if (filters.checkin_today) {
+      bookingsSql += " AND b.checkin_date = ?";
+      bookingsParams.push(filters.checkin_today);
+    } else if (filters.checkout_today) {
+      bookingsSql += " AND b.checkout_date = ?";
+      bookingsParams.push(filters.checkout_today);
     } else {
       if (filters.from && filters.to) {
         bookingsSql += " AND b.checkin_date >= ? AND b.checkout_date <= ?";
@@ -140,6 +148,12 @@ async function getBookings(searchParams?: {
     if (filters.today) {
       resSql += " AND r.start_date <= ? AND r.end_date >= ?";
       resParams.push(filters.today, filters.today);
+    } else if (filters.checkin_today) {
+      resSql += " AND r.start_date = ?";
+      resParams.push(filters.checkin_today);
+    } else if (filters.checkout_today) {
+      resSql += " AND r.end_date = ?";
+      resParams.push(filters.checkout_today);
     } else {
       if (filters.from && filters.to) {
         resSql += " AND r.start_date >= ? AND r.end_date <= ?";
@@ -208,7 +222,7 @@ async function getBookings(searchParams?: {
     // Apply status filter
     if (filters.status && filters.status !== "all") {
       const now = new Date();
-      const today = now.toISOString().split("T")[0];
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       combined = combined.filter(item => {
         const checkin = item.checkin_date;
@@ -267,6 +281,8 @@ export default async function BookingsPage({
     status?: string;
     search?: string;
     today?: string;
+    checkin_today?: string;
+    checkout_today?: string;
   }> | {
     from?: string;
     to?: string;
@@ -277,10 +293,14 @@ export default async function BookingsPage({
     status?: string;
     search?: string;
     today?: string;
+    checkin_today?: string;
+    checkout_today?: string;
   };
 }) {
   const session = await getServerSession(authOptions);
   const resolvedParams = searchParams instanceof Promise ? await searchParams : (searchParams || {});
+  
+  console.log("[BookingsPage] Rendering with params:", JSON.stringify(resolvedParams));
 
   // Check View Permission
   const canView = session?.user?.id
@@ -314,6 +334,8 @@ export default async function BookingsPage({
     from: resolvedParams.from,
     to: resolvedParams.to,
     today: resolvedParams.today,
+    checkin_today: resolvedParams.checkin_today,
+    checkout_today: resolvedParams.checkout_today,
     platform_account_id: platformAccountIds.length > 0 ? platformAccountIds : undefined,
     unit_id: resolvedParams.unit_id,
     platform: resolvedParams.platform,
@@ -349,6 +371,61 @@ export default async function BookingsPage({
 
       {/* Advanced Filter */}
       <BookingsFilter units={units} accounts={accounts} />
+
+      {/* Active Filters Pills */}
+      {(resolvedParams.from || resolvedParams.to || resolvedParams.today || resolvedParams.checkin_today || resolvedParams.checkout_today) && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {resolvedParams.checkin_today && (
+            <div className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs flex items-center gap-2 font-medium border border-green-200">
+              <span>دخول اليوم: {resolvedParams.checkin_today as string}</span>
+              <Link href={`?${(() => {
+                const p = new URLSearchParams(formatQuery(resolvedParams));
+                p.delete('checkin_today');
+                return p.toString();
+              })()}`} className="hover:bg-green-200 rounded-full p-0.5">
+                <Plus className="w-3 h-3 rotate-45" />
+              </Link>
+            </div>
+          )}
+          {resolvedParams.checkout_today && (
+            <div className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-xs flex items-center gap-2 font-medium border border-orange-200">
+              <span>خروج اليوم: {resolvedParams.checkout_today as string}</span>
+              <Link href={`?${(() => {
+                const p = new URLSearchParams(formatQuery(resolvedParams));
+                p.delete('checkout_today');
+                return p.toString();
+              })()}`} className="hover:bg-orange-200 rounded-full p-0.5">
+                <Plus className="w-3 h-3 rotate-45" />
+              </Link>
+            </div>
+          )}
+          {resolvedParams.today && (
+            <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs flex items-center gap-2 font-medium border border-blue-200">
+              <span>متواجد اليوم: {resolvedParams.today as string}</span>
+              <Link href={`?${(() => {
+                const p = new URLSearchParams(formatQuery(resolvedParams));
+                p.delete('today');
+                return p.toString();
+              })()}`} className="hover:bg-blue-200 rounded-full p-0.5">
+                <Plus className="w-3 h-3 rotate-45" />
+              </Link>
+            </div>
+          )}
+          {resolvedParams.from && resolvedParams.to && (
+            <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-xs flex items-center gap-2 font-medium border border-gray-200">
+              <span>الفترة: {resolvedParams.from as string} إلى {resolvedParams.to as string}</span>
+              <Link href={`?${(() => {
+                const p = new URLSearchParams(formatQuery(resolvedParams));
+                p.delete('from');
+                p.delete('to');
+                return p.toString();
+              })()}`} className="hover:bg-gray-200 rounded-full p-0.5">
+                <Plus className="w-3 h-3 rotate-45" />
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">

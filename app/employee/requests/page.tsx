@@ -92,9 +92,9 @@ export default async function EmployeeRequestsPage() {
                                             <div className="flex items-center gap-2 text-gray-500 text-sm mt-1">
                                                 <Calendar className="w-4 h-4" />
                                                 <span>
-                                                    {new Date(req.start_date).toLocaleDateString("ar-EG")}
+                                                    {new Date(req.start_date).toLocaleDateString("ar-SA")}
                                                     {req.end_date && req.end_date !== req.start_date &&
-                                                        ` - ${new Date(req.end_date).toLocaleDateString("ar-EG")}`
+                                                        ` - ${new Date(req.end_date).toLocaleDateString("ar-SA")}`
                                                     }
                                                 </span>
                                                 <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
@@ -110,7 +110,7 @@ export default async function EmployeeRequestsPage() {
                                     <div className="text-left">
                                         <div className="mb-2">{getStatusBadge(req.status)}</div>
                                         <p className="text-xs text-gray-400">
-                                            {new Date(req.created_at).toLocaleDateString("ar-EG")}
+                                            {new Date(req.created_at).toLocaleDateString("ar-SA")}
                                         </p>
                                     </div>
                                 </div>

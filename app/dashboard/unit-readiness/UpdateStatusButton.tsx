@@ -19,10 +19,16 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: any; current
   const [isOpen, setIsOpen] = useState(false);
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const formatDateForInput = (dateObj: any) => {
+    if (!dateObj) return "";
+    const d = new Date(dateObj);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const [formData, setFormData] = useState({
     status: currentStatus,
-    checkout_date: unit.readiness_checkout_date || "",
-    checkin_date: unit.readiness_checkin_date || "",
+    checkout_date: formatDateForInput(unit.readiness_checkout_date),
+    checkin_date: formatDateForInput(unit.readiness_checkin_date),
     guest_name: unit.readiness_guest_name || "",
     notes: unit.readiness_notes || "",
   });
@@ -42,8 +48,8 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: any; current
 
         setFormData((prev) => ({
           ...prev,
-          checkout_date: data.checkout_date || prev.checkout_date,
-          checkin_date: data.checkin_date || prev.checkin_date,
+          checkout_date: data.checkout_date ? formatDateForInput(data.checkout_date) : prev.checkout_date,
+          checkin_date: data.checkin_date ? formatDateForInput(data.checkin_date) : prev.checkin_date,
           guest_name: data.guest_name || prev.guest_name,
         }));
       } catch (err) {

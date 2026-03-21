@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { isElectron } from "@/lib/utils/isElectron";
 import { 
   X, 
   Minus, 
@@ -12,7 +13,8 @@ import {
   Bell,
   Maximize2,
   Minimize2,
-  Home
+  Home,
+  Monitor
 } from "lucide-react";
 
 interface BrowserViewerProps {
@@ -26,7 +28,52 @@ export function BrowserViewer({ accountId, accountName, platform, onClose }: Bro
   const [isMaximized, setIsMaximized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUrl, setCurrentUrl] = useState("");
+  const [electronEnv, setElectronEnv] = useState<boolean | null>(null);
 
+  useEffect(() => {
+    setElectronEnv(isElectron());
+  }, []);
+
+  // Not in Electron - show informative message
+  if (electronEnv === false) {
+    const platformUrl = platform === "airbnb"
+      ? "https://www.airbnb.com/hosting/inbox"
+      : "https://business.gathern.co";
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Monitor className="w-8 h-8 text-blue-600" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">ميزة حصرية لتطبيق سطح المكتب</h2>
+          <p className="text-gray-500 mb-6 leading-relaxed">
+            فتح متصفح الحسابات يعمل فقط من خلال تطبيق <strong>NestedUnited</strong> على الكمبيوتر.<br />
+            من الموقع يمكنك الاطلاع على الرسائل المزامنة فقط.
+          </p>
+          <div className="flex flex-col gap-3">
+            <a
+              href={platformUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl transition"
+            >
+              <ExternalLink className="w-4 h-4" />
+              فتح {platform === "airbnb" ? "Airbnb" : "Gathern"} في المتصفح
+            </a>
+            <button
+              onClick={onClose}
+              className="flex items-center justify-center gap-2 border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl transition"
+            >
+              <X className="w-4 h-4" />
+              إغلاق
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Still detecting or in Electron
   const platformUrl = platform === "airbnb" 
     ? "https://www.airbnb.com/hosting/inbox"
     : "https://business.gathern.co/login";

@@ -50,7 +50,7 @@ describe('Platform API Cookie & Fetch Tests', () => {
         data: { data: { node: { messagingInbox: { threads: { edges: [] } } } } }
     });
 
-    const data = await fetchAirbnbInboxList(mockAccount);
+    const data = await fetchAirbnbInboxList(mockAccount) as any;
     
     expect(axios.get).toHaveBeenCalled();
     expect(data.data.node.messagingInbox.threads.edges).toBeDefined();
@@ -64,7 +64,7 @@ describe('Platform API Cookie & Fetch Tests', () => {
     });
 
     // NOW PASSES BOTH ARGUMENTS TO FIX TS2554
-    const data = await fetchAirbnbMessages(mockAccount, mockThreadId);
+    const data = await fetchAirbnbMessages(mockAccount, mockThreadId) as any;
     
     expect(axios.get).toHaveBeenCalledWith(
         expect.stringContaining(mockThreadId), 

@@ -48,14 +48,26 @@ next-env.d.ts
 
 # Database & Secrets
 .env
-my-sql-dump.sql
+*.sql
 *.db
 *.sqlite3
 
-# Uploads
-public/uploads/
+# Project Scripts & Tools
+repair_mysql.ps1
+deploy.bat
+db_check_v2.js
+proxy.ts
+check_user.ts
+deprecated.txt
+sync_results.json
+
+# Local Data
+/browser-data/
+/tmp/
 
 # IDE
 .idea/
 .vscode/
+.agents/
+.agent/
 

@@ -135,6 +135,77 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// PUT Update Unit
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Check permission
+  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/units", "edit");
+  if (!hasPermission) {
+    return NextResponse.json({ error: "Forbidden: لا تملك صلاحية تعديل الوحدات" }, { status: 403 });
+  }
+
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const { unit_name, unit_code, city, address, capacity, status } = body;
+
+    if (!unit_name) {
+      return NextResponse.json({ error: "اسم الوحدة مطلوب" }, { status: 400 });
+    }
+
+    // Check if unit exists
+    const unit = await queryOne("SELECT id FROM units WHERE id = ?", [id]);
+    if (!unit) {
+      return NextResponse.json({ error: "الوحدة غير موجودة" }, { status: 404 });
+    }
+
+    // Update unit
+    await execute(
+      `UPDATE units 
+       SET unit_name = ?, 
+           unit_code = ?, 
+           city = ?, 
+           address = ?, 
+           capacity = ?, 
+           status = ?
+       WHERE id = ?`,
+      [
+        unit_name,
+        unit_code || null,
+        city || null,
+        address || null,
+        capacity ? Number(capacity) : null,
+        status || "active",
+        id,
+      ]
+    );
+
+    // Log activity
+    await logActivityInServer({
+      userId: session.user.id,
+      action_type: "update",
+      page_path: "/dashboard/units",
+      resource_type: "unit",
+      resource_id: id,
+      description: `تعديل الوحدة: ${unit_name}`,
+      metadata: { unit_name, unit_id: id },
+    });
+
+    return NextResponse.json({ success: true, message: "تم تحديث الوحدة بنجاح" });
+  } catch (error: any) {
+    console.error("Update Unit Error:", error);
+    return NextResponse.json({ error: "حدث خطأ أثناء تحديث الوحدة" }, { status: 500 });
+  }
+}
+
 // DELETE Unit
 export async function DELETE(
   request: NextRequest,

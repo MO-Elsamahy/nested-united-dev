@@ -44,14 +44,14 @@ export default async function AttendanceHistoryPage() {
 
     const formatTime = (dateStr: string | null) => {
         if (!dateStr) return "—";
-        return new Date(dateStr).toLocaleTimeString("ar-EG", {
+        return new Date(dateStr).toLocaleTimeString("ar-SA", {
             hour: "2-digit",
             minute: "2-digit",
         });
     };
 
     const formatDate = (dateStr: string) => {
-        return new Date(dateStr).toLocaleDateString("ar-EG", {
+        return new Date(dateStr).toLocaleDateString("ar-SA", {
             weekday: "long",
             year: "numeric",
             month: "long",

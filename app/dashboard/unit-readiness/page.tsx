@@ -60,8 +60,24 @@ const STATUS_CONFIG = {
 
 async function getUnitsWithReadiness(statusFilter?: string | null) {
   try {
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+    // Fetch units and also check for arrivals/departures today in real-time
     const units = await query<any>(
-      "SELECT * FROM units WHERE status = 'active' ORDER BY unit_name"
+      `SELECT u.*,
+              (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date = ? LIMIT 1) as manual_checkin_guest,
+              (SELECT r.summary FROM reservations r WHERE r.unit_id = u.id AND r.start_date = ? LIMIT 1) as ical_checkin_guest,
+              (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkout_date = ? LIMIT 1) as manual_checkout_guest,
+              (SELECT r.summary FROM reservations r WHERE r.unit_id = u.id AND r.end_date = ? LIMIT 1) as ical_checkout_guest,
+              (SELECT b.checkin_date FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date = ? LIMIT 1) as manual_checkin_date,
+              (SELECT r.start_date FROM reservations r WHERE r.unit_id = u.id AND r.start_date = ? LIMIT 1) as ical_checkin_date,
+              (SELECT b.checkout_date FROM bookings b WHERE b.unit_id = u.id AND b.checkout_date = ? LIMIT 1) as manual_checkout_date,
+              (SELECT r.end_date FROM reservations r WHERE r.unit_id = u.id AND r.end_date = ? LIMIT 1) as ical_checkout_date
+       FROM units u 
+       WHERE u.status = 'active' 
+       ORDER BY u.unit_name`,
+       [today, today, today, today, today, today, today, today]
     );
 
     if (!units || units.length === 0) return [];
@@ -74,6 +90,19 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
 
     for (const unit of units) {
       unit.unit_calendars = calendars.filter((c: any) => c.unit_id === unit.id);
+      
+      // Compute dynamic Today flags
+      unit._has_checkin_today = !!(unit.manual_checkin_date || unit.ical_checkin_date);
+      unit._has_checkout_today = !!(unit.manual_checkout_date || unit.ical_checkout_date);
+      
+      // If status is "ready" or "occupied" but we have a checkin/checkout today, override it dynamically for the stats/filter
+      if (unit._has_checkout_today && (!unit.readiness_status || unit.readiness_status === "occupied")) {
+        unit._computed_status = "checkout_today";
+      } else if (unit._has_checkin_today && (!unit.readiness_status || unit.readiness_status === "ready" || unit.readiness_status === "booked")) {
+        unit._computed_status = "checkin_today";
+      } else {
+        unit._computed_status = unit.readiness_status || "ready";
+      }
     }
 
     const grouped = new Map<string, { primary: any; units: any[] }>();
@@ -99,7 +128,7 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     }));
 
     if (statusFilter && statusFilter !== "all") {
-      uniqueUnits = uniqueUnits.filter((unit: any) => unit.readiness_status === statusFilter);
+      uniqueUnits = uniqueUnits.filter((unit: any) => unit._computed_status === statusFilter);
     }
 
     return uniqueUnits;
@@ -123,14 +152,14 @@ export default async function UnitReadinessPage({
   const isSuperAdmin = currentUser?.role === "super_admin";
 
   const stats = {
-    checkout_today: units.filter((u: any) => u.readiness_status === "checkout_today").length,
-    checkin_today: units.filter((u: any) => u.readiness_status === "checkin_today").length,
-    awaiting_cleaning: units.filter((u: any) => u.readiness_status === "awaiting_cleaning").length,
-    cleaning_in_progress: units.filter((u: any) => u.readiness_status === "cleaning_in_progress").length,
-    ready: units.filter((u: any) => u.readiness_status === "ready").length,
-    occupied: units.filter((u: any) => u.readiness_status === "occupied").length,
-    guest_not_checked_out: units.filter((u: any) => u.readiness_status === "guest_not_checked_out").length,
-    booked: units.filter((u: any) => u.readiness_status === "booked").length,
+    checkout_today: units.filter((u: any) => u._computed_status === "checkout_today").length,
+    checkin_today: units.filter((u: any) => u._computed_status === "checkin_today").length,
+    awaiting_cleaning: units.filter((u: any) => u._computed_status === "awaiting_cleaning").length,
+    cleaning_in_progress: units.filter((u: any) => u._computed_status === "cleaning_in_progress").length,
+    ready: units.filter((u: any) => u._computed_status === "ready").length,
+    occupied: units.filter((u: any) => u._computed_status === "occupied").length,
+    guest_not_checked_out: units.filter((u: any) => u._computed_status === "guest_not_checked_out").length,
+    booked: units.filter((u: any) => u._computed_status === "booked").length,
   };
 
   return (
@@ -190,7 +219,13 @@ export default async function UnitReadinessPage({
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {units.map((unit: any) => {
-              const status = unit.readiness_status || "ready";
+              const now = new Date();
+              const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+              
+              const isCheckinToday = unit._has_checkin_today;
+              const isCheckoutToday = unit._has_checkout_today;
+
+              const status = unit._computed_status;
               const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
               const mergedUnits: any[] = unit._merged_units || [unit];
 
@@ -219,9 +254,27 @@ export default async function UnitReadinessPage({
                     </div>
 
                     {/* Status Pill */}
-                    <div className={`px-2.5 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 whitespace-nowrap ${config.badge}`}>
-                      <span>{config.icon}</span>
-                      <span>{config.label}</span>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className={`px-2.5 py-1 rounded-full text-xs font-medium border flex items-center gap-1.5 whitespace-nowrap ${config.badge}`}>
+                        <span>{config.icon}</span>
+                        <span>{config.label}</span>
+                      </div>
+                      
+                      {/* Special Today Indicators */}
+                      <div className="flex gap-1">
+                        {isCheckinToday && (
+                          <span className="bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1" title="دخول اليوم">
+                            <LogIn className="w-3 h-3" />
+                            دخول
+                          </span>
+                        )}
+                        {isCheckoutToday && (
+                          <span className="bg-orange-600 text-white text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1" title="خروج اليوم">
+                            <LogOut className="w-3 h-3" />
+                            خروج
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -300,7 +353,7 @@ export default async function UnitReadinessPage({
 
                     <div className="flex gap-2 w-full justify-end">
                       <Link
-                        href={`/dashboard/units/${unit.id}`}
+                        href={`/dashboard/units/${unit.id}?from=readiness`}
                         className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors"
                       >
                         التفاصيل
