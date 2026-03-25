@@ -95,14 +95,26 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
       unit._has_checkin_today = !!(unit.manual_checkin_date || unit.ical_checkin_date);
       unit._has_checkout_today = !!(unit.manual_checkout_date || unit.ical_checkout_date);
       
-      // If status is "ready" or "occupied" but we have a checkin/checkout today, override it dynamically for the stats/filter
-      if (unit._has_checkout_today && (!unit.readiness_status || unit.readiness_status === "occupied")) {
-        unit._computed_status = "checkout_today";
-      } else if (unit._has_checkin_today && (!unit.readiness_status || unit.readiness_status === "ready" || unit.readiness_status === "booked")) {
-        unit._computed_status = "checkin_today";
-      } else {
-        unit._computed_status = unit.readiness_status || "ready";
+      // Logic: 
+      // 1. If today is Checkout and unit hasn't been updated today (or is still 'Occupied') -> Show 'Checkout Today'
+      // 2. If staff updates it TODAY to anything, respect the manual status 100%
+      
+      const updatedAt = unit.readiness_updated_at ? new Date(unit.readiness_updated_at) : null;
+      const wasUpdatedToday = updatedAt && 
+        updatedAt.toISOString().split('T')[0] === today;
+      
+      let computed = unit.readiness_status || "ready";
+
+      // Only auto-override if it hasn't been handled today OR it's still in the default 'null' state
+      if (!wasUpdatedToday || !unit.readiness_status) {
+        if (unit._has_checkout_today && (computed === "occupied" || !unit.readiness_status)) {
+          computed = "checkout_today";
+        } else if (unit._has_checkin_today && (computed === "ready" || computed === "booked" || !unit.readiness_status)) {
+          computed = "checkin_today";
+        }
       }
+
+      unit._computed_status = computed;
     }
 
     const grouped = new Map<string, { primary: any; units: any[] }>();

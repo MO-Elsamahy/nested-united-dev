@@ -42,7 +42,8 @@ export const DASHBOARD_NAV: NavSection[] = [
         title: "العمليات الأساسية",
         items: [
             { label: "لوحة التحكم", href: "/dashboard", icon: LayoutDashboard },
-            { label: "حسابات المنصات", href: "/dashboard/accounts", icon: Home }, // Renamed from "الحسابات"
+            { label: "صندوق الوارد", href: "/dashboard/inbox", icon: MessageSquare }, // New Unified Inbox
+            { label: "حسابات المنصات", href: "/dashboard/accounts", icon: Home }, 
             { label: "الوحدات", href: "/dashboard/units", icon: Building2 },
             { label: "الحجوزات", href: "/dashboard/bookings", icon: Calendar },
         ]

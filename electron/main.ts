@@ -14,8 +14,9 @@ import {
 import * as path from "path";
 import * as fs from "fs";
 import { spawn, ChildProcess } from "child_process";
+import mysql from "mysql2/promise";
 import { PollingService } from "./polling-service";
-import { PlatformAccount } from "./platform-api";
+import { BrowserAccountSession, sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions } from "./platform-api";
 
 
 let nextServerProcess: ChildProcess | null = null;
@@ -92,56 +93,17 @@ function stopNextServer() {
 }
 
 // Store for browser accounts sessions
-interface BrowserAccountSession {
-  id: string;
-  platform: "airbnb" | "gathern" | "whatsapp";
-  accountName: string;
-  partition: string;
-  createdBy?: string; // User ID who created this account
-  window?: BrowserWindow;
-}
+// BrowserAccountSession is now imported from ./platform-api
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let pollingService: PollingService | null = null;
-const browserSessions: Map<string, BrowserAccountSession> = new Map();
 const isDev = !app.isPackaged;
 const PROD_APP_URL = process.env.APP_URL || "https://go.nestedunited.com/";
 let isAppQuitting = false;
 const APP_USER_MODEL_ID = "com.rentals.dashboard";
 
 app.setAppUserModelId(APP_USER_MODEL_ID);
-
-// Data directory for persistent storage
-const userDataPath = app.getPath("userData");
-const sessionsPath = path.join(userDataPath, "sessions.json");
-
-function loadSavedSessions(): BrowserAccountSession[] {
-  try {
-    if (fs.existsSync(sessionsPath)) {
-      const data = fs.readFileSync(sessionsPath, "utf-8");
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error("Error loading sessions:", error);
-  }
-  return [];
-}
-
-function saveSessions() {
-  try {
-    const sessions = Array.from(browserSessions.values()).map((s) => ({
-      id: s.id,
-      platform: s.platform,
-      accountName: s.accountName,
-      partition: s.partition,
-      createdBy: s.createdBy,
-    }));
-    fs.writeFileSync(sessionsPath, JSON.stringify(sessions, null, 2));
-  } catch (error) {
-    console.error("Error saving sessions:", error);
-  }
-}
 
 function createMainWindow() {
   // إنشاء session منفصل للداشبورد الرئيسي
@@ -151,22 +113,15 @@ function createMainWindow() {
     cache: true,
   });
 
-  // Configure session to persist cookies forever
-  // Auto-flush cookies to disk whenever they change
-  dashboardSession.cookies.on('changed', () => {
-    // Ensure cookies are saved immediately to disk
-    dashboardSession.cookies.flushStore().catch(err => {
-      console.error('Error flushing cookies:', err);
-    });
-  });
-
-  // Configure session to persist cookies forever
-  dashboardSession.cookies.on('changed', () => {
-    // Force save cookies immediately
-    dashboardSession.cookies.flushStore().catch(err => {
-      console.error('Error flushing cookies:', err);
-    });
-  });
+  // [Phase 2] Discovery Logger for Gathern (from implementation_plan.md.resolved)
+  dashboardSession.webRequest.onCompleted(
+    { urls: ['*://business.gathern.co/api/*', '*://api.gathern.co/*', '*://chatapi-prod.gathern.co/*'] },
+    (details) => {
+      if (details.statusCode === 200 || details.statusCode === 201) {
+        console.log(`\x1b[35m[Gathern Discovery] 🕵️ ${details.method} ${details.url} → ${details.statusCode}\x1b[0m`);
+      }
+    }
+  );
 
   const iconPath = isDev
     ? path.join(__dirname, "../../build/icon.ico") // __dirname = electron/dist/, so ../../ = project root
@@ -192,12 +147,10 @@ function createMainWindow() {
     mainWindow.loadURL("http://localhost:3000");
     // DevTools will open manually with F12 if needed
   } else {
-    // في الإنتاج: استخدم الموقع المنشور على Netlify كأولوية
-    // لو حابب تستخدم الـ bundle المحلي، أزل السطر التالي وأرجع لاستدعاء startNextServer
-    mainWindow.loadURL(PROD_APP_URL);
-
-    // ملاحظة: إذا احتجت الاعتماد على الخادم المحلي بدلاً من Netlify، استبدل السابق بـ:
-    // startNextServer().then((port) => mainWindow?.loadURL(`http://localhost:${port}`));
+    // في الإنتاج: تم تحويل التطبيق ليعتمد على الخادم المحلي (Localhost) بدلاً من Netlify
+    // mainWindow.loadURL(PROD_APP_URL);
+    
+    startNextServer().then((port) => mainWindow?.loadURL(`http://localhost:${port}`));
   }
 
   mainWindow.on("closed", () => {
@@ -281,15 +234,63 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
   const chromeUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
   ses.setUserAgent(chromeUserAgent);
 
-  // Intercept requests to add proper headers (helps bypass protection)
-  ses.webRequest.onBeforeSendHeaders((details, callback) => {
-    const headers = { ...details.requestHeaders };
-    headers["User-Agent"] = chromeUserAgent;
-    headers["Accept-Language"] = "ar,en-US;q=0.9,en;q=0.8";
-    headers["sec-ch-ua"] = '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"';
-    headers["sec-ch-ua-mobile"] = "?0";
-    headers["sec-ch-ua-platform"] = '"Windows"';
-    callback({ requestHeaders: headers });
+  // Intercept requests for discovery (minimal)
+  ses.webRequest.onBeforeSendHeaders({ urls: ["*://*.gathern.co/*", "*://*.airbnb.com/*"] }, (details, callback) => {
+    const apiKey = details.requestHeaders['X-Airbnb-API-Key'] || details.requestHeaders['x-airbnb-api-key'];
+    if (apiKey) {
+       const sessionObj = browserSessions.get(accountSession.id);
+       if (sessionObj && sessionObj.authToken !== apiKey) {
+         console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Airbnb API Key: ${apiKey.toString().substring(0, 10)}...\x1b[0m`);
+         sessionObj.authToken = apiKey.toString();
+         saveSessions(); 
+       }
+    }
+
+    // Gathern Token Sniffing (from Authorization header)
+    const authHeader = details.requestHeaders['Authorization'] || details.requestHeaders['authorization'];
+    if (authHeader && authHeader.toString().startsWith('Bearer ')) {
+       const token = authHeader.toString().substring(7);
+       const sessionObj = browserSessions.get(accountSession.id);
+       if (sessionObj && sessionObj.authToken !== token) {
+         console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Gathern Bearer Token: ${token.substring(0, 10)}...\x1b[0m`);
+         sessionObj.authToken = token;
+         saveSessions(); 
+       }
+    }
+    callback({ requestHeaders: details.requestHeaders });
+  });
+
+  // Phase 2: Discovery Logger & Token Sniffer for Gathern/Airbnb
+  ses.webRequest.onCompleted({ urls: ['*://business.gathern.co/api/*', '*://api.gathern.co/*', '*://www.airbnb.com/api/*'] }, (details) => {
+    if (details.method !== 'OPTIONS' && details.statusCode === 200) {
+      console.log(`\x1b[33m[Discovery API] ${details.method} ${details.url} -> ${details.statusCode}\x1b[0m`);
+      
+      const sessionObj = browserSessions.get(accountSession.id);
+      if (!sessionObj) return;
+
+      // Sniff Gathern Token
+      if (details.url.includes('access-token=')) {
+        const urlParams = new URL(details.url).searchParams;
+        const token = urlParams.get('access-token');
+        if (token && sessionObj.authToken !== token) {
+            console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Gathern Access Token: ${token.substring(0, 10)}...\x1b[0m`);
+            sessionObj.authToken = token;
+            saveSessions();
+        }
+      }
+
+      // Sniff Airbnb UserID (Base64)
+      if (details.url.includes('ViaductInboxData') || details.url.includes('UserId')) {
+        const userIdMatch = details.url.match(/userId%22%3A%22([^%]+)%22/);
+        if (userIdMatch && userIdMatch[1]) {
+            const userId = decodeURIComponent(userIdMatch[1]);
+            if (sessionObj.platformUserId !== userId) {
+                console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Airbnb UserID: ${userId}\x1b[0m`);
+                sessionObj.platformUserId = userId;
+            }
+        }
+      }
+    }
   });
 
   const platformColors = {
@@ -314,14 +315,12 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
       preload: path.join(__dirname, "webview-preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
-      // Important: Enable these for better compatibility
       webSecurity: true,
       allowRunningInsecureContent: false,
     },
-    // Custom titlebar
     titleBarStyle: "hidden",
     titleBarOverlay: {
-      color: platformColors[accountSession.platform],
+      color: platformColors[accountSession.platform as keyof typeof platformColors] || "#CCCCCC",
       symbolColor: "#ffffff",
       height: 40,
     },
@@ -334,20 +333,13 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
         ? "https://business.gathern.co/app/chat"
         : "https://web.whatsapp.com";
 
-  // Load with proper options
   browserWindow.loadURL(platformUrl, {
     userAgent: chromeUserAgent,
   });
 
-  // Discovery: Log Gathern API requests to help identify endpoints
-  if (accountSession.platform === "gathern") {
-    ses.webRequest.onCompleted(
-      { urls: ['*://business.gathern.co/api/*', '*://api.gathern.co/*'] },
-      (details) => {
-        console.log(`[Gathern API Discovery] ${details.method} ${details.url} → ${details.statusCode}`);
-      }
-    );
-  }
+  browserWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Browser Window] ❌ Failed to load URL: ${validatedURL} | Error: ${errorDescription} (${errorCode})`);
+  });
 
   // Enable F12 to open DevTools
   browserWindow.webContents.on("before-input-event", (event, input) => {
@@ -360,22 +352,25 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     }
   });
 
-  // Inject notification monitoring script when page loads
-  browserWindow.webContents.on("did-finish-load", () => {
-    console.log("[Browser Window] Page loaded, injecting notification monitor");
-    injectNotificationMonitor(browserWindow, accountSession);
+  browserWindow.webContents.on('did-finish-load', () => {
+    console.log("[Browser Window] Page loaded");
 
-    // Inject custom CSS for better integration
+    // Inject custom CSS
     browserWindow.webContents.insertCSS(`
-      /* Hide some annoying elements */
       .announcement-banner { display: none !important; }
     `);
+
+  // Clean Page-as-API Approach: No more scrapers or DOM watchers
+  // Real-time synchronization is handled via the webview-preload.ts interceptor
   });
 
-  // Re-inject on navigation (in case of SPA routing)
+  // Handle messages from webview (like captured tokens)
+  browserWindow.webContents.on("ipc-message", (event, channel, ...args) => {
+    // This would be for webview-to-main IPC, but it's simpler to use message channel if needed
+  });
+
   browserWindow.webContents.on("did-navigate-in-page", () => {
-    console.log("[Browser Window] In-page navigation detected, re-injecting monitor");
-    injectNotificationMonitor(browserWindow, accountSession);
+    console.log("[Browser Window] In-page navigation detected");
   });
 
   // Re-inject on full navigation
@@ -584,452 +579,7 @@ function injectNotificationMonitor(browserWindow: BrowserWindow, account: Browse
     return;
   }
 
-  // Special handling for Gathern - Smart DOM Polling
-  if (account.platform === "gathern") {
-    const gathernSmartMonitor = `
-      (function() {
-        console.log('[Gathern Smart Monitor] 🚀 Started for ${account.accountName}');
-        
-        let previousTotalUnread = -1; // -1 means baseline not set yet
-        let baselineSet = false;
-        let checkInterval = null;
-        
-        function checkForNewMessages() {
-          try {
-            // Method 1: Check for purple dots (unread indicators)
-            const purpleDots = document.querySelectorAll('.MuiBox-root.gathern-rtl-19f9myt');
-            const currentDotCount = purpleDots.length;
-            
-            // Method 2: Try to find unread count in UI
-            let totalUnread = 0;
-            
-            // Look for any element with unread count
-            const possibleCounters = document.querySelectorAll('[class*="badge"], [class*="count"], [class*="unread"]');
-            possibleCounters.forEach(el => {
-              const text = el.textContent?.trim();
-              if (text && !isNaN(parseInt(text))) {
-                totalUnread += parseInt(text);
-              }
-            });
-            
-            // Method 3: Check chat list items for indicators
-            const chatItems = document.querySelectorAll('[class*="chat"], [class*="conversation"]');
-            let chatsWithIndicators = 0;
-            chatItems.forEach(item => {
-              const hasPurpleDot = item.querySelector('.MuiBox-root.gathern-rtl-19f9myt');
-              if (hasPurpleDot) {
-                chatsWithIndicators++;
-              }
-            });
-            
-            console.log(\`[Gathern Smart Monitor] 📊 Purple dots: \${currentDotCount}, Unread badges: \${totalUnread}, Chats with indicators: \${chatsWithIndicators}\`);
-            
-            // Determine if there are new messages
-            const currentTotal = Math.max(currentDotCount, totalUnread, chatsWithIndicators);
-            
-            console.log(\`[Gathern Smart Monitor] 📈 Current total: \${currentTotal}, Previous: \${previousTotalUnread}, Baseline set: \${baselineSet}\`);
-            
-            // Check for new messages
-            if (baselineSet && currentTotal > previousTotalUnread) {
-              const newMessages = currentTotal - previousTotalUnread;
-              console.log(\`[Gathern Smart Monitor] 🔔🔔🔔 NEW MESSAGES DETECTED! (+\${newMessages})\`);
-              
-              window.postMessage({
-                type: 'NEW_NOTIFICATION',
-                payload: {
-                  accountId: '${account.id}',
-                  accountName: '${account.accountName}',
-                  platform: '${account.platform}',
-                  count: newMessages,
-                }
-              }, '*');
-              
-              console.log('[Gathern Smart Monitor] ✅ Notification sent!');
-            } else if (!baselineSet) {
-              console.log('[Gathern Smart Monitor] 📍 Baseline set - ignoring existing messages');
-              baselineSet = true;
-            } else if (currentTotal === previousTotalUnread) {
-              console.log('[Gathern Smart Monitor] ℹ️ No change in unread count');
-            } else if (currentTotal < previousTotalUnread) {
-              console.log('[Gathern Smart Monitor] 📉 Unread count decreased (message read)');
-            }
-            
-            previousTotalUnread = currentTotal;
-            
-          } catch (err) {
-            console.error('[Gathern Smart Monitor] ❌ Error checking:', err);
-          }
-        }
-        
-        // Initial check after 10 seconds (to set baseline)
-        setTimeout(() => {
-          console.log('[Gathern Smart Monitor] 📍 Running initial baseline check...');
-          checkForNewMessages();
-          
-          // Then check every 50 seconds
-          checkInterval = setInterval(checkForNewMessages, 50000);
-          console.log('[Gathern Smart Monitor] ✅ Now monitoring every 50 seconds (+ MutationObserver for instant detection)');
-        }, 10000);
-        
-        // Also use MutationObserver for immediate detection
-        const observer = new MutationObserver((mutations) => {
-          // Only check if we see purple dot class changes
-          const hasPurpleDotChange = mutations.some(m => {
-            if (m.type === 'childList') {
-              return Array.from(m.addedNodes).some(node => {
-                if (node instanceof Element) {
-                  return node.classList?.contains('gathern-rtl-19f9myt') ||
-                         node.querySelector?.('.gathern-rtl-19f9myt');
-                }
-                return false;
-              });
-            }
-            return false;
-          });
-          
-          if (hasPurpleDotChange && baselineSet) {
-            console.log('[Gathern Smart Monitor] 🔍 Purple dot detected via MutationObserver! Checking...');
-            checkForNewMessages();
-          }
-        });
-        
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
-        
-        console.log('[Gathern Smart Monitor] 🎯 Setup complete - monitoring DOM changes & polling...');
-      })();
-    `;
-
-    browserWindow.webContents.executeJavaScript(gathernSmartMonitor).catch(err => {
-      console.error('[Gathern Smart Monitor] Failed to inject:', err);
-    });
-
-    return; // Don't use DOM monitoring
-  }
-
-  // Fallback - old monitoring code (disabled)
-  if (false) {
-    const gathernSmartMonitor = `
-      (function() {
-        console.log('[OLD Monitor - DISABLED]');
-        let lastUnreadCount = 0;
-        
-        function countUnreadChats() {
-          // Strategy 1: Look for chat list container first
-          const chatListSelectors = [
-            '[class*="chat-list"]',
-            '[class*="conversations"]',
-            '[class*="message-list"]',
-            'main [class*="MuiBox"]',
-            '[role="list"]',
-          ];
-          
-          let chatListContainer = null;
-          for (const selector of chatListSelectors) {
-            const container = document.querySelector(selector);
-            if (container) {
-              chatListContainer = container;
-              break;
-            }
-          }
-          
-          // Strategy 2: Find unread dots within chat list only
-          let dotCount = 0;
-          
-          if (chatListContainer) {
-            // Search only within chat list container
-            const gathernDots = chatListContainer.querySelectorAll('[class*="gathern-rtl-"]');
-            
-            gathernDots.forEach(el => {
-              const style = window.getComputedStyle(el);
-              const display = style.display;
-              const visibility = style.visibility;
-              const opacity = parseFloat(style.opacity);
-              const width = parseFloat(style.width);
-              const height = parseFloat(style.height);
-              
-              // Only count visible small dots (likely unread indicators)
-              const isVisible = display !== 'none' && visibility !== 'hidden' && opacity > 0;
-              const isSmallDot = width < 20 && height < 20 && width > 5 && height > 5;
-              
-              if (isVisible && isSmallDot) {
-                dotCount++;
-              }
-            });
-            
-            console.log('[Gathern Smart Monitor] Found unread dots in chat list:', dotCount);
-          } else {
-            // Fallback: If can't find chat list, search globally but with strict filtering
-            const allDots = document.querySelectorAll('[class*="gathern-rtl-"]');
-            
-            allDots.forEach(el => {
-              const style = window.getComputedStyle(el);
-              const display = style.display;
-              const visibility = style.visibility;
-              const opacity = parseFloat(style.opacity);
-              const width = parseFloat(style.width);
-              const height = parseFloat(style.height);
-              const bgColor = style.backgroundColor;
-              const borderRadius = style.borderRadius;
-              
-              // Very strict filtering: must be small, circular, purple, and visible
-              const isVisible = display !== 'none' && visibility !== 'hidden' && opacity > 0;
-              const isSmallDot = width < 15 && height < 15 && width > 6 && height > 6;
-              const isCircular = borderRadius.includes('50%') || parseFloat(borderRadius) >= width / 2;
-              const isPurple = bgColor && (
-                bgColor.includes('147, 51, 234') ||
-                bgColor.includes('139, 92, 246') ||
-                bgColor.includes('168, 85, 247')
-              );
-              
-              if (isVisible && isSmallDot && isCircular && isPurple) {
-                dotCount++;
-              }
-            });
-            
-            console.log('[Gathern Smart Monitor] Found unread dots (fallback):', dotCount);
-          }
-          
-          return dotCount;
-        }
-        
-        function checkForNewMessages() {
-          const currentUnread = countUnreadChats();
-          
-          if (currentUnread > 0) {
-            console.log('[Gathern Smart Monitor] Current unread count:', currentUnread);
-          }
-          
-          // If count decreased, user read some messages - update lastUnreadCount
-          if (currentUnread < lastUnreadCount) {
-            console.log('[Gathern Smart Monitor] Count decreased (messages read)');
-            lastUnreadCount = currentUnread;
-            return;
-          }
-          
-          // Only notify if count increased (new messages)
-          if (currentUnread > lastUnreadCount && currentUnread > 0) {
-            const newMessages = currentUnread - lastUnreadCount;
-            console.log('[Gathern Smart Monitor] 🔔 New message detected! +' + newMessages + ' (Total: ' + currentUnread + ')');
-            
-            window.postMessage({
-              type: 'NEW_NOTIFICATION',
-              payload: {
-                accountId: '${account.id}',
-                accountName: '${account.accountName}',
-                platform: '${account.platform}',
-                count: newMessages,
-              }
-            }, '*');
-            
-            lastUnreadCount = currentUnread;
-          }
-        }
-        
-        // Check every 5 seconds
-        setInterval(checkForNewMessages, 5000);
-        
-        // Use MutationObserver on body for immediate detection
-        const observer = new MutationObserver(() => {
-          checkForNewMessages();
-        });
-        
-        observer.observe(document.body, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: ['class', 'style']
-        });
-        
-        // Initial check
-        setTimeout(checkForNewMessages, 2000);
-        
-        console.log('[Gathern Smart Monitor] Setup complete');
-      })();
-    `;
-
-    browserWindow.webContents.executeJavaScript(gathernSmartMonitor).catch(err => {
-      console.error('[Gathern Smart Monitor] Failed to inject:', err);
-    });
-
-    return; // Don't use API monitoring or default DOM monitoring
-  }
-
-  // Fallback - old API monitoring code (keep for reference but won't be used)
-  if (false) {
-    const gathernAPIMonitor = `
-      (function() {
-        console.log('[Gathern API Monitor - DISABLED] This code is not being used');
-        let lastUnreadCount = 0;
-        
-        // Intercept fetch API
-        const originalFetch = window.fetch;
-        window.fetch = async function(...args) {
-          const response = await originalFetch(...args);
-          const url = args[0].toString();
-          
-          // Log ALL Gathern API calls for debugging
-          if (url.includes('gathern.co')) {
-            console.log('[Gathern API] Request:', url);
-          }
-          
-          // Monitor ANY chat-related API
-          if (url.includes('chat') || url.includes('message') || url.includes('notification')) {
-            try {
-              const clone = response.clone();
-              const data = await clone.json();
-              
-              console.log('[Gathern API] Chat-related response:', url, data);
-              
-              // Try to find unread count in various possible structures
-              let unreadCount = 0;
-              
-              // Method 1: Direct array of chats
-              if (Array.isArray(data)) {
-                unreadCount = data.filter(chat => 
-                  chat.unread_count > 0 || 
-                  chat.has_unread || 
-                  chat.is_unread ||
-                  chat.unread
-                ).length;
-              }
-              
-              // Method 2: data.chats array
-              if (data && data.chats && Array.isArray(data.chats)) {
-                unreadCount = data.chats.filter(chat => 
-                  chat.unread_count > 0 || 
-                  chat.has_unread || 
-                  chat.is_unread ||
-                  chat.unread
-                ).length;
-              }
-              
-              // Method 3: data.data array
-              if (data && data.data && Array.isArray(data.data)) {
-                unreadCount = data.data.filter(chat => 
-                  chat.unread_count > 0 || 
-                  chat.has_unread || 
-                  chat.is_unread ||
-                  chat.unread
-                ).length;
-              }
-              
-              // Method 4: Direct unread_count property
-              if (data && typeof data.unread_count === 'number') {
-                unreadCount = data.unread_count;
-              }
-              
-              // Method 5: Total unread messages
-              if (data && typeof data.total_unread === 'number') {
-                unreadCount = data.total_unread;
-              }
-              
-              if (unreadCount > 0) {
-                console.log('[Gathern API Monitor] Found unread count:', unreadCount);
-              }
-              
-              if (unreadCount > lastUnreadCount && unreadCount > 0) {
-                console.log('[Gathern API Monitor] 🔔 New message detected! Count:', unreadCount);
-                
-                window.postMessage({
-                  type: 'NEW_NOTIFICATION',
-                  payload: {
-                    accountId: '${account.id}',
-                    accountName: '${account.accountName}',
-                    platform: '${account.platform}',
-                    count: unreadCount,
-                  }
-                }, '*');
-                
-                lastUnreadCount = unreadCount;
-              }
-            } catch (err) {
-              console.error('[Gathern API Monitor] Error parsing response:', err);
-            }
-          }
-          
-          return response;
-        };
-        
-        // Also intercept XMLHttpRequest
-        const originalXHROpen = XMLHttpRequest.prototype.open;
-        const originalXHRSend = XMLHttpRequest.prototype.send;
-        
-        XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-          this._url = url;
-          if (url.includes && url.includes('gathern.co')) {
-            console.log('[Gathern API] XHR Request:', url);
-          }
-          return originalXHROpen.apply(this, [method, url, ...rest]);
-        };
-        
-        XMLHttpRequest.prototype.send = function(...args) {
-          this.addEventListener('load', function() {
-            if (this._url && this._url.includes && 
-                (this._url.includes('chat') || this._url.includes('message') || this._url.includes('notification'))) {
-              try {
-                const data = JSON.parse(this.responseText);
-                console.log('[Gathern API] XHR Chat response:', this._url, data);
-                
-                let unreadCount = 0;
-                
-                if (Array.isArray(data)) {
-                  unreadCount = data.filter(chat => 
-                    chat.unread_count > 0 || chat.has_unread || chat.is_unread
-                  ).length;
-                } else if (data.chats && Array.isArray(data.chats)) {
-                  unreadCount = data.chats.filter(chat => 
-                    chat.unread_count > 0 || chat.has_unread || chat.is_unread
-                  ).length;
-                } else if (data.data && Array.isArray(data.data)) {
-                  unreadCount = data.data.filter(chat => 
-                    chat.unread_count > 0 || chat.has_unread || chat.is_unread
-                  ).length;
-                } else if (typeof data.unread_count === 'number') {
-                  unreadCount = data.unread_count;
-                } else if (typeof data.total_unread === 'number') {
-                  unreadCount = data.total_unread;
-                }
-                
-                if (unreadCount > 0) {
-                  console.log('[Gathern API Monitor] XHR Found unread:', unreadCount);
-                }
-                
-                if (unreadCount > lastUnreadCount && unreadCount > 0) {
-                  console.log('[Gathern API Monitor] 🔔 XHR New message!');
-                  
-                  window.postMessage({
-                    type: 'NEW_NOTIFICATION',
-                    payload: {
-                      accountId: '${account.id}',
-                      accountName: '${account.accountName}',
-                      platform: '${account.platform}',
-                      count: unreadCount,
-                    }
-                  }, '*');
-                  
-                  lastUnreadCount = unreadCount;
-                }
-              } catch (err) {
-                console.error('[Gathern API Monitor] XHR Error:', err);
-              }
-            }
-          });
-          return originalXHRSend.apply(this, args);
-        };
-        
-        console.log('[Gathern API Monitor] Setup complete - monitoring API calls');
-      })();
-    `;
-
-    browserWindow.webContents.executeJavaScript(gathernAPIMonitor).catch(err => {
-      console.error('[Gathern API Monitor] Failed to inject:', err);
-    });
-
-    return; // Don't use DOM monitoring for Gathern
-  }
+  // For other platforms (Airbnb, etc.) - use DOM monitoring
 
   // For other platforms (Airbnb, etc.) - use DOM monitoring
   const monitorScript = `
@@ -1157,7 +707,7 @@ function playNotificationSound() {
 
 // IPC Handlers
 ipcMain.handle("get-browser-accounts", () => {
-  return Array.from(browserSessions.values()).map((s) => ({
+  return (Array.from(browserSessions.values()) as BrowserAccountSession[]).map((s) => ({
     id: s.id,
     platform: s.platform,
     accountName: s.accountName,
@@ -1177,6 +727,9 @@ ipcMain.handle("add-browser-account", (_, account: Omit<BrowserAccountSession, "
 });
 
 ipcMain.handle("remove-browser-account", (_, accountId: string) => {
+  if (pollingService) {
+    pollingService.stopPolling(accountId);
+  }
   const account = browserSessions.get(accountId);
   if (account?.window && !account.window.isDestroyed()) {
     account.window.close();
@@ -1212,7 +765,8 @@ ipcMain.handle("open-browser-account", (_, accountData: any) => {
       id: accountData.id,
       platform: accountData.platform,
       accountName: accountData.accountName || "Unknown",
-      partition: accountData.partition || `persist:fallback-${Date.now()}`
+      partition: accountData.partition || `persist:fallback-${Date.now()}`,
+      createdBy: accountData.createdBy || "system"
     };
     browserSessions.set(accountData.id, newAccount);
     account = newAccount;
@@ -1229,6 +783,12 @@ ipcMain.handle("open-browser-account", (_, accountData: any) => {
   // Create new window
   account.window = createBrowserWindow(account);
   notifyTabsChanged();
+
+  // STAGE 2: Start Polling for API platforms immediately
+  if (pollingService && (account.platform === 'airbnb' || account.platform === 'gathern')) {
+    console.log(`[Main Process] 🚀 Triggering immediate polling start for ${account.accountName} (${account.platform})`);
+    pollingService.startPolling(account);
+  }
 
   return { success: true };
 });
@@ -1256,6 +816,7 @@ ipcMain.handle("open-auth-window", async (_, { platform, accountId, partition })
       platform: platform as any,
       accountName: accountId, // Fallback name
       partition: partition || accountId,
+      createdBy: "system"
     };
     browserSessions.set(accountId, account);
   }
@@ -1283,6 +844,87 @@ ipcMain.handle("open-auth-window", async (_, { platform, accountId, partition })
 
   notifyTabsChanged();
   return { success: true };
+});
+
+// Phase 1.3: Data Retrieval IPC Handlers (Local DB based)
+ipcMain.handle("get-platform-messages", async (_, { accountId, limit = 50 }) => {
+    console.log(`[Main] Fetching messages from DB for ${accountId || 'all accounts'}`);
+    
+    // We reuse the same DB logic as polling service for consistency
+    const envPath = path.join(__dirname, '../.env');
+    const env: any = {};
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      content.split('\n').forEach(line => {
+        const parts = line.split('=');
+        if (parts.length >= 2) env[parts[0].trim()] = parts.slice(1).join('=').trim();
+      });
+    }
+
+    const connection = await mysql.createConnection({
+      host: env['DB_HOST'] || 'localhost',
+      port: parseInt(env['DB_PORT'] || '3306'),
+      user: env['DB_USER'] || 'root',
+      password: env['DB_PASSWORD'] || '',
+      database: env['DB_NAME'] || 'rentals_dashboard',
+    });
+
+    try {
+        let sql = "SELECT * FROM platform_messages";
+        const params: any[] = [];
+        
+        if (accountId) {
+            sql += " WHERE platform_account_id = ?";
+            params.push(accountId);
+        }
+        
+        sql += " ORDER BY sent_at DESC LIMIT ?";
+        params.push(limit);
+        
+        const [rows] = await connection.execute(sql, params);
+        return { success: true, messages: rows };
+    } catch (err: any) {
+        console.error("[Main] Failed to fetch messages:", err);
+        return { success: false, error: err.message };
+    } finally {
+        await connection.end();
+    }
+});
+
+ipcMain.handle("get-session-health-status", async () => {
+    const envPath = path.join(__dirname, '../.env');
+    const env: any = {};
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8');
+      content.split('\n').forEach(line => {
+        const parts = line.split('=');
+        if (parts.length >= 2) env[parts[0].trim()] = parts.slice(1).join('=').trim();
+      });
+    }
+
+    const connection = await mysql.createConnection({
+      host: env['DB_HOST'] || 'localhost',
+      port: parseInt(env['DB_PORT'] || '3306'),
+      user: env['DB_USER'] || 'root',
+      password: env['DB_PASSWORD'] || '',
+      database: env['DB_NAME'] || 'rentals_dashboard',
+    });
+
+    try {
+        const [rows]: any = await connection.execute(
+            `SELECT browser_account_id as id, status, last_check_at, error_message 
+             FROM session_health_logs 
+             WHERE id IN (
+                 SELECT MAX(id) FROM session_health_logs GROUP BY browser_account_id
+             )`
+        );
+        return rows;
+    } catch (err: any) {
+        console.error("[Main] Failed to fetch health status:", err);
+        return [];
+    } finally {
+        await connection.end();
+    }
 });
 
 // Browser window controls
@@ -1319,6 +961,22 @@ ipcMain.handle("browser-go-home", (_, accountId: string) => {
   }
 });
 
+// Log from Webview to Terminal
+ipcMain.on("webview-log", (event, { msg, type, url }) => {
+  const accountId = (Array.from(browserSessions.entries()) as [string, BrowserAccountSession][])
+    .find(([, s]) => s.window?.webContents === event.sender)?.[0] || 'Unknown';
+    
+  const colors = {
+    info: '\x1b[36m', // Cyan
+    warn: '\x1b[33m', // Yellow
+    error: '\x1b[31m', // Red
+  };
+  const color = colors[type as keyof typeof colors] || colors.info;
+  const reset = '\x1b[0m';
+  
+  console.log(`${color}[Webview Log][${accountId}] ${msg}${reset} (URL: ${url})`);
+});
+
 ipcMain.on("new-notification-from-webview", (_, data) => {
   console.log("[Main Process] Received notification from webview:", data);
 
@@ -1329,8 +987,43 @@ ipcMain.on("new-notification-from-webview", (_, data) => {
   );
   playNotificationSound();
 
-  console.log("[Main Process] Sending notification to dashboard");
   mainWindow?.webContents.send("browser-notification", data);
+});
+
+// Real-time Chat Sync from Webview
+ipcMain.on("sync-chats-from-webview", async (event, { platform, chats, data }) => {
+  const senderWebContents = event.sender;
+  
+  // Find the account session that owns this webview
+  let accountId: string | undefined;
+  for (const [id, session] of Array.from(browserSessions.entries()) as [string, BrowserAccountSession][]) {
+    if (session.window?.webContents === senderWebContents) {
+      accountId = id;
+      break;
+    }
+  }
+
+  if (accountId && pollingService) {
+    console.log(`[Main Process] 🔄 Real-time sync triggered for ${platform} (${accountId})`);
+    
+    if (platform === 'gathern' && chats) {
+      await pollingService.saveGathernMessages(accountId, chats);
+    } else if (platform === 'airbnb' && data) {
+      // Re-use existing save logic in polling service
+      const threadEdges = data?.data?.node?.messagingInbox?.threads?.edges || [];
+      for (const edge of threadEdges) {
+        const threadId = edge.node.id;
+        const guestName = edge.node.inboxTitle?.accessibilityText || 'Airbnb Guest';
+        const summaryMsg = edge.node.messageHistory?.[0] || edge.node.lastMessage;
+        if (summaryMsg) {
+          await pollingService.saveAirbnbSummaryMessage(accountId, threadId, guestName, summaryMsg);
+        }
+      }
+    }
+
+    // Notify dashboard that sync is complete
+    mainWindow?.webContents.send('sync-complete', { accountId, platform });
+  }
 });
 
 // Handle database notifications from renderer
@@ -1345,7 +1038,7 @@ ipcMain.on("database-notification", (_, data: { title: string; body: string; id:
 });
 
 // Test notification handler
-ipcMain.handle("test-notification", (_, data) => {
+ipcMain.handle("test-notification", (_, data: any) => {
   console.log("[Main Process] Test notification triggered:", data);
   mainWindow?.webContents.send("browser-notification", data);
   return { success: true };
@@ -1354,12 +1047,7 @@ ipcMain.handle("test-notification", (_, data) => {
 ipcMain.handle("force-platform-sync", async (_, accountId: string) => {
   const account = browserSessions.get(accountId);
   if (account && pollingService) {
-    // We cast to PlatformAccount which is compatible with our session object
-    await (pollingService as any).syncAccount({
-      id: account.id,
-      platform: account.platform,
-      partition: account.partition
-    });
+    await pollingService.syncAccount(account);
     return { success: true };
   }
   return { success: false, error: "Account or PollingService not found" };
@@ -1368,8 +1056,8 @@ ipcMain.handle("force-platform-sync", async (_, accountId: string) => {
 // Get all open tabs (browser windows)
 ipcMain.handle("get-open-tabs", () => {
   const openTabs = Array.from(browserSessions.values())
-    .filter((s) => s.window && !s.window.isDestroyed())
-    .map((s) => ({
+    .filter((s: BrowserAccountSession) => s.window && !s.window.isDestroyed())
+    .map((s: BrowserAccountSession) => ({
       id: s.id,
       platform: s.platform,
       accountName: s.accountName,
@@ -1378,6 +1066,20 @@ ipcMain.handle("get-open-tabs", () => {
       isFocused: s.window?.isFocused() || false,
     }));
   return openTabs;
+});
+
+ipcMain.handle("send-message", async (_, payload: { accountId: string; platform: string; threadId: string; text: string; rawPayloadData: string }) => {
+  const account: BrowserAccountSession | undefined = browserSessions.get(payload.accountId);
+  if (!account) return { success: false, error: "جلسة الحساب غير موجودة" };
+  
+  // Use the accountWindow if it's Gathern
+  const windowRef = account.window;
+  
+  try {
+      return await sendPlatformMessage(account, windowRef, payload);
+  } catch(e: any) {
+      return { success: false, error: e.message };
+  }
 });
 
 // Focus a specific tab (bring window to front)
@@ -1405,16 +1107,16 @@ app.whenReady().then(() => {
 
   if (mainWindow) {
     pollingService = new PollingService(mainWindow);
-    // Start polling for all saved sessions
-    savedSessions.forEach(s => {
-      if (s.platform === 'airbnb' || s.platform === 'gathern') {
-        pollingService?.startPolling({
-          id: s.id,
-          platform: s.platform,
-          partition: s.partition
-        });
-      }
+    
+    // START POLLNG FROM DATABASE (All active accounts)
+    console.log(`[Main Process] 📦 Initializing background sync for all database accounts...`);
+    pollingService.startPollingFromDB().catch((err: any) => {
+      console.error("[Main Process] ❌ Failed to start DB polling:", err);
     });
+
+    setInterval(() => {
+      console.log(`[Polling Heartbeat] Service alive. Monitoring ${browserSessions.size} total sessions.`);
+    }, 60000);
   }
 
   app.on("activate", () => {
@@ -1445,10 +1147,10 @@ app.on("before-quit", async (event) => {
     await dashboardSession.cookies.flushStore();
 
     // Flush all browser account session cookies
-    browserSessions.forEach((account) => {
+    browserSessions.forEach((account: BrowserAccountSession) => {
       const partition = `persist:${account.partition}`;
       const ses = session.fromPartition(partition);
-      ses.cookies.flushStore().catch(err => {
+      ses.cookies.flushStore().catch((err: any) => {
         console.error(`Error flushing cookies for ${account.accountName}:`, err);
       });
     });
@@ -1457,7 +1159,7 @@ app.on("before-quit", async (event) => {
   }
 
   // Close all browser windows
-  browserSessions.forEach((account) => {
+  browserSessions.forEach((account: BrowserAccountSession) => {
     if (account.window && !account.window.isDestroyed()) {
       account.window.destroy();
     }

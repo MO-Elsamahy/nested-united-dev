@@ -70,10 +70,10 @@ async function platformApiCall(account: BrowserAccountSession, url: string) {
 
 #### [NEW] `electron/polling-service.ts`
 - Interval-based polling جوه Electron:
-  - كل **3 دقائق**: سحب رسائل جديدة → إشعار لو في جديد
-  - كل **30 دقيقة**: سحب حجوزات جديدة
-  - كل **ساعة**: health check لكل الـ sessions
-  - كل **4 ساعات**: session keepalive (refresh خفيف)
+  - كل **10 ثواني**: سحب رسائل جديدة → إشعار لو في جديد
+  - كل **10 ثواني**: سحب حجوزات جديدة
+  - كل **10 ثواني**: health check لكل الـ sessions
+  - كل **10 ثواني**: session keepalive (refresh خفيف)
 
 #### [MODIFY] [electron/main.ts](file:///D:/Projects/Systems/rentals-dashboard/electron/main.ts)
 - Import الـ platform-api و polling-service

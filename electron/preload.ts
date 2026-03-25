@@ -50,6 +50,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onDatabaseNotification: (callback: (data: any) => void) => {
     ipcRenderer.on("database-notification", (_, data) => callback(data));
   },
+  onNewPlatformMessage: (callback: (data: any) => void) => {
+    ipcRenderer.on("new-platform-message", (_, data) => callback(data));
+  },
   sendDatabaseNotification: (data: { title: string; body: string; id: string }) => {
     ipcRenderer.send("database-notification", data);
   },
@@ -76,4 +79,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onSyncComplete: (callback: (data: { accountId: string; platform: string }) => void) => {
     ipcRenderer.on("sync-complete", (_, data) => callback(data));
   },
+  sendMessage: (payload: { accountId: string, platform: 'airbnb' | 'gathern', threadId: string, text: string, rawPayloadData: string }) => 
+    ipcRenderer.invoke("send-message", payload),
 });

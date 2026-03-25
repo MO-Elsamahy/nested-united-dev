@@ -4,6 +4,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { redirect } from 'next/navigation';
 import InboxClient from './InboxClient';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 export const metadata = {
     title: 'Unified Inbox | NestedUnited',
     description: 'Manage all your platform messages in one place.',

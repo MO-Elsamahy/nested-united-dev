@@ -1,30 +1,19 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-// Listen for custom events from the injected page script
+// Robust Interceptor for Gathern & Airbnb Real-time Detection
 if (typeof window !== 'undefined') {
-  window.addEventListener("message", (event: MessageEvent) => {
-    // Only accept messages from same origin
-    if (event.source !== window) return;
-    
-    if (event.data && event.data.type === "NEW_NOTIFICATION") {
-      console.log("[WebView Preload] Received notification event:", event.data.payload);
-      ipcRenderer.send("new-notification-from-webview", event.data.payload);
-    }
-  });
+  const logToTerminal = (msg: string, type: 'info' | 'warn' | 'error' = 'info') => {
+    ipcRenderer.send("webview-log", { msg, type, url: window.location.href });
+  };
+
+  logToTerminal("🛠️ Webview Preload Active (Interceptor Disabled - Using Main Process Polling)");
 }
 
-// Expose limited API for webviews (platform pages)
+// Expose API for the platforms (optional, if we want to trigger actions from UI)
 contextBridge.exposeInMainWorld("electronAPI", {
-  // Notify main process about new notifications
-  notifyNewNotification: (data: {
-    accountId: string;
-    accountName: string;
-    platform: string;
-    count: number;
-  }) => {
-    ipcRenderer.send("new-notification-from-webview", data);
-  },
+  notifyNewNotification: (data: any) => ipcRenderer.send("new-notification-from-webview", data),
+  onMessageReceived: (callback: any) => ipcRenderer.on("page-command", (event, data) => callback(data)),
+  sendToMain: (channel: string, data: any) => ipcRenderer.send(channel, data)
 });
 
-console.log("[WebView Preload] Loaded successfully");
-
+console.log("[WebView Preload] ✅ Loaded successfully");
