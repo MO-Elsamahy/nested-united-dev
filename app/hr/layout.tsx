@@ -17,6 +17,15 @@ export default async function HRLayout({ children }: { children: React.ReactNode
     // Redirect if no user
     if (!user) redirect("/login");
 
+    // Check permissions
+    const isHRAdmin = user.role === 'super_admin' || user.role === 'admin' || user.role === 'hr_manager';
+    
+    if (!isHRAdmin) {
+        // If they are a regular employee, they shouldn't even be here in the management layout
+        // For now, redirect to dashboard as a safe fallback
+        redirect("/dashboard");
+    }
+
     const features = await getAppFeatures();
 
     if (!features.hr) {
