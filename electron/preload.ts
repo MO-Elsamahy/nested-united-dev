@@ -53,6 +53,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onNewPlatformMessage: (callback: (data: any) => void) => {
     ipcRenderer.on("new-platform-message", (_, data) => callback(data));
   },
+  // New event: polling service found new messages
+  onPlatformMessagesUpdated: (callback: (data: { accountId: string; newCount: number }) => void) => {
+    ipcRenderer.on('platform-messages-updated', (_, data) => callback(data));
+  },
+  offPlatformMessagesUpdated: (callback: any) => {
+    ipcRenderer.removeListener('platform-messages-updated', callback);
+  },
   sendDatabaseNotification: (data: { title: string; body: string; id: string }) => {
     ipcRenderer.send("database-notification", data);
   },
@@ -79,6 +86,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onSyncComplete: (callback: (data: { accountId: string; platform: string }) => void) => {
     ipcRenderer.on("sync-complete", (_, data) => callback(data));
   },
-  sendMessage: (payload: { accountId: string, platform: 'airbnb' | 'gathern', threadId: string, text: string, rawPayloadData: string }) => 
-    ipcRenderer.invoke("send-message", payload),
+  sendMessage: (payload: { accountId: string; platform: 'airbnb' | 'gathern'; threadId: string; text: string; metadata?: any }) =>
+    ipcRenderer.invoke('send-message', payload),
 });

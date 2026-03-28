@@ -113,15 +113,115 @@ function createMainWindow() {
     cache: true,
   });
 
-  // [Phase 2] Discovery Logger for Gathern (from implementation_plan.md.resolved)
+
+  // ── Token Sniffer: يلتقط authTokens من الـ requests الصادرة تلقائياً ──
+  // لما المستخدم يفتح chat tab في Gathern، الـ browser بيبعت Authorization header
+  // بنالتقطه ونخزنه في browserSessions وكمان في DB
+
+  dashboardSession.webRequest.onBeforeSendHeaders(
+    { urls: [
+        '*://chatapi-prod.gathern.co/*',  // Chat API — contains chatAuthToken
+        '*://api.gathern.co/*',           // Profile API — contains authToken
+        '*://www.airbnb.com/api/v3/ViaductInboxData/*', // Airbnb Inbox
+      ]
+    },
+    async (details, callback) => {
+      callback({ requestHeaders: details.requestHeaders });
+
+      try {
+        const headers = details.requestHeaders;
+        const authHeader = headers['Authorization'] || headers['authorization'];
+        
+        // --- GATHERN TOKEN & USER ID SNIFFING ---
+        if (details.url.includes('gathern.co') && authHeader?.startsWith('Bearer ')) {
+          const token = authHeader.replace('Bearer ', '').trim();
+          if (token.length < 8) return;
+
+          const isChatToken = details.url.includes('chatapi-prod.gathern.co');
+          const field = isChatToken ? 'chatAuthToken' : 'authToken';
+          
+          // Extract userId from Gathern token (e.g. "72331719|...")
+          let extractedUserId: string | null = null;
+          if (isChatToken && token.includes('|')) {
+            extractedUserId = token.split('|')[0];
+          }
+
+          let updated = false;
+          for (const [id, acct] of browserSessions.entries()) {
+            if (acct.platform === 'gathern') {
+              let acctUpdated = false;
+              if (acct[field] !== token) {
+                (acct as any)[field] = token;
+                acctUpdated = true;
+              }
+              if (extractedUserId && acct.platformUserId !== extractedUserId) {
+                acct.platformUserId = extractedUserId;
+                acctUpdated = true;
+              }
+
+              if (acctUpdated) {
+                updated = true;
+                try {
+                  const conn = await getMainDbConnection();
+                  const col = isChatToken ? 'chat_auth_token' : 'auth_token';
+                  await conn.execute(
+                    `UPDATE browser_accounts SET ${col} = ?, platform_user_id = COALESCE(?, platform_user_id) WHERE id = ?`,
+                    [token, extractedUserId, id]
+                  );
+                  await conn.end();
+                  console.log(`[Token Sniffer] ✅ Gathern ${field} & userId saved for ${id}`);
+                } catch (e: any) { console.error(`[Token Sniffer] DB Error:`, e.message); }
+              }
+            }
+          }
+          if (updated) saveSessions();
+        }
+
+        // --- AIRBNB USER ID SNIFFING ---
+        if (details.url.includes('airbnb.com')) {
+          const airbnbUserId = headers['x-airbnb-authenticated-user-id']?.toString();
+          if (airbnbUserId) {
+             let updated = false;
+             for (const [id, acct] of browserSessions.entries()) {
+               if (acct.platform === 'airbnb' && acct.platformUserId !== airbnbUserId) {
+                 acct.platformUserId = airbnbUserId;
+                 updated = true;
+                 try {
+                   const conn = await getMainDbConnection();
+                   await conn.execute(`UPDATE browser_accounts SET platform_user_id = ? WHERE id = ?`, [airbnbUserId, id]);
+                   await conn.end();
+                   console.log(`[Token Sniffer] ✅ Airbnb userId (${airbnbUserId}) saved for ${id}`);
+                 } catch { /* silent */ }
+               }
+             }
+             if (updated) saveSessions();
+          }
+        }
+
+      } catch (e: any) { /* silent error */ }
+    }
+  );
+
+
+  // Discovery Logger (for debugging)
+  // --- WEBVIEW FETCH BRIDGE HANDLER ---
+  ipcMain.on('exec-fetch-response', (event, response) => {
+    // This will be picked up by the pending promises in platform-api.ts
+    const { requestId, success, data, error } = response;
+    // We'll use a global event emitter for simplicity since platform-api and main are separate modules usually
+    app.emit('bridge-fetch-response', response);
+  });
+
   dashboardSession.webRequest.onCompleted(
     { urls: ['*://business.gathern.co/api/*', '*://api.gathern.co/*', '*://chatapi-prod.gathern.co/*'] },
     (details) => {
-      if (details.statusCode === 200 || details.statusCode === 201) {
-        console.log(`\x1b[35m[Gathern Discovery] 🕵️ ${details.method} ${details.url} → ${details.statusCode}\x1b[0m`);
+      if (details.statusCode >= 400) {
+        console.log(`\x1b[31m[Gathern] ❌ ${details.method} ${details.url.substring(0, 80)} → ${details.statusCode}\x1b[0m`);
       }
     }
   );
+
+
 
   const iconPath = isDev
     ? path.join(__dirname, "../../build/icon.ico") // __dirname = electron/dist/, so ../../ = project root
@@ -787,7 +887,7 @@ ipcMain.handle("open-browser-account", (_, accountData: any) => {
   // STAGE 2: Start Polling for API platforms immediately
   if (pollingService && (account.platform === 'airbnb' || account.platform === 'gathern')) {
     console.log(`[Main Process] 🚀 Triggering immediate polling start for ${account.accountName} (${account.platform})`);
-    pollingService.startPolling(account);
+    pollingService.startPolling(account.id);
   }
 
   return { success: true };
@@ -847,40 +947,44 @@ ipcMain.handle("open-auth-window", async (_, { platform, accountId, partition })
 });
 
 // Phase 1.3: Data Retrieval IPC Handlers (Local DB based)
+// Shared DB connection helper for main.ts IPC handlers
+// __dirname = electron/dist/ → ../../ = project root
+async function getMainDbConnection() {
+  const envPath = path.join(__dirname, '../../.env');
+  const env: any = {};
+  if (fs.existsSync(envPath)) {
+    const content = fs.readFileSync(envPath, 'utf8');
+    content.split('\n').forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) return;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx > 0) env[trimmed.substring(0, eqIdx).trim()] = trimmed.substring(eqIdx + 1).trim();
+    });
+  } else {
+    console.warn(`[Main DB] .env not found at ${envPath}`);
+  }
+  return mysql.createConnection({
+    host: env['DB_HOST'] || '127.0.0.1',
+    port: parseInt(env['DB_PORT'] || '3306'),
+    user: env['DB_USER'] || 'root',
+    password: env['DB_PASSWORD'] || '',
+    database: env['DB_NAME'] || 'rentals_dashboard',
+    connectTimeout: 10000,
+  });
+}
+
 ipcMain.handle("get-platform-messages", async (_, { accountId, limit = 50 }) => {
     console.log(`[Main] Fetching messages from DB for ${accountId || 'all accounts'}`);
-    
-    // We reuse the same DB logic as polling service for consistency
-    const envPath = path.join(__dirname, '../.env');
-    const env: any = {};
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, 'utf8');
-      content.split('\n').forEach(line => {
-        const parts = line.split('=');
-        if (parts.length >= 2) env[parts[0].trim()] = parts.slice(1).join('=').trim();
-      });
-    }
-
-    const connection = await mysql.createConnection({
-      host: env['DB_HOST'] || 'localhost',
-      port: parseInt(env['DB_PORT'] || '3306'),
-      user: env['DB_USER'] || 'root',
-      password: env['DB_PASSWORD'] || '',
-      database: env['DB_NAME'] || 'rentals_dashboard',
-    });
-
+    const connection = await getMainDbConnection();
     try {
         let sql = "SELECT * FROM platform_messages";
         const params: any[] = [];
-        
         if (accountId) {
             sql += " WHERE platform_account_id = ?";
             params.push(accountId);
         }
-        
         sql += " ORDER BY sent_at DESC LIMIT ?";
         params.push(limit);
-        
         const [rows] = await connection.execute(sql, params);
         return { success: true, messages: rows };
     } catch (err: any) {
@@ -892,24 +996,7 @@ ipcMain.handle("get-platform-messages", async (_, { accountId, limit = 50 }) => 
 });
 
 ipcMain.handle("get-session-health-status", async () => {
-    const envPath = path.join(__dirname, '../.env');
-    const env: any = {};
-    if (fs.existsSync(envPath)) {
-      const content = fs.readFileSync(envPath, 'utf8');
-      content.split('\n').forEach(line => {
-        const parts = line.split('=');
-        if (parts.length >= 2) env[parts[0].trim()] = parts.slice(1).join('=').trim();
-      });
-    }
-
-    const connection = await mysql.createConnection({
-      host: env['DB_HOST'] || 'localhost',
-      port: parseInt(env['DB_PORT'] || '3306'),
-      user: env['DB_USER'] || 'root',
-      password: env['DB_PASSWORD'] || '',
-      database: env['DB_NAME'] || 'rentals_dashboard',
-    });
-
+    const connection = await getMainDbConnection();
     try {
         const [rows]: any = await connection.execute(
             `SELECT browser_account_id as id, status, last_check_at, error_message 
@@ -1008,19 +1095,8 @@ ipcMain.on("sync-chats-from-webview", async (event, { platform, chats, data }) =
     
     if (platform === 'gathern' && chats) {
       await pollingService.saveGathernMessages(accountId, chats);
-    } else if (platform === 'airbnb' && data) {
-      // Re-use existing save logic in polling service
-      const threadEdges = data?.data?.node?.messagingInbox?.threads?.edges || [];
-      for (const edge of threadEdges) {
-        const threadId = edge.node.id;
-        const guestName = edge.node.inboxTitle?.accessibilityText || 'Airbnb Guest';
-        const summaryMsg = edge.node.messageHistory?.[0] || edge.node.lastMessage;
-        if (summaryMsg) {
-          await pollingService.saveAirbnbSummaryMessage(accountId, threadId, guestName, summaryMsg);
-        }
-      }
     }
-
+    
     // Notify dashboard that sync is complete
     mainWindow?.webContents.send('sync-complete', { accountId, platform });
   }
@@ -1045,12 +1121,11 @@ ipcMain.handle("test-notification", (_, data: any) => {
 });
 
 ipcMain.handle("force-platform-sync", async (_, accountId: string) => {
-  const account = browserSessions.get(accountId);
-  if (account && pollingService) {
-    await pollingService.syncAccount(account);
+  if (pollingService) {
+    await pollingService.syncAccount(accountId);
     return { success: true };
   }
-  return { success: false, error: "Account or PollingService not found" };
+  return { success: false, error: "PollingService not found" };
 });
 
 // Get all open tabs (browser windows)
@@ -1068,17 +1143,16 @@ ipcMain.handle("get-open-tabs", () => {
   return openTabs;
 });
 
-ipcMain.handle("send-message", async (_, payload: { accountId: string; platform: string; threadId: string; text: string; rawPayloadData: string }) => {
+ipcMain.handle("send-message", async (_, payload: { accountId: string; platform: string; threadId: string; text: string; metadata?: any }) => {
   const account: BrowserAccountSession | undefined = browserSessions.get(payload.accountId);
-  if (!account) return { success: false, error: "جلسة الحساب غير موجودة" };
-  
-  // Use the accountWindow if it's Gathern
-  const windowRef = account.window;
+  if (!account) return { success: false, error: "جلسة الحساب غير موجودة — يرجى فتح واجهة الحساب أولاً" };
   
   try {
-      return await sendPlatformMessage(account, windowRef, payload);
+    const ok = await sendPlatformMessage(payload.accountId, payload.threadId, payload.text);
+    return { success: ok };
   } catch(e: any) {
-      return { success: false, error: e.message };
+    console.error(`[IPC send-message] ❌ Error:`, e.message);
+    return { success: false, error: e.message || "حدث خطأ غير متوقع أثناء الإرسال" };
   }
 });
 

@@ -19,7 +19,7 @@ export async function GET(
         // Get invoice with partner details
         const invoices: any = await query(
             `SELECT i.*, p.name as partner_name, p.email as partner_email,
-                    p.phone as partner_phone, p.address, p.vat_number as partner_vat
+                    p.phone as partner_phone, p.address, p.tax_id as partner_vat
              FROM accounting_invoices i
              LEFT JOIN accounting_partners p ON i.partner_id = p.id
              WHERE i.id = ? AND i.deleted_at IS NULL`,
@@ -34,19 +34,24 @@ export async function GET(
 
         // Get invoice lines
         const lines = await query(
-            `SELECT * FROM accounting_invoice_lines WHERE invoice_id = ? ORDER BY created_at`,
+            `SELECT * FROM accounting_invoice_lines WHERE invoice_id = ?`,
             [invoiceId]
         );
 
-        // Get payment allocations
-        const payments: any = await query(
-            `SELECT pa.*, p.payment_number, p.payment_date, p.payment_method
+        // Get payment allocations (graceful fallback if table doesn't exist yet)
+        let payments: any = [];
+        try {
+            payments = await query(
+                `SELECT pa.*, p.payment_number, p.payment_date, p.payment_method
              FROM accounting_payment_allocations pa
              LEFT JOIN accounting_payments p ON pa.payment_id = p.id
              WHERE pa.invoice_id = ?
              ORDER BY p.payment_date DESC`,
-            [invoiceId]
-        );
+                [invoiceId]
+            );
+        } catch (_) {
+            // payments tables not yet created — return empty
+        }
 
         return NextResponse.json({
             ...invoice,

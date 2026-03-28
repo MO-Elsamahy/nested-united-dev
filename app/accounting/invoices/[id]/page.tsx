@@ -9,13 +9,22 @@ export default function InvoiceDetailPage() {
     const params = useParams();
     const router = useRouter();
     const [invoice, setInvoice] = useState<any>(null);
+    const [company, setCompany] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (params.id) {
             fetchInvoice();
+            fetchCompany();
         }
     }, [params.id]);
+
+    async function fetchCompany() {
+        try {
+            const res = await fetch("/api/accounting/company-settings");
+            if (res.ok) setCompany(await res.json());
+        } catch (_) {}
+    }
 
     async function fetchInvoice() {
         try {
@@ -166,11 +175,31 @@ export default function InvoiceDetailPage() {
             <div className="bg-white border rounded-xl shadow-sm p-8">
                 {/* Status */}
                 <div className="flex justify-between items-start mb-8">
-                    <div>
-                        <h2 className="text-3xl font-bold">{invoice.invoice_number}</h2>
-                        <p className="text-gray-500 mt-1">فاتورة مبيعات</p>
+                    {/* Company Info - Right Side */}
+                    <div className="flex items-center gap-3">
+                        {company?.logo_url ? (
+                            <img
+                                src={company.logo_url}
+                                alt={company.company_name}
+                                className="h-16 w-auto object-contain"
+                            />
+                        ) : (
+                            <div className="h-16 w-16 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600 font-bold text-2xl">
+                                {company?.company_name?.charAt(0) || "N"}
+                            </div>
+                        )}
+                        <div>
+                            <p className="font-bold text-lg">{company?.company_name || "—"}</p>
+                            {company?.tax_number && <p className="text-gray-500 text-sm">الرقم الضريبي: {company.tax_number}</p>}
+                            {company?.phone && <p className="text-gray-500 text-sm">{company.phone}</p>}
+                        </div>
                     </div>
-                    {getStateBadge(invoice.state)}
+                    {/* Invoice Number + Status - Left Side */}
+                    <div className="text-left">
+                        <h2 className="text-3xl font-bold">{invoice.invoice_number}</h2>
+                        <p className="text-gray-500 mt-1 mb-2">فاتورة مبيعات</p>
+                        {getStateBadge(invoice.state)}
+                    </div>
                 </div>
 
                 {/* Customer & Dates */}

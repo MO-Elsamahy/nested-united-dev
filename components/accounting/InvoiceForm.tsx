@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
     Plus,
@@ -10,6 +10,8 @@ import {
     Upload,
     Paperclip,
     FileText,
+    Search,
+    UserPlus,
 } from "lucide-react";
 
 interface InvoiceLine {
@@ -25,6 +27,11 @@ interface InvoiceLine {
 interface Partner {
     id: string;
     name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    tax_id?: string;
+    type: string;
 }
 
 interface InvoiceFormProps {
@@ -35,10 +42,27 @@ interface InvoiceFormProps {
 export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [partners, setPartners] = useState<Partner[]>([]);
+    const [allPartners, setAllPartners] = useState<Partner[]>([]);
+
+    // Smart partner autocomplete state
+    const [partnerQuery, setPartnerQuery] = useState(initialData?.partner_name || "");
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [selectedPartnerId, setSelectedPartnerId] = useState(initialData?.partner_id || "");
+    const [isNewPartner, setIsNewPartner] = useState(false);
+    const [partnerDetails, setPartnerDetails] = useState({
+        email: initialData?.partner_email || "",
+        phone: initialData?.partner_phone || "",
+        address: initialData?.address || "",
+        tax_id: initialData?.partner_vat || "",
+    });
+    const autocompleteRef = useRef<HTMLDivElement>(null);
+
+    const suggestions = allPartners.filter((p) =>
+        p.name.toLowerCase().includes(partnerQuery.toLowerCase()) ||
+        (p.email && p.email.toLowerCase().includes(partnerQuery.toLowerCase()))
+    ).slice(0, 6);
 
     const [formData, setFormData] = useState({
-        partner_id: initialData?.partner_id || "",
         invoice_date: initialData?.invoice_date || new Date().toISOString().split("T")[0],
         due_date: initialData?.due_date || "",
         reference: initialData?.reference || "",
@@ -56,22 +80,55 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                 unit_price: 0,
                 discount_type: "percentage",
                 discount_value: 0,
-                tax_rate: 15, // Default 15% VAT
+                tax_rate: 15,
             },
         ]
     );
 
     useEffect(() => {
         fetchPartners();
+        // Close suggestions on outside click
+        const handler = (e: MouseEvent) => {
+            if (autocompleteRef.current && !autocompleteRef.current.contains(e.target as Node)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener("mousedown", handler);
+        return () => document.removeEventListener("mousedown", handler);
     }, []);
 
     async function fetchPartners() {
         const res = await fetch("/api/accounting/partners");
         if (res.ok) {
-            const data = await res.json();
-            setPartners(data.filter((p: any) => p.type === "customer"));
+            setAllPartners(await res.json());
         }
     }
+
+    const handlePartnerSelect = (partner: Partner) => {
+        setPartnerQuery(partner.name);
+        setSelectedPartnerId(partner.id);
+        setIsNewPartner(false);
+        setPartnerDetails({
+            email: partner.email || "",
+            phone: partner.phone || "",
+            address: partner.address || "",
+            tax_id: partner.tax_id || "",
+        });
+        setShowSuggestions(false);
+    };
+
+    const handlePartnerQueryChange = (val: string) => {
+        setPartnerQuery(val);
+        setSelectedPartnerId(""); // clear selection
+        setIsNewPartner(false);
+        setShowSuggestions(true);
+    };
+
+    const handleCreateNewPartner = () => {
+        setSelectedPartnerId("");
+        setIsNewPartner(true);
+        setShowSuggestions(false);
+    };
 
     const addLine = () => {
         setItems([
@@ -170,11 +227,44 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
 
     const handleSubmit = async (e: React.FormEvent, confirmAction = false) => {
         e.preventDefault();
+
+        if (!partnerQuery.trim()) {
+            alert("الرجاء إدخال اسم العميل");
+            return;
+        }
+
         setLoading(true);
 
         try {
+            let resolvedPartnerId = selectedPartnerId;
+
+            // If a new partner, create them first
+            if (!resolvedPartnerId || isNewPartner) {
+                const createRes = await fetch("/api/accounting/partners", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: partnerQuery.trim(),
+                        email: partnerDetails.email || null,
+                        phone: partnerDetails.phone || null,
+                        address: partnerDetails.address || null,
+                        tax_id: partnerDetails.tax_id || null,
+                        type: "customer",
+                    }),
+                });
+                if (!createRes.ok) {
+                    const err = await createRes.json();
+                    alert(`فشل إضافة العميل: ${err.error}`);
+                    setLoading(false);
+                    return;
+                }
+                const created = await createRes.json();
+                resolvedPartnerId = created.id;
+            }
+
             const body = {
                 ...formData,
+                partner_id: resolvedPartnerId,
                 notes,
                 payment_terms: paymentTerms,
                 attachment_url: attachmentUrl,
@@ -183,14 +273,12 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
 
             let res;
             if (invoiceId) {
-                // Update
                 res = await fetch(`/api/accounting/invoices/${invoiceId}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(body),
                 });
             } else {
-                // Create
                 res = await fetch("/api/accounting/invoices", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -200,13 +288,10 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
 
             if (res.ok) {
                 const invoice = await res.json();
-
-                // If confirm flag is set, confirm the invoice
                 if (confirmAction && invoice.id) {
                     const confirmRes = await fetch(`/api/accounting/invoices/${invoice.id}/confirm`, {
                         method: "POST",
                     });
-
                     if (!confirmRes.ok) {
                         const error = await confirmRes.json();
                         alert(`فشل التأكيد: ${error.error}`);
@@ -214,7 +299,6 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                         return;
                     }
                 }
-
                 router.push(`/accounting/invoices/${invoice.id || invoiceId}`);
             } else {
                 const error = await res.json();
@@ -236,21 +320,115 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
             <div className="bg-white p-6 rounded-xl border shadow-sm">
                 <h2 className="text-lg font-bold mb-4">معلومات الفاتورة</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
+
+                    {/* Smart Partner Autocomplete */}
+                    <div className="md:col-span-2" ref={autocompleteRef}>
                         <label className="block text-sm font-medium mb-1">العميل *</label>
-                        <select
-                            required
-                            value={formData.partner_id}
-                            onChange={(e) => setFormData({ ...formData, partner_id: e.target.value })}
-                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        >
-                            <option value="">اختر العميل</option>
-                            {partners.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                    {p.name}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="relative">
+                            <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
+                            <input
+                                type="text"
+                                value={partnerQuery}
+                                onChange={(e) => handlePartnerQueryChange(e.target.value)}
+                                onFocus={() => setShowSuggestions(true)}
+                                className={`w-full pr-9 pl-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${selectedPartnerId ? "border-green-400 bg-green-50" : ""}`}
+                                placeholder="ابحث باسم العميل أو البريد الإلكتروني..."
+                                required
+                            />
+                            {selectedPartnerId && (
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-green-600 font-medium">✓ محدد</span>
+                            )}
+                            {isNewPartner && (
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-blue-600 font-medium">+ جديد</span>
+                            )}
+                        </div>
+
+                        {/* Suggestions Dropdown */}
+                        {showSuggestions && partnerQuery.length > 0 && (
+                            <div className="absolute z-50 mt-1 w-full max-w-xl bg-white border rounded-xl shadow-xl overflow-hidden">
+                                {suggestions.length > 0 ? (
+                                    <>
+                                        {suggestions.map((p) => (
+                                            <button
+                                                key={p.id}
+                                                type="button"
+                                                onClick={() => handlePartnerSelect(p)}
+                                                className="w-full text-right px-4 py-3 hover:bg-blue-50 border-b last:border-0 flex items-start gap-3"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm flex-shrink-0 mt-0.5">
+                                                    {p.name.charAt(0)}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-gray-900 truncate">{p.name}</p>
+                                                    {p.email && <p className="text-xs text-gray-500 truncate">{p.email}</p>}
+                                                    {p.phone && <p className="text-xs text-gray-400">{p.phone}</p>}
+                                                </div>
+                                                <span className="text-xs text-gray-400 mt-1 flex-shrink-0">{p.type === "customer" ? "عميل" : p.type === "supplier" ? "مورد" : p.type}</span>
+                                            </button>
+                                        ))}
+                                    </>
+                                ) : null}
+                                {/* Create New Option */}
+                                <button
+                                    type="button"
+                                    onClick={handleCreateNewPartner}
+                                    className="w-full text-right px-4 py-3 hover:bg-blue-50 flex items-center gap-3 text-blue-600 font-medium bg-blue-50/50"
+                                >
+                                    <UserPlus className="w-4 h-4" />
+                                    <span>إضافة "{partnerQuery}" كعميل جديد</span>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Partner Detail Fields — shown for new partner or selected */}
+                        {(isNewPartner || selectedPartnerId) && (
+                            <div className="mt-3 grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-lg border">
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">البريد الإلكتروني</label>
+                                    <input
+                                        type="email"
+                                        value={partnerDetails.email}
+                                        onChange={(e) => setPartnerDetails({ ...partnerDetails, email: e.target.value })}
+                                        disabled={!!selectedPartnerId && !isNewPartner}
+                                        className="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="example@email.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">رقم الهاتف</label>
+                                    <input
+                                        type="text"
+                                        value={partnerDetails.phone}
+                                        onChange={(e) => setPartnerDetails({ ...partnerDetails, phone: e.target.value })}
+                                        disabled={!!selectedPartnerId && !isNewPartner}
+                                        className="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="05xxxxxxxx"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">الرقم الضريبي</label>
+                                    <input
+                                        type="text"
+                                        value={partnerDetails.tax_id}
+                                        onChange={(e) => setPartnerDetails({ ...partnerDetails, tax_id: e.target.value })}
+                                        disabled={!!selectedPartnerId && !isNewPartner}
+                                        className="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="3xxxxxxxxxxxxxxxxx"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs text-gray-500 mb-1">العنوان</label>
+                                    <input
+                                        type="text"
+                                        value={partnerDetails.address}
+                                        onChange={(e) => setPartnerDetails({ ...partnerDetails, address: e.target.value })}
+                                        disabled={!!selectedPartnerId && !isNewPartner}
+                                        className="w-full px-3 py-1.5 border rounded text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="المدينة، الشارع..."
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div>

@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
-         VALUES (?, ?, 'create', 'partner', ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?)`,
             [generateUUID(), session.user.id, 'create', 'partner', id, JSON.stringify({ name: body.name })]
         );
 
@@ -52,7 +52,7 @@ export async function DELETE(request: Request) {
 
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
-             VALUES (?, ?, 'delete', 'partner', ?, ?)`,
+             VALUES (?, ?, ?, ?, ?, ?)`,
             [generateUUID(), session.user.id, 'delete', 'partner', id, JSON.stringify({})]
         );
 

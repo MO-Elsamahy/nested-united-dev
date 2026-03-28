@@ -20,12 +20,16 @@ export default async function PlatformStatusPage() {
     SELECT 
       ba.id, 
       ba.account_name, 
-      ba.platform, 
+      ba.platform,
+      ba.session_partition,
       ba.last_sync_at,
       (SELECT status FROM session_health_logs WHERE browser_account_id = ba.id ORDER BY last_check_at DESC LIMIT 1) as current_status,
       (SELECT error_message FROM session_health_logs WHERE browser_account_id = ba.id ORDER BY last_check_at DESC LIMIT 1) as last_error
     FROM browser_accounts ba
+    WHERE ba.platform != 'whatsapp'
+    ORDER BY ba.platform, ba.account_name
   `);
+
 
     return (
         <div className="p-8 max-w-7xl mx-auto min-h-screen">

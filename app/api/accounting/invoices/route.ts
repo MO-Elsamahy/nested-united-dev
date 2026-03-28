@@ -156,8 +156,8 @@ export async function POST(req: NextRequest) {
                 id, invoice_number, invoice_type, partner_id,
                 invoice_date, due_date, subtotal, tax_amount,
                 discount_amount, total_amount, amount_paid, amount_due,
-                state, reference, notes, payment_terms, created_by
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, ?)`,
+                state, reference, notes, payment_terms, attachment_url, created_by
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'draft', ?, ?, ?, ?, ?)`,
             [
                 invoiceId,
                 invoiceNumber,
