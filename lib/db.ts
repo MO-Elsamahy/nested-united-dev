@@ -15,13 +15,19 @@ const pool = mysql.createPool({
     dateStrings: true, // Prevent automatic timezone conversion by keeping dates as strings
 });
 
+// Helper to sanitize parameters (converts undefined to null for MySQL)
+const sanitizeParams = (params?: any[]) => {
+    if (!params) return [];
+    return params.map(p => p === undefined ? null : p);
+};
+
 // Helper function to execute queries
 export async function query<T = any>(
     sql: string,
     params?: any[]
 ): Promise<T[]> {
     try {
-        const [rows] = await pool.execute(sql, params || []);
+        const [rows] = await pool.execute(sql, sanitizeParams(params));
         return rows as T[];
     } catch (error: any) {
         console.error("Database Query Error:", error);
@@ -44,7 +50,7 @@ export async function execute(
     params?: any[]
 ): Promise<mysql.ResultSetHeader> {
     try {
-        const [result] = await pool.execute(sql, params || []);
+        const [result] = await pool.execute(sql, sanitizeParams(params));
         return result as mysql.ResultSetHeader;
     } catch (error: any) {
         console.error("Database Execute Error:", error);

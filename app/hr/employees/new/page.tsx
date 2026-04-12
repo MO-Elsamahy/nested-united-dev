@@ -41,8 +41,8 @@ export default function NewEmployeePage() {
         housing_allowance: 0,
         transport_allowance: 0,
         other_allowances: 0,
-        annual_leave_balance: 21,
-        sick_leave_balance: 30,
+        annual_leave_balance: 0,
+        sick_leave_balance: 0,
         bank_name: "",
         iban: "",
     });

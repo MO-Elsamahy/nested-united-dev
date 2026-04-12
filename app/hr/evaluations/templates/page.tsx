@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Plus, Settings, Loader2, Trash2, Save, X } from "lucide-react";
+import { ArrowRight, Plus, Settings, Loader2, Trash2, Save, X, Pencil } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function ManageTemplatesPage() {
@@ -10,6 +10,8 @@ export default function ManageTemplatesPage() {
     const [templates, setTemplates] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     
     // Form state
     const [name, setName] = useState("");
@@ -44,33 +46,68 @@ export default function ManageTemplatesPage() {
         setCriteria(newCriteria);
     };
 
+    const handleEditTemplate = async (id: string) => {
+        setLoading(true);
+        try {
+            const res = await fetch(`/api/hr/evaluations/templates/${id}`);
+            if (res.ok) {
+                const data = await res.json();
+                setName(data.name);
+                setDescription(data.description || "");
+                setCriteria(data.criteria && data.criteria.length > 0 
+                    ? data.criteria 
+                    : [{ criterion_name: "", max_score: 10 }]
+                );
+                setEditingId(id);
+                setIsCreating(true); // Reuse the same form container
+            } else {
+                alert("فشل تحميل بيانات القالب");
+            }
+        } catch (error) {
+            alert("فشل الاتصال");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const resetForm = () => {
+        setIsCreating(false);
+        setEditingId(null);
+        setName("");
+        setDescription("");
+        setCriteria([{ criterion_name: "", max_score: 10 }]);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        // Validation
         if (!name.trim() || criteria.length === 0 || criteria.some(c => !c.criterion_name.trim())) {
             alert("يرجى إدخال اسم القالب والتأكد من عدم ترك أي معيار فارغ");
             return;
         }
 
+        setIsSubmitting(true);
         try {
-            const res = await fetch("/api/hr/evaluations/templates", {
-                method: "POST",
+            const url = editingId 
+                ? `/api/hr/evaluations/templates/${editingId}`
+                : "/api/hr/evaluations/templates";
+            
+            const res = await fetch(url, {
+                method: editingId ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, description, criteria }),
             });
 
             if (res.ok) {
-                setIsCreating(false);
-                setName("");
-                setDescription("");
-                setCriteria([{ criterion_name: "", max_score: 10 }]);
+                resetForm();
                 fetchTemplates();
             } else {
                 alert("حدث خطأ أثناء الحفظ");
             }
         } catch (error) {
             alert("فشل الإتصال");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -101,7 +138,10 @@ export default function ManageTemplatesPage() {
                 </div>
                 {!isCreating && (
                     <button
-                        onClick={() => setIsCreating(true)}
+                        onClick={() => {
+                            resetForm();
+                            setIsCreating(true);
+                        }}
                         className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-2.5 rounded-xl transition shadow-lg shadow-violet-200"
                     >
                         <Plus className="w-5 h-5" />
@@ -112,10 +152,10 @@ export default function ManageTemplatesPage() {
 
             {isCreating && (
                 <div className="bg-white rounded-2xl shadow-sm border p-6 md:p-8 animate-in slide-in-from-top-4 relative">
-                    <button onClick={() => setIsCreating(false)} className="absolute top-6 left-6 p-2 text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition">
+                    <button onClick={resetForm} className="absolute top-6 left-6 p-2 text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg transition">
                         <X className="w-5 h-5" />
                     </button>
-                    <h2 className="text-xl font-bold text-gray-900 mb-6">قالب تقييم جديد</h2>
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">{editingId ? "تعديل قالب التقييم" : "قالب تقييم جديد"}</h2>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
@@ -185,8 +225,17 @@ export default function ManageTemplatesPage() {
                         </div>
 
                         <div className="pt-4 flex justify-end">
-                            <button type="submit" className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-8 py-2.5 rounded-xl font-bold transition">
-                                <Save className="w-5 h-5" /> حفظ القالب
+                            <button 
+                                type="submit" 
+                                disabled={isSubmitting}
+                                className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 disabled:opacity-50 text-white px-8 py-2.5 rounded-xl font-bold transition"
+                            >
+                                {isSubmitting ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <Save className="w-5 h-5" />
+                                )}
+                                {editingId ? "تحديث القالب" : "حفظ القالب"}
                             </button>
                         </div>
                     </form>
@@ -204,9 +253,14 @@ export default function ManageTemplatesPage() {
                             <div className="w-12 h-12 bg-violet-100 text-violet-600 rounded-xl flex items-center justify-center">
                                 <Settings className="w-6 h-6" />
                             </div>
-                            <button onClick={() => handleDeleteTemplate(template.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
-                                <Trash2 className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                                <button onClick={() => handleEditTemplate(template.id)} className="p-2 text-gray-400 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition">
+                                    <Pencil className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => handleDeleteTemplate(template.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition">
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                         <h3 className="text-lg font-bold text-gray-900 mb-1">{template.name}</h3>
                         {template.description && <p className="text-gray-500 text-sm mb-4 line-clamp-2">{template.description}</p>}

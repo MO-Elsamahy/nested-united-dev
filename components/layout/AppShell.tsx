@@ -71,7 +71,7 @@ export function AppShell({ children, sidebar, header }: AppShellProps) {
                 )}
 
                 {/* Main Content Area */}
-                <main className="flex-1 min-w-0 bg-gray-50 overflow-auto relative z-0">
+                <main className="flex-1 min-w-0 bg-gray-50 overflow-auto">
                     <div className="p-4 sm:p-6 lg:p-8">
                         {children}
                     </div>

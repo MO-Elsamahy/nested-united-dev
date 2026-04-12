@@ -16,6 +16,14 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editForm, setEditForm] = useState({
+        basic_salary: 0,
+        housing_allowance: 0,
+        transport_allowance: 0,
+        other_allowances: 0,
+        overtime_amount: 0,
+        absence_deduction: 0,
+        late_deduction: 0,
+        gosi_deduction: 0,
         custom_deduction: 0,
         custom_deduction_note: "",
         custom_addition: 0,
@@ -52,7 +60,7 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                     run: { ...prev.run, total_amount: updatedData.total_amount },
                     details: prev.details.map((d: any) => 
                         d.id === detailId 
-                        ? { ...d, ...editForm, net_salary: updatedData.net_salary, total_deductions: (Number(d.absence_deduction) + Number(d.late_deduction) + Number(d.gosi_deduction) + Number(editForm.custom_deduction)) } 
+                        ? { ...d, ...editForm, net_salary: updatedData.net_salary, total_deductions: updatedData.total_deductions } 
                         : d
                     )
                 }));
@@ -73,6 +81,14 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
     const startEditing = (row: any) => {
         setEditingId(row.id);
         setEditForm({
+            basic_salary: Number(row.basic_salary || 0),
+            housing_allowance: Number(row.housing_allowance || 0),
+            transport_allowance: Number(row.transport_allowance || 0),
+            other_allowances: Number(row.other_allowances || 0),
+            overtime_amount: Number(row.overtime_amount || 0),
+            absence_deduction: Number(row.absence_deduction || 0),
+            late_deduction: Number(row.late_deduction || 0),
+            gosi_deduction: 0,
             custom_deduction: Number(row.custom_deduction || 0),
             custom_deduction_note: row.custom_deduction_note || "",
             custom_addition: Number(row.custom_addition || 0),
@@ -251,12 +267,45 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                                         <p className="font-bold text-gray-900">{row.full_name}</p>
                                         <p className="text-xs text-gray-500">{row.job_title}</p>
                                     </td>
-                                    <td className="px-4 py-3 text-center text-gray-600">{Number(row.basic_salary).toLocaleString()}</td>
                                     <td className="px-4 py-3 text-center text-gray-600">
-                                        {(Number(row.housing_allowance) + Number(row.transport_allowance) + Number(row.other_allowances)).toLocaleString()}
+                                        {editingId === row.id ? (
+                                            <input 
+                                                type="number" 
+                                                value={editForm.basic_salary}
+                                                onChange={(e) => setEditForm({...editForm, basic_salary: Number(e.target.value)})}
+                                                className="w-20 px-1 py-1 border rounded text-center font-medium"
+                                            />
+                                        ) : Number(row.basic_salary).toLocaleString()}
+                                    </td>
+                                    <td className="px-4 py-3 text-center text-gray-600">
+                                        {editingId === row.id ? (
+                                            <div className="flex flex-col gap-1">
+                                                <input 
+                                                    type="number" 
+                                                    value={editForm.housing_allowance}
+                                                    onChange={(e) => setEditForm({...editForm, housing_allowance: Number(e.target.value)})}
+                                                    className="w-16 px-1 py-1 border rounded text-center text-xs"
+                                                    placeholder="سكن"
+                                                />
+                                                <input 
+                                                    type="number" 
+                                                    value={editForm.transport_allowance}
+                                                    onChange={(e) => setEditForm({...editForm, transport_allowance: Number(e.target.value)})}
+                                                    className="w-16 px-1 py-1 border rounded text-center text-xs"
+                                                    placeholder="مواصلات"
+                                                />
+                                            </div>
+                                        ) : (Number(row.housing_allowance) + Number(row.transport_allowance) + Number(row.other_allowances)).toLocaleString()}
                                     </td>
                                     <td className="px-4 py-3 text-center text-blue-600 font-medium">
-                                        {Number(row.overtime_amount) > 0 ? `+${Number(row.overtime_amount).toLocaleString()}` : '-'}
+                                        {editingId === row.id ? (
+                                            <input 
+                                                type="number" 
+                                                value={editForm.overtime_amount}
+                                                onChange={(e) => setEditForm({...editForm, overtime_amount: Number(e.target.value)})}
+                                                className="w-20 px-1 py-1 border rounded text-center"
+                                            />
+                                        ) : (Number(row.overtime_amount) > 0 ? `+${Number(row.overtime_amount).toLocaleString()}` : '-')}
                                     </td>
                                     <td className="px-4 py-3 text-center text-blue-500">
                                         {editingId === row.id ? (
@@ -277,11 +326,25 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-center text-red-600">
-                                        {Number(row.absence_deduction) > 0 ? `-${Number(row.absence_deduction).toFixed(2)}` : '-'}
-                                        {row.absent_days > 0 && <span className="block text-xs text-red-400">({row.absent_days} يوم)</span>}
+                                        {editingId === row.id ? (
+                                            <input 
+                                                type="number" 
+                                                value={editForm.absence_deduction}
+                                                onChange={(e) => setEditForm({...editForm, absence_deduction: Number(e.target.value)})}
+                                                className="w-20 px-1 py-1 border rounded text-center"
+                                            />
+                                        ) : (Number(row.absence_deduction) > 0 ? `-${Number(row.absence_deduction).toFixed(2)}` : '-')}
+                                        {row.absent_days > 0 && !editingId && <span className="block text-xs text-red-400">({row.absent_days} يوم)</span>}
                                     </td>
                                     <td className="px-4 py-3 text-center text-red-600">
-                                        {Number(row.late_deduction) > 0 ? `-${Number(row.late_deduction).toFixed(2)}` : '-'}
+                                        {editingId === row.id ? (
+                                            <input 
+                                                type="number" 
+                                                value={editForm.late_deduction}
+                                                onChange={(e) => setEditForm({...editForm, late_deduction: Number(e.target.value)})}
+                                                className="w-20 px-1 py-1 border rounded text-center"
+                                            />
+                                        ) : (Number(row.late_deduction) > 0 ? `-${Number(row.late_deduction).toFixed(2)}` : '-')}
                                     </td>
                                     <td className="px-4 py-3 text-center text-gray-500">
                                         {Number(row.gosi_deduction).toFixed(2)}

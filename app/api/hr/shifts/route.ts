@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { name, start_time, end_time, late_grace_minutes } = body;
+        const { name, start_time, end_time, late_grace_minutes, days_off } = body;
 
         if (!name || !start_time || !end_time) {
             return NextResponse.json({ error: "البيانات ناقصة" }, { status: 400 });
@@ -35,9 +35,9 @@ export async function POST(request: Request) {
 
         const id = generateUUID();
         await execute(
-            `INSERT INTO hr_shifts (id, name, start_time, end_time, late_grace_minutes, is_active)
-       VALUES (?, ?, ?, ?, ?, true)`,
-            [id, name, start_time, end_time, late_grace_minutes || 15]
+            `INSERT INTO hr_shifts (id, name, start_time, end_time, late_grace_minutes, days_off, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, true)`,
+            [id, name, start_time, end_time, late_grace_minutes || 15, days_off || ""]
         );
 
         return NextResponse.json({ success: true, id }, { status: 201 });

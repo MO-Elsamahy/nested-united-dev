@@ -207,36 +207,62 @@ export async function PUT(
                 return NextResponse.json({ error: "Can only update draft payrolls" }, { status: 400 });
             }
 
-            const { detail_id, custom_deduction, custom_deduction_note, custom_addition, custom_addition_note } = await request.json();
+            const { 
+                detail_id, 
+                basic_salary, housing_allowance, transport_allowance, other_allowances,
+                overtime_amount, absence_deduction, late_deduction, gosi_deduction,
+                custom_addition, custom_addition_note,
+                custom_deduction, custom_deduction_note 
+            } = await request.json();
 
             // Fetch the detail line
             const detail = await queryOne<any>("SELECT * FROM hr_payroll_details WHERE id = ? AND payroll_run_id = ?", [detail_id, id]);
             if (!detail) return NextResponse.json({ error: "Detail not found" }, { status: 404 });
 
-            const newCustomDeduction = Number(custom_deduction || 0);
-            const newCustomAddition = Number(custom_addition || 0);
+            // Use provided values or original ones if not provided
+            const nBasic = Number(basic_salary ?? detail.basic_salary);
+            const nHousing = Number(housing_allowance ?? detail.housing_allowance);
+            const nTransport = Number(transport_allowance ?? detail.transport_allowance);
+            const nOther = Number(other_allowances ?? detail.other_allowances);
+            const nOvertime = Number(overtime_amount ?? detail.overtime_amount);
+            const nAbsence = Number(absence_deduction ?? detail.absence_deduction);
+            const nLate = Number(late_deduction ?? detail.late_deduction);
+            const nGosi = 0; // Always 0 per user request
+            const nCustomAdd = Number(custom_addition ?? detail.custom_addition);
+            const nCustomDed = Number(custom_deduction ?? detail.custom_deduction);
 
-            // Recalculate employee totals
-            // total_deductions = absence + late + gosi + custom_deduction
-            const totalDeductions = Number(detail.absence_deduction) + Number(detail.late_deduction) + Number(detail.gosi_deduction) + newCustomDeduction;
-            
-            // net_salary = (gross + overtime + custom_addition) - total_deductions
-            const netSalary = (Number(detail.gross_salary) + Number(detail.overtime_amount) + newCustomAddition) - totalDeductions;
+            // Recalculate gross and totals
+            const grossSalary = nBasic + nHousing + nTransport + nOther;
+            const totalDeductions = nAbsence + nLate + nGosi + nCustomDed;
+            const netSalary = (grossSalary + nOvertime + nCustomAdd) - totalDeductions;
 
             // Update the detail line
             await execute(`
                 UPDATE hr_payroll_details 
-                SET custom_deduction = ?, custom_deduction_note = ?, 
-                    custom_addition = ?, custom_addition_note = ?,
-                    total_deductions = ?, net_salary = ?
+                SET basic_salary = ?, housing_allowance = ?, transport_allowance = ?, other_allowances = ?,
+                    overtime_amount = ?, absence_deduction = ?, late_deduction = ?, gosi_deduction = ?,
+                    custom_addition = ?, custom_addition_note = ?, 
+                    custom_deduction = ?, custom_deduction_note = ?,
+                    gross_salary = ?, total_deductions = ?, net_salary = ?
                 WHERE id = ?
-            `, [newCustomDeduction, custom_deduction_note || null, newCustomAddition, custom_addition_note || null, totalDeductions, netSalary, detail_id]);
+            `, [
+                nBasic, nHousing, nTransport, nOther,
+                nOvertime, nAbsence, nLate, nGosi,
+                nCustomAdd, custom_addition_note ?? detail.custom_addition_note,
+                nCustomDed, custom_deduction_note ?? detail.custom_deduction_note,
+                grossSalary, totalDeductions, netSalary, detail_id
+            ]);
 
             // Update the run header total
             const totalAgg = await queryOne<any>("SELECT SUM(net_salary) as total_amount FROM hr_payroll_details WHERE payroll_run_id = ?", [id]);
             await execute("UPDATE hr_payroll_runs SET total_amount = ? WHERE id = ?", [totalAgg.total_amount, id]);
 
-            return NextResponse.json({ success: true, net_salary: netSalary, total_amount: totalAgg.total_amount });
+            return NextResponse.json({ 
+                success: true, 
+                net_salary: netSalary, 
+                total_deductions: totalDeductions,
+                total_amount: totalAgg.total_amount 
+            });
         }
 
         if (action === "delete") {
