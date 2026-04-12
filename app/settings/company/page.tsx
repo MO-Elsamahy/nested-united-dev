@@ -25,6 +25,8 @@ export default function CompanySettingsPage() {
         bank_account: "",
         iban: "",
         logo_url: "",
+        invoice_type_label: "فاتورة ضريبية",
+        invoice_terms: "",
     });
 
     useEffect(() => {
@@ -262,9 +264,29 @@ export default function CompanySettingsPage() {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">تذييل الفاتورة</label>
+                        <label className="block text-sm font-medium mb-1">مسمى الفاتورة (مثلاً: فاتورة ضريبية)</label>
+                        <input
+                            type="text"
+                            value={settings.invoice_type_label || ""}
+                            onChange={(e) => setSettings({ ...settings, invoice_type_label: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="فاتورة ضريبية"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">الشروط والأحكام (تظهر في أسفل الفاتورة)</label>
                         <textarea
-                            rows={3}
+                            rows={4}
+                            value={settings.invoice_terms || ""}
+                            onChange={(e) => setSettings({ ...settings, invoice_terms: e.target.value })}
+                            className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="أدخل الشروط والأحكام هنا..."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">تذييل الفاتورة (نص ترحيبي)</label>
+                        <textarea
+                            rows={2}
                             value={settings.invoice_footer || ""}
                             onChange={(e) => setSettings({ ...settings, invoice_footer: e.target.value })}
                             className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"

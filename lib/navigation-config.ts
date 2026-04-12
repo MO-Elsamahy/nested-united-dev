@@ -75,6 +75,7 @@ export const ACCOUNTING_NAV: NavSection[] = [
         title: "العمليات اليومية",
         items: [
             { label: "الفواتير", href: "/accounting/invoices", icon: FileText },
+            { label: "سندات القبض والصرف", href: "/accounting/payments", icon: DollarSign },
             { label: "دفاتر اليومية", href: "/accounting/journals", icon: ScrollText },
             { label: "قيد جديد", href: "/accounting/moves/create", icon: Calculator }
         ]
@@ -205,9 +206,9 @@ export const PATH_NAME_MAP: Record<string, string> = {
     messages: "المراسلات الإدارية",
     evaluations: "التقييمات الشهرية",
     templates: "قوالب التقييم",
-    new: "إضافة جديد",
     profile: "الملف الشخصي",
     payslips: "مسيرات الرواتب",
+    payments: "سندات القبض والصرف",
     customers: "العملاء",
     deals: "الصفقات",
     roles: "صلاحيات الأدوار",

@@ -36,6 +36,18 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  // RBAC: Check if user can access the Rentals (Dashboard) module
+  if (user.role !== 'super_admin') {
+    const perm = await queryOne<{ can_access: number }>(
+      "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'rentals'",
+      [user.role]
+    );
+    if (!perm || !perm.can_access) {
+      console.warn(`User ${user.email} (role: ${user.role}) attempted unauthorized access to Rentals Dashboard`);
+      redirect("/portal");
+    }
+  }
+
   // Get unread notifications count
   const countResult = await queryOne<{ count: number }>(
     "SELECT COUNT(*) as count FROM notifications WHERE is_read = FALSE"

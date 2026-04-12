@@ -1,6 +1,0 @@
-Role	Email	Password
-Admin	admin_test@rentals.com	password123
-HR Manager	hr_test@rentals.com	password123
-Accountant	accountant_test@rentals.com	password123
-Maintenance Worker	worker_test@rentals.com	password123
-Employee	employee_test@rentals.com	password123

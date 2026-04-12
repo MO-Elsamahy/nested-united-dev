@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ArrowRight, Edit, Trash2, Check, Download, Mail, DollarSign, FileText } from "lucide-react";
+import { ArrowRight, Edit, Trash2, Check, Download, Mail, DollarSign, FileText, X } from "lucide-react";
 
 export default function InvoiceDetailPage() {
     const params = useParams();
@@ -11,6 +12,9 @@ export default function InvoiceDetailPage() {
     const [invoice, setInvoice] = useState<any>(null);
     const [company, setCompany] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const [showPdfDropdown, setShowPdfDropdown] = useState(false);
+    const { data: session } = useSession();
+    const isSuperAdmin = (session?.user as any)?.role === "super_admin";
 
     useEffect(() => {
         if (params.id) {
@@ -64,6 +68,41 @@ export default function InvoiceDetailPage() {
 
         if (res.ok) {
             router.push("/accounting/invoices");
+        } else {
+            const error = await res.json();
+            alert(`فشل الحذف: ${error.error}`);
+        }
+    };
+
+    const handleCancel = async () => {
+        const reason = prompt("يرجى إدخال سبب إلغاء الفاتورة:");
+        if (reason === null) return; // Cancelled prompt
+
+        const res = await fetch(`/api/accounting/invoices/${params.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "cancel", reason }),
+        });
+
+        if (res.ok) {
+            fetchInvoice();
+            alert("تم إلغاء الفاتورة وعكس القيد المحاسبي بنجاح");
+        } else {
+            const error = await res.json();
+            alert(`فشل الإلغاء: ${error.error}`);
+        }
+    };
+
+    const handleDeletePayment = async (paymentId: string) => {
+        if (!confirm("هل أنت متأكد من حذف هذا السند؟ سيتم تحديث رصيد الفاتورة.")) return;
+
+        const res = await fetch(`/api/accounting/payments/${paymentId}`, {
+            method: "DELETE",
+        });
+
+        if (res.ok) {
+            fetchInvoice();
+            alert("تم حذف السند وتحديث الرصيد");
         } else {
             const error = await res.json();
             alert(`فشل الحذف: ${error.error}`);
@@ -133,34 +172,67 @@ export default function InvoiceDetailPage() {
                     )}
                     {invoice.state !== "draft" && (
                         <>
-                            <div className="relative group">
-                                <button className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50">
+                            {isSuperAdmin && invoice.state !== "cancelled" && (
+                                <button
+                                    onClick={handleCancel}
+                                    className="flex items-center gap-2 border border-orange-500 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50"
+                                >
+                                    <X className="w-4 h-4" />
+                                    إلغاء الفاتورة
+                                </button>
+                            )}
+                            {isSuperAdmin && (
+                                <button
+                                    onClick={handleDelete}
+                                    className="flex items-center gap-2 border border-red-500 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                    حذف نهائي
+                                </button>
+                            )}
+                            <div className="relative">
+                                <button 
+                                    onClick={() => setShowPdfDropdown(!showPdfDropdown)}
+                                    className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50 bg-white"
+                                >
                                     <Download className="w-4 h-4" />
                                     PDF
                                 </button>
-                                <div className="absolute right-0 top-full mt-2 w-48 bg-white border rounded-lg shadow-lg hidden group-hover:block z-10 p-1">
-                                    <button
-                                        onClick={() => window.open(`/api/accounting/invoices/${params.id}/pdf?theme=default`, "_blank")}
-                                        className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-2"
-                                    >
-                                        <div className="w-4 h-4 rounded-full border bg-white"></div>
-                                        الافتراضي (أبيض)
-                                    </button>
-                                    <button
-                                        onClick={() => window.open(`/api/accounting/invoices/${params.id}/pdf?theme=eye-friendly`, "_blank")}
-                                        className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-2"
-                                    >
-                                        <div className="w-4 h-4 rounded-full border bg-[#FDFBF7]"></div>
-                                        مريح للعين (كريمي)
-                                    </button>
-                                    <button
-                                        onClick={() => window.open(`/api/accounting/invoices/${params.id}/pdf?theme=dark`, "_blank")}
-                                        className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center gap-2"
-                                    >
-                                        <div className="w-4 h-4 rounded-full border bg-gray-900"></div>
-                                        الوضع الليلي (داكن)
-                                    </button>
-                                </div>
+                                {showPdfDropdown && (
+                                    <div className="absolute left-0 top-full mt-2 w-56 bg-white border rounded-lg shadow-xl z-50 p-1 animate-in fade-in zoom-in duration-200">
+                                        <div className="px-3 py-2 text-xs font-bold text-gray-500 border-b mb-1">اختر سمة القالب</div>
+                                        <button
+                                            onClick={() => {
+                                                window.open(`/api/accounting/invoices/${params.id}/pdf?theme=default`, "_blank");
+                                                setShowPdfDropdown(false);
+                                            }}
+                                            className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 rounded-md flex items-center gap-3"
+                                        >
+                                            <div className="w-5 h-5 rounded-md border bg-white shadow-sm italic text-[8px] flex items-center justify-center text-gray-300">Aa</div>
+                                            <span>الافتراضي (أبيض)</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                window.open(`/api/accounting/invoices/${params.id}/pdf?theme=eye-friendly`, "_blank");
+                                                setShowPdfDropdown(false);
+                                            }}
+                                            className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-amber-50 hover:text-amber-700 rounded-md flex items-center gap-3"
+                                        >
+                                            <div className="w-5 h-5 rounded-md border bg-[#FDFBF7] shadow-sm italic text-[8px] flex items-center justify-center text-amber-900/50">Aa</div>
+                                            <span>مريح للعين (كريمي)</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                window.open(`/api/accounting/invoices/${params.id}/pdf?theme=dark`, "_blank");
+                                                setShowPdfDropdown(false);
+                                            }}
+                                            className="w-full text-right px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900 rounded-md flex items-center gap-3"
+                                        >
+                                            <div className="w-5 h-5 rounded-md border bg-gray-900 shadow-sm italic text-[8px] flex items-center justify-center text-gray-400">Aa</div>
+                                            <span>الوضع الليلي (داكن)</span>
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             <button className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50">
                                 <Mail className="w-4 h-4" />
@@ -191,13 +263,14 @@ export default function InvoiceDetailPage() {
                         <div>
                             <p className="font-bold text-lg">{company?.company_name || "—"}</p>
                             {company?.tax_number && <p className="text-gray-500 text-sm">الرقم الضريبي: {company.tax_number}</p>}
+                            {company?.commercial_registration && <p className="text-gray-500 text-sm">السجل التجاري: {company.commercial_registration}</p>}
                             {company?.phone && <p className="text-gray-500 text-sm">{company.phone}</p>}
                         </div>
                     </div>
                     {/* Invoice Number + Status - Left Side */}
                     <div className="text-left">
                         <h2 className="text-3xl font-bold">{invoice.invoice_number}</h2>
-                        <p className="text-gray-500 mt-1 mb-2">فاتورة مبيعات</p>
+                        <p className="text-gray-500 mt-1 mb-2 font-bold text-lg">{company?.invoice_type_label || "فاتورة ضريبية"}</p>
                         {getStateBadge(invoice.state)}
                     </div>
                 </div>
@@ -309,7 +382,7 @@ export default function InvoiceDetailPage() {
                         {invoice.payment_terms && (
                             <div className="mt-4">
                                 <h3 className="text-sm font-medium text-gray-500 mb-2">شروط الدفع</h3>
-                                <p className="text-gray-700">{invoice.payment_terms}</p>
+                                <p className="text-gray-700 whitespace-pre-line">{invoice.payment_terms || company?.invoice_terms}</p>
                             </div>
                         )}
                     </div>
@@ -341,6 +414,7 @@ export default function InvoiceDetailPage() {
                                 <th className="px-4 py-2 text-right">التاريخ</th>
                                 <th className="px-4 py-2 text-right">المبلغ</th>
                                 <th className="px-4 py-2 text-right">الطريقة</th>
+                                <th className="px-4 py-2 text-left">إجراء</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -352,6 +426,17 @@ export default function InvoiceDetailPage() {
                                     </td>
                                     <td className="px-4 py-2">{parseFloat(payment.amount).toLocaleString("ar-SA")} ر.س</td>
                                     <td className="px-4 py-2">{payment.payment_method}</td>
+                                    <td className="px-4 py-2 text-left">
+                                        {isSuperAdmin && (
+                                            <button
+                                                onClick={() => handleDeletePayment(payment.payment_id)}
+                                                className="p-1 hover:bg-red-50 rounded text-red-600 transition"
+                                                title="حذف السند"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

@@ -26,6 +26,9 @@ async function canAccessSystem(role: string, systemId: string): Promise<boolean>
     // Settings is always super_admin only (hardcoded for security)
     if (systemId === 'settings') return false;
 
+    // Employee portal is accessible to everyone (self-service)
+    if (systemId === 'employee') return true;
+
     // Check database for permission
     const perm = await queryOne<{ can_access: number }>(
         "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = ?",
@@ -66,11 +69,19 @@ export default async function PortalPage() {
         },
         {
             id: "hr",
-            name: "الموارد البشرية",
+            name: "إدارة الموارد البشرية",
             description: "حضور، انصراف، وطلبات",
             icon: UserCog,
             href: "/hr",
             color: "bg-violet-600",
+        },
+        {
+            id: "employee",
+            name: "بوابة الموظف",
+            description: "بياناتك، حضورك، وطلباتك الشخصية",
+            icon: Users,
+            href: "/employee",
+            color: "bg-orange-600",
         },
         {
             id: "crm",

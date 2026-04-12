@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FileText, Filter, Download, User, Calendar, Eye } from "lucide-react";
 import Link from "next/link";
 import { usePermission } from "@/lib/hooks/usePermission";
@@ -26,14 +26,26 @@ interface ActivityLog {
 }
 
 export default function ActivityLogsPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ActivityLogsContent />
+        </Suspense>
+    );
+}
+
+function ActivityLogsContent() {
   const router = useRouter();
   const hasViewPermission = usePermission("view");
+  const searchParams = useSearchParams();
+  const initialUserId = searchParams.get("user_id");
+  
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId);
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
+  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (hasViewPermission === false) {
@@ -58,9 +70,13 @@ export default function ActivityLogsPage() {
       if (response.ok) {
         const data = await response.json();
         setUsers(data.map((u: any) => ({ id: u.id, name: u.name, email: u.email })));
+        setIsSuperAdmin(true);
+      } else if (response.status === 403) {
+        setIsSuperAdmin(false);
       }
     } catch (error) {
       console.error("Error loading users:", error);
+      setIsSuperAdmin(false);
     }
   };
 
@@ -164,27 +180,29 @@ export default function ActivityLogsPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center gap-4">
-          <Filter className="w-5 h-5 text-gray-500" />
-          <label className="text-sm font-medium">تصفية حسب المستخدم:</label>
-          <select
-            value={selectedUserId || ""}
-            onChange={(e) => {
-              setSelectedUserId(e.target.value || null);
-              setPage(1);
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">جميع المستخدمين</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name} ({user.email})
-              </option>
-            ))}
-          </select>
+      {isSuperAdmin && (
+        <div className="bg-white rounded-lg shadow p-4">
+          <div className="flex items-center gap-4">
+            <Filter className="w-5 h-5 text-gray-500" />
+            <label className="text-sm font-medium">تصفية حسب المستخدم:</label>
+            <select
+              value={selectedUserId || ""}
+              onChange={(e) => {
+                setSelectedUserId(e.target.value || null);
+                setPage(1);
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">جميع المستخدمين</option>
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name} ({user.email})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Logs Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">

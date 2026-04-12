@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query } from "@/lib/db";
+import { query, queryOne, execute } from "@/lib/db";
 
 // GET /api/accounting/invoices/[id] - Get invoice details
 export async function GET(
@@ -81,7 +81,7 @@ export async function PUT(
         const { id: invoiceId } = await context.params;
         const body = await req.json();
 
-        // Check if invoice exists and is editable
+        // Check if invoice exists
         const existing: any = await query(
             "SELECT * FROM accounting_invoices WHERE id = ? AND deleted_at IS NULL",
             [invoiceId]
@@ -93,15 +93,8 @@ export async function PUT(
 
         const invoice = existing[0];
 
-        // Only allow editing draft invoices
-        if (invoice.state !== "draft") {
-            return NextResponse.json(
-                { error: "Only draft invoices can be edited" },
-                { status: 400 }
-            );
-        }
-
         const {
+            action,
             partner_id,
             invoice_date,
             due_date,
@@ -111,6 +104,77 @@ export async function PUT(
             attachment_url,
             lines,
         } = body;
+
+        // Action: Cancel Invoice (Super Admin Only)
+        if (action === "cancel") {
+            if (session.user.role !== "super_admin") {
+                return NextResponse.json({ error: "Forbidden. Only super admins can cancel invoices." }, { status: 403 });
+            }
+
+            if (invoice.state === "draft" || invoice.state === "cancelled") {
+                return NextResponse.json({ error: `Cannot cancel invoice in ${invoice.state} state.` }, { status: 400 });
+            }
+
+            // 1. Create Reverse Journal Entry if move exists
+            if (invoice.accounting_move_id) {
+                const moveLines: any = await query("SELECT * FROM accounting_move_lines WHERE move_id = ?", [invoice.accounting_move_id]);
+                const newMoveId = crypto.randomUUID();
+                
+                // Create Header
+                await query(
+                    `INSERT INTO accounting_moves (id, journal_id, date, ref, narration, state, partner_id, amount_total, created_by)
+                     VALUES (?, ?, CURDATE(), ?, ?, 'posted', ?, ?, ?)`,
+                    [
+                        newMoveId,
+                        invoice.journal_id || (await queryOne<any>("SELECT journal_id FROM accounting_moves WHERE id = ?", [invoice.accounting_move_id]))?.journal_id,
+                        `REV-${invoice.invoice_number}`,
+                        `إلغاء الفاتورة رقم ${invoice.invoice_number}`,
+                        invoice.partner_id,
+                        invoice.total_amount,
+                        session.user.id
+                    ]
+                );
+
+                // Create Reversed Lines (Swap Debit and Credit)
+                for (const line of moveLines) {
+                    await query(
+                        `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
+                         VALUES (UUID(), ?, ?, ?, ?, ?, ?)`,
+                        [
+                            newMoveId,
+                            line.account_id,
+                            line.partner_id,
+                            `عكس: ${line.name}`,
+                            line.credit, // Debit = Old Credit
+                            line.debit   // Credit = Old Debit
+                        ]
+                    );
+                }
+
+                // Update invoice to link to both or just mark cancelled?
+                // Usually we keep track of the original move.
+            }
+
+            // 2. Update Invoice State
+            await query("UPDATE accounting_invoices SET state = 'cancelled', updated_at = NOW() WHERE id = ?", [invoiceId]);
+
+            // 3. Audit Log
+            await query(
+                `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+                 VALUES (UUID(), ?, 'cancel', 'invoice', ?, ?)`,
+                [session.user.id, invoiceId, JSON.stringify({ reason: body.reason || "Manual cancellation by admin" })]
+            );
+
+            return NextResponse.json({ message: "Invoice cancelled and reversed successfully" });
+        }
+
+        // Only allow editing draft invoices
+        if (invoice.state !== "draft") {
+            return NextResponse.json(
+                { error: "Only draft invoices can be edited" },
+                { status: 400 }
+            );
+        }
 
         // Calculate totals if lines provided
         let subtotal = 0;
@@ -248,11 +312,11 @@ export async function DELETE(
 
         const invoice = existing[0];
 
-        // Only allow deleting draft invoices
-        if (invoice.state !== "draft") {
+        // Permission Check: Only super_admin can delete confirmed/paid invoices
+        if (invoice.state !== "draft" && session.user.role !== "super_admin") {
             return NextResponse.json(
-                { error: "Only draft invoices can be deleted" },
-                { status: 400 }
+                { error: "Forbidden. Confirmed invoices can only be deleted by super admins." },
+                { status: 403 }
             );
         }
 

@@ -4,7 +4,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CheckCircle, Trash2, Printer, Loader2, AlertTriangle, Download } from "lucide-react";
+import { ArrowRight, CheckCircle, Trash2, Printer, Loader2, AlertTriangle, Download, Edit2, Save, X, PlusCircle, MinusCircle } from "lucide-react";
 
 export default function PayrollDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -14,6 +14,13 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({
+        custom_deduction: 0,
+        custom_deduction_note: "",
+        custom_addition: 0,
+        custom_addition_note: ""
+    });
 
     useEffect(() => {
         fetch(`/api/hr/payroll/${id}`)
@@ -23,6 +30,55 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                 setLoading(false);
             });
     }, [id]);
+
+    const handleUpdateLine = async (detailId: string) => {
+        setProcessing(true);
+        try {
+            const res = await fetch(`/api/hr/payroll/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "update_line",
+                    detail_id: detailId,
+                    ...editForm
+                }),
+            });
+
+            if (res.ok) {
+                const updatedData = await res.json();
+                // Update local state
+                setData((prev: any) => ({
+                    ...prev,
+                    run: { ...prev.run, total_amount: updatedData.total_amount },
+                    details: prev.details.map((d: any) => 
+                        d.id === detailId 
+                        ? { ...d, ...editForm, net_salary: updatedData.net_salary, total_deductions: (Number(d.absence_deduction) + Number(d.late_deduction) + Number(d.gosi_deduction) + Number(editForm.custom_deduction)) } 
+                        : d
+                    )
+                }));
+                setEditingId(null);
+                setSuccessMsg("تم تحديث سطر الراتب بنجاح");
+                setTimeout(() => setSuccessMsg(null), 3000);
+            } else {
+                const err = await res.json();
+                alert(err.error || "حدث خطأ");
+            }
+        } catch (error) {
+            alert("فشل الاتصال");
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const startEditing = (row: any) => {
+        setEditingId(row.id);
+        setEditForm({
+            custom_deduction: Number(row.custom_deduction || 0),
+            custom_deduction_note: row.custom_deduction_note || "",
+            custom_addition: Number(row.custom_addition || 0),
+            custom_addition_note: row.custom_addition_note || ""
+        });
+    };
 
     const handleAction = async (action: "approve" | "delete") => {
         if (!confirm(action === "approve"
@@ -178,10 +234,14 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                                 <th className="text-center px-4 py-3 font-medium text-gray-500">الأساسي</th>
                                 <th className="text-center px-4 py-3 font-medium text-gray-500">البدلات</th>
                                 <th className="text-center px-4 py-3 font-medium text-gray-500">إضافي</th>
+                                <th className="text-center px-4 py-3 font-medium text-gray-500">إضافات أخرى</th>
                                 <th className="text-center px-4 py-3 font-medium text-gray-500">خصم غياب</th>
                                 <th className="text-center px-4 py-3 font-medium text-gray-500">خصم تأخير</th>
                                 <th className="text-center px-4 py-3 font-medium text-gray-500">تأمينات</th>
+                                <th className="text-center px-4 py-3 font-medium text-gray-500">خصومات أخرى</th>
                                 <th className="text-center px-4 py-3 font-bold text-gray-900 text-base">الصافي</th>
+                                {!isDraft && <th className="text-center px-4 py-3 font-medium text-gray-500">تأكيد الاستلام</th>}
+                                {isDraft && <th className="text-center px-4 py-3 font-medium text-gray-500">تعديل</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y">
@@ -198,6 +258,24 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                                     <td className="px-4 py-3 text-center text-blue-600 font-medium">
                                         {Number(row.overtime_amount) > 0 ? `+${Number(row.overtime_amount).toLocaleString()}` : '-'}
                                     </td>
+                                    <td className="px-4 py-3 text-center text-blue-500">
+                                        {editingId === row.id ? (
+                                            <input 
+                                                type="number" 
+                                                value={editForm.custom_addition}
+                                                onChange={(e) => setEditForm({...editForm, custom_addition: Number(e.target.value)})}
+                                                className="w-20 px-1 py-1 border rounded text-center"
+                                                placeholder="مبلغ"
+                                            />
+                                        ) : (
+                                            Number(row.custom_addition) > 0 ? (
+                                                <div title={row.custom_addition_note}>
+                                                    +{Number(row.custom_addition).toLocaleString()}
+                                                    {row.custom_addition_note && <span className="block text-[10px] opacity-70">{row.custom_addition_note}</span>}
+                                                </div>
+                                            ) : '-'
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-center text-red-600">
                                         {Number(row.absence_deduction) > 0 ? `-${Number(row.absence_deduction).toFixed(2)}` : '-'}
                                         {row.absent_days > 0 && <span className="block text-xs text-red-400">({row.absent_days} يوم)</span>}
@@ -208,9 +286,70 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                                     <td className="px-4 py-3 text-center text-gray-500">
                                         {Number(row.gosi_deduction).toFixed(2)}
                                     </td>
+                                    <td className="px-4 py-3 text-center text-red-500">
+                                        {editingId === row.id ? (
+                                            <input 
+                                                type="number" 
+                                                value={editForm.custom_deduction}
+                                                onChange={(e) => setEditForm({...editForm, custom_deduction: Number(e.target.value)})}
+                                                className="w-20 px-1 py-1 border rounded text-center"
+                                                placeholder="مبلغ"
+                                            />
+                                        ) : (
+                                            Number(row.custom_deduction) > 0 ? (
+                                                <div title={row.custom_deduction_note}>
+                                                    -{Number(row.custom_deduction).toLocaleString()}
+                                                    {row.custom_deduction_note && <span className="block text-[10px] opacity-70">{row.custom_deduction_note}</span>}
+                                                </div>
+                                            ) : '-'
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-center font-bold text-gray-900 text-lg bg-gray-50/50">
                                         {Number(row.net_salary).toLocaleString()}
                                     </td>
+                                    {!isDraft && (
+                                        <td className="px-4 py-3 text-center">
+                                            {row.salary_confirmed_at ? (
+                                                <span className="flex flex-col items-center text-green-600">
+                                                    <CheckCircle className="w-4 h-4" />
+                                                    <span className="text-[10px]">{new Date(row.salary_confirmed_at).toLocaleDateString("ar-SA")}</span>
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400 text-xs italic">في انتظار التأكيد</span>
+                                            )}
+                                        </td>
+                                    )}
+                                    {isDraft && (
+                                        <td className="px-4 py-3 text-center">
+                                            {editingId === row.id ? (
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button 
+                                                        onClick={() => handleUpdateLine(row.id)}
+                                                        disabled={processing}
+                                                        className="p-1.5 bg-green-500 text-white rounded hover:bg-green-600"
+                                                        title="حفظ"
+                                                    >
+                                                        {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => setEditingId(null)}
+                                                        className="p-1.5 bg-gray-200 text-gray-600 rounded hover:bg-gray-300"
+                                                        title="إلغاء"
+                                                    >
+                                                        <X className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button 
+                                                    onClick={() => startEditing(row)}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition"
+                                                    title="تعديل الخصومات والإضافات"
+                                                >
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>

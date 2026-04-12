@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Search, FileText, Eye, Edit, Trash2, Check, X } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { Plus, Search, FileText, Eye, Edit, Trash2, Check, X, RotateCcw } from "lucide-react";
 
 interface Invoice {
     id: string;
@@ -22,6 +23,8 @@ export default function InvoicesPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [stateFilter, setStateFilter] = useState("");
+    const { data: session } = useSession();
+    const isSuperAdmin = (session?.user as any)?.role === "super_admin";
 
     useEffect(() => {
         fetchInvoices();
@@ -42,8 +45,12 @@ export default function InvoicesPage() {
         }
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذه الفاتورة؟")) return;
+    const handleDelete = async (id: string, isDraft: boolean) => {
+        const confirmMsg = isDraft 
+            ? "هل أنت متأكد من حذف هذه الفاتورة؟" 
+            : "تحذير: هذه فاتورة مؤكدة. حذفها سيؤدي لحذف القيود المحاسبية المرتبطة بها نهائياً. هل أنت متأكد؟";
+            
+        if (!confirm(confirmMsg)) return;
 
         const res = await fetch(`/api/accounting/invoices/${id}`, { method: "DELETE" });
         if (res.ok) {
@@ -51,6 +58,25 @@ export default function InvoicesPage() {
         } else {
             const error = await res.json();
             alert(error.error || "فشل الحذف");
+        }
+    };
+
+    const handleCancel = async (id: string) => {
+        const reason = prompt("يرجى إدخال سبب إلغاء الفاتورة:");
+        if (reason === null) return;
+
+        const res = await fetch(`/api/accounting/invoices/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "cancel", reason }),
+        });
+
+        if (res.ok) {
+            fetchInvoices();
+            alert("تم إلغاء الفاتورة وعكس القيود بنجاح");
+        } else {
+            const error = await res.json();
+            alert(`فشل الإلغاء: ${error.error}`);
         }
     };
 
@@ -192,7 +218,7 @@ export default function InvoicesPage() {
                                             >
                                                 <Eye className="w-4 h-4" />
                                             </Link>
-                                            {invoice.state === "draft" && (
+                                            {invoice.state === "draft" ? (
                                                 <>
                                                     <Link
                                                         href={`/accounting/invoices/${invoice.id}/edit`}
@@ -202,13 +228,34 @@ export default function InvoicesPage() {
                                                         <Edit className="w-4 h-4" />
                                                     </Link>
                                                     <button
-                                                        onClick={() => handleDelete(invoice.id)}
+                                                        onClick={() => handleDelete(invoice.id, true)}
                                                         className="p-1 hover:bg-red-50 rounded text-red-600"
                                                         title="حذف"
                                                     >
                                                         <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </>
+                                            ) : (
+                                                isSuperAdmin && (
+                                                    <>
+                                                        {invoice.state !== "cancelled" && (
+                                                            <button
+                                                                onClick={() => handleCancel(invoice.id)}
+                                                                className="p-1 hover:bg-orange-50 rounded text-orange-600"
+                                                                title="إلغاء الفاتورة"
+                                                            >
+                                                                <X className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleDelete(invoice.id, false)}
+                                                            className="p-1 hover:bg-red-50 rounded text-red-600"
+                                                            title="حذف نهائي"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </>
+                                                )
                                             )}
                                         </div>
                                     </td>

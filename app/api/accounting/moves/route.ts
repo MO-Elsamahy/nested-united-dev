@@ -139,6 +139,10 @@ export async function DELETE(request: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
+        if (session.user.role !== "super_admin") {
+            return NextResponse.json({ error: "Forbidden. Only super admins can delete journal entries." }, { status: 403 });
+        }
+
         const { searchParams } = new URL(request.url);
         const id = searchParams.get("id");
         if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });

@@ -119,10 +119,10 @@ const createStyles = (themeName: PDFTheme = 'default') => {
             width: "40%",
         },
         invoiceTitle: {
-            fontSize: 12,
-            color: t.secondaryText,
-            letterSpacing: 2,
-            marginBottom: 5,
+            fontSize: 14,
+            fontWeight: "bold",
+            color: t.brandParams, // Darker text
+            marginBottom: 2,
         },
         invoiceNumber: {
             fontSize: 24,
@@ -193,9 +193,10 @@ const createStyles = (themeName: PDFTheme = 'default') => {
 
         // Totals
         totalsSection: {
-            flexDirection: "row", // LTR container
-            justifyContent: "flex-start",
-            marginTop: 10,
+            flexDirection: "row-reverse", // Right-to-Left container
+            justifyContent: "space-between",
+            marginTop: 20,
+            paddingTop: 10,
         },
         totalsBox: {
             width: "40%",
@@ -209,6 +210,38 @@ const createStyles = (themeName: PDFTheme = 'default') => {
         },
         totalLabel: { fontSize: 9, color: t.secondaryText },
         totalValue: { fontSize: 10, fontWeight: "bold", color: t.brandParams, textAlign: "left" },
+        
+        // Terms Box (Right Side under descriptions)
+        termsBox: {
+            width: "55%", // Solid width to prevent character-level wrapping
+            paddingTop: 10,
+        },
+        termsTitle: {
+            fontSize: 9,
+            fontWeight: "bold",
+            color: t.brandParams,
+            marginBottom: 6,
+            borderBottom: `1 solid ${t.border}`,
+            paddingBottom: 2,
+            textAlign: "right",
+        },
+        termsLine: {
+            flexDirection: "row-reverse",
+            marginBottom: 4,
+            width: "100%",
+        },
+        termsBullet: {
+            fontSize: 10,
+            color: t.brandParams,
+            marginLeft: 6,
+        },
+        termsText: {
+            fontSize: 8,
+            color: t.secondaryText,
+            textAlign: "right",
+            lineHeight: 1.4,
+            flex: 1,
+        },
 
         grandTotalRow: {
             flexDirection: "row-reverse",
@@ -277,6 +310,7 @@ function generateInvoicePDF(invoice: any, company: any, logoPath: string | null,
                     logoPath && React.createElement(Image, { src: logoPath, style: styles.logoImage }),
                     React.createElement(Text, { style: styles.companyName }, company.company_name || "Nested United"),
                     company.tax_number && React.createElement(Text, { style: styles.companyDetail }, `الرقم الضريبي: ${company.tax_number}`),
+                    company.commercial_registration && React.createElement(Text, { style: styles.companyDetail }, `السجل التجاري: ${company.commercial_registration}`),
                     company.address && React.createElement(Text, { style: styles.companyDetail }, company.address),
                     company.phone && React.createElement(Text, { style: styles.companyDetail }, company.phone)
                 ),
@@ -285,7 +319,7 @@ function generateInvoicePDF(invoice: any, company: any, logoPath: string | null,
                 React.createElement(
                     View,
                     { style: styles.invoiceMeta },
-                    React.createElement(Text, { style: styles.invoiceTitle }, "فاتورة ضريبية"),
+                    React.createElement(Text, { style: styles.invoiceTitle }, company.invoice_type_label || "فاتورة ضريبية"),
                     React.createElement(Text, { style: styles.invoiceNumber }, invoice.invoice_number),
                     React.createElement(Text, { style: styles.statusBadge }, getStatusText(invoice.state))
                 )
@@ -352,10 +386,34 @@ function generateInvoicePDF(invoice: any, company: any, logoPath: string | null,
                 )
             ),
 
-            /* Totals Section */
+            /* Totals & Terms Section */
             React.createElement(
                 View,
                 { style: styles.totalsSection },
+                
+                /* Terms (Right) */
+                React.createElement(
+                    View,
+                    { style: styles.termsBox },
+                    company.invoice_terms && React.createElement(
+                        React.Fragment, 
+                        {}, 
+                        React.createElement(Text, { style: styles.termsTitle }, "الشروط والأحكام"),
+                        company.invoice_terms.split('\n').filter((l: string) => l.trim()).map((line: string, i: number) => {
+                            const content = line.replace(/^[-\u2022\u00b7]\s*/, '').trim();
+                            const isTitle = line.includes(':') && content.length < 20;
+
+                            return React.createElement(
+                                View,
+                                { key: i, style: styles.termsLine },
+                                !isTitle && React.createElement(Text, { style: styles.termsBullet }, "•"),
+                                React.createElement(Text, { style: styles.termsText }, content)
+                            );
+                        })
+                    )
+                ),
+
+                /* Totals (Left) */
                 React.createElement(
                     View,
                     { style: styles.totalsBox },
@@ -402,8 +460,11 @@ function generateInvoicePDF(invoice: any, company: any, logoPath: string | null,
             React.createElement(
                 View,
                 { style: styles.footer },
+                // Only Invoice Specific Terms in footer now (e.g. Net 30)
+                invoice.payment_terms && React.createElement(Text, { style: { ...styles.footerText, fontSize: 7, marginBottom: 8, fontWeight: 'bold' } }, `شروط الدفع: ${invoice.payment_terms}`),
+                
                 React.createElement(Text, { style: styles.footerText }, company.invoice_footer || "شكراً لتعاملكم معنا"),
-                React.createElement(Text, { style: styles.footerText }, "Nested United")
+                React.createElement(Text, { style: styles.footerText }, company.company_name || "Nested United")
             )
         )
     );

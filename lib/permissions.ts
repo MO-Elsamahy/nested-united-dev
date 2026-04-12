@@ -29,6 +29,19 @@ interface UserWithRole {
   role: UserRole;
 }
 
+// Default allowed paths for each role (prefixes)
+const ROLE_DEFAULT_PATHS: Record<string, string[]> = {
+  super_admin: ["/"], // Everything
+  admin: ["/dashboard", "/accounting", "/hr", "/crm"], // Most things
+  accountant: ["/accounting", "/dashboard", "/about"],
+  hr_manager: ["/hr", "/dashboard", "/about"],
+  maintenance_worker: ["/dashboard/maintenance", "/dashboard/unit-readiness", "/dashboard", "/about"],
+  employee: ["/dashboard", "/about"],
+};
+
+// Paths restricted from regular admins by default
+const ADMIN_RESTRICTED_PATHS = ["/dashboard/users", "/dashboard/activity-logs", "/settings/page-permissions"];
+
 export async function checkUserPermission(
   userId: string,
   pagePath: string,
@@ -66,44 +79,28 @@ export async function checkUserPermission(
     [userId, pagePath]
   );
 
-  // For maintenance workers, check permissions table first
-  if (user.role === "maintenance_worker") {
-    if (permission) {
-      // Permission exists in database, use it
-      // MySQL returns boolean as 0/1
-      const canView = permission.can_view === 1 || permission.can_view === true;
-      const canEdit = permission.can_edit === 1 || permission.can_edit === true;
-
-      let result: boolean;
-      if (action === "view") {
-        result = canView;
-      } else {
-        result = canEdit && canView;
-      }
-      serverPermissionCache.set(cacheKey, { result, timestamp: now });
-      return result;
-    } else {
-      // No permission in database, use default:
-      // - /dashboard/maintenance
-      // - /dashboard/unit-readiness
-      const defaultPages = ["/dashboard/maintenance", "/dashboard/unit-readiness"];
-      const canView = defaultPages.includes(pagePath);
-      const canEdit = canView;
-      const result = action === "view" ? canView : canEdit;
-      serverPermissionCache.set(cacheKey, { result, timestamp: now });
-      return result;
-    }
-  }
-
-  // For admins, check permissions table
+  // If no explicit permission in DB, check role defaults
   if (!permission) {
-    // If no specific permissions, give admins full access by default
-    if (user.role === "admin") {
+    // Check if path is restricted for admins
+    if (user.role === "admin" && ADMIN_RESTRICTED_PATHS.some(p => pagePath.startsWith(p))) {
+      serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
+      return false;
+    }
+
+    const defaultPaths = ROLE_DEFAULT_PATHS[user.role] || [];
+    const isAllowedByDefault = defaultPaths.some(p => p === "/" || pagePath.startsWith(p));
+
+    // Dashboard home is always allowed view
+    if (pagePath === "/dashboard" && action === "view") {
+        serverPermissionCache.set(cacheKey, { result: true, timestamp: now });
+        return true;
+    }
+
+    if (isAllowedByDefault) {
       serverPermissionCache.set(cacheKey, { result: true, timestamp: now });
       return true;
     }
 
-    // Any other role without explicit permission → deny
     serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
     return false;
   }

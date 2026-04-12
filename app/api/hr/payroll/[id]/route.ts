@@ -202,6 +202,43 @@ export async function PUT(
             }
         }
 
+        if (action === "update_line") {
+            if (run.status !== 'draft') {
+                return NextResponse.json({ error: "Can only update draft payrolls" }, { status: 400 });
+            }
+
+            const { detail_id, custom_deduction, custom_deduction_note, custom_addition, custom_addition_note } = await request.json();
+
+            // Fetch the detail line
+            const detail = await queryOne<any>("SELECT * FROM hr_payroll_details WHERE id = ? AND payroll_run_id = ?", [detail_id, id]);
+            if (!detail) return NextResponse.json({ error: "Detail not found" }, { status: 404 });
+
+            const newCustomDeduction = Number(custom_deduction || 0);
+            const newCustomAddition = Number(custom_addition || 0);
+
+            // Recalculate employee totals
+            // total_deductions = absence + late + gosi + custom_deduction
+            const totalDeductions = Number(detail.absence_deduction) + Number(detail.late_deduction) + Number(detail.gosi_deduction) + newCustomDeduction;
+            
+            // net_salary = (gross + overtime + custom_addition) - total_deductions
+            const netSalary = (Number(detail.gross_salary) + Number(detail.overtime_amount) + newCustomAddition) - totalDeductions;
+
+            // Update the detail line
+            await execute(`
+                UPDATE hr_payroll_details 
+                SET custom_deduction = ?, custom_deduction_note = ?, 
+                    custom_addition = ?, custom_addition_note = ?,
+                    total_deductions = ?, net_salary = ?
+                WHERE id = ?
+            `, [newCustomDeduction, custom_deduction_note || null, newCustomAddition, custom_addition_note || null, totalDeductions, netSalary, detail_id]);
+
+            // Update the run header total
+            const totalAgg = await queryOne<any>("SELECT SUM(net_salary) as total_amount FROM hr_payroll_details WHERE payroll_run_id = ?", [id]);
+            await execute("UPDATE hr_payroll_runs SET total_amount = ? WHERE id = ?", [totalAgg.total_amount, id]);
+
+            return NextResponse.json({ success: true, net_salary: netSalary, total_amount: totalAgg.total_amount });
+        }
+
         if (action === "delete") {
             if (run.status === 'approved' || run.status === 'paid') {
                 return NextResponse.json({ error: "Cannot delete approved/paid payrolls" }, { status: 400 });

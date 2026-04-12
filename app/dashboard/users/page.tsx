@@ -11,6 +11,7 @@ import { ChangePasswordButton } from "./ChangePasswordButton";
 import { EditPermissionsButton } from "./EditPermissionsButton";
 import { EditUserButton } from "./EditUserButton";
 import { DeleteUserButton } from "./DeleteUserButton";
+import { UserLogsButton } from "./UserLogsButton";
 
 interface DBUser {
   id: string;
@@ -123,6 +124,7 @@ export default async function UsersPage() {
                   userEmail={user.email}
                   userRole={user.role}
                 />
+                <UserLogsButton userId={user.id} />
                 <ChangePasswordButton userId={user.id} userEmail={user.email} />
                 <ToggleUserButton id={user.id} isActive={user.is_active} />
                 <DeleteUserButton userId={user.id} userName={user.name} userEmail={user.email} />
@@ -165,6 +167,7 @@ export default async function UsersPage() {
                     userEmail={user.email}
                     userRole={user.role}
                   />
+                  <UserLogsButton userId={user.id} />
                   <EditPermissionsButton userId={user.id} userName={user.name} />
                   <ChangePasswordButton userId={user.id} userEmail={user.email} />
                   <ToggleUserButton id={user.id} isActive={user.is_active} />

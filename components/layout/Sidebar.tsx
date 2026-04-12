@@ -90,14 +90,25 @@ export function Sidebar({ user, features }: SidebarProps) {
         }
 
         // For ALL other roles (admin, accountant, hr_manager, maintenance_worker):
-        // Check user_permissions table strictly
+        // 1. Check user_permissions table override
         const permission = permissions.find((p) => p.page_path === href);
-        if (permission && permission.can_view) {
-            return true;
+        if (permission) {
+            return !!permission.can_view;
         }
 
-        // If no permission set, default to hidden (strict mode)
-        return false;
+        // 2. Default visibility by role
+        const roleDefaults: Record<string, string[]> = {
+            admin: ["/dashboard", "/accounting", "/hr", "/crm"],
+            accountant: ["/accounting", "/dashboard"],
+            hr_manager: ["/hr", "/dashboard"],
+            maintenance_worker: ["/dashboard/maintenance", "/dashboard/unit-readiness", "/dashboard"],
+            employee: ["/dashboard"],
+        };
+
+        const allowedPrefixes = roleDefaults[user.role] || ["/dashboard"];
+        const isAllowedByDefault = allowedPrefixes.some(p => href.startsWith(p));
+
+        return isAllowedByDefault;
     };
 
     // Filter sections and items

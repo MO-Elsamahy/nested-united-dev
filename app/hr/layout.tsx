@@ -22,8 +22,8 @@ export default async function HRLayout({ children }: { children: React.ReactNode
     
     if (!isHRAdmin) {
         // If they are a regular employee, they shouldn't even be here in the management layout
-        // For now, redirect to dashboard as a safe fallback
-        redirect("/dashboard");
+        // Redirect them to their personal portal instead of the admin dashboard
+        redirect("/employee");
     }
 
     const features = await getAppFeatures();

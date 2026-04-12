@@ -126,6 +126,8 @@ export async function PUT(req: NextRequest) {
         if (smtp_from_name !== undefined) { updates.push("smtp_from_name = ?"); values.push(smtp_from_name); }
         if (invoice_number_prefix !== undefined) { updates.push("invoice_number_prefix = ?"); values.push(invoice_number_prefix); }
         if (payment_number_prefix !== undefined) { updates.push("payment_number_prefix = ?"); values.push(payment_number_prefix); }
+        if (body.invoice_type_label !== undefined) { updates.push("invoice_type_label = ?"); values.push(body.invoice_type_label); }
+        if (body.invoice_terms !== undefined) { updates.push("invoice_terms = ?"); values.push(body.invoice_terms); }
 
         if (updates.length === 0) {
             return NextResponse.json({ error: "No fields to update" }, { status: 400 });

@@ -11,18 +11,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check if current user is super admin
   const currentUser = await queryOne<{ role: string }>(
     "SELECT role FROM users WHERE id = ?",
     [session.user.id]
   );
 
-  if (currentUser?.role !== "super_admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const isSuperAdmin = currentUser?.role === "super_admin";
 
   const { searchParams } = new URL(request.url);
-  const userId = searchParams.get("user_id");
+  // Non-super-admins can only see their own logs
+  let userId = searchParams.get("user_id");
+  if (!isSuperAdmin) {
+    userId = session.user.id;
+  }
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
   const offset = (page - 1) * limit;

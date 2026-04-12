@@ -1,20 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Search, User, Users, Briefcase, ChevronRight, Loader2 } from "lucide-react";
-
-// ─── Quick nav shortcuts ───────────────────────────────────────────────────────
-const NAV_SHORTCUTS = [
-    { label: "الرواتب", subtitle: "HR → مسير الرواتب", href: "/hr/payroll", keyword: ["رواتب", "payroll", "مسير"] },
-    { label: "الموظفون", subtitle: "HR → قائمة الموظفين", href: "/hr/employees", keyword: ["موظف", "employee", "hr"] },
-    { label: "الحضور", subtitle: "HR → سجل الحضور", href: "/hr/attendance", keyword: ["حضور", "attend"] },
-    { label: "الصفقات", subtitle: "CRM → لوحة الصفقات", href: "/crm/deals", keyword: ["صفق", "deal", "crm", "كانبان"] },
-    { label: "العملاء", subtitle: "CRM → قائمة العملاء", href: "/crm/customers", keyword: ["عميل", "customer", "client"] },
-    { label: "الفواتير", subtitle: "المحاسبة → الفواتير", href: "/accounting/invoices", keyword: ["فاتور", "invoic"] },
-    { label: "قيود اليومية", subtitle: "المحاسبة → القيود", href: "/accounting/moves", keyword: ["قيد", "يومية", "move", "journal"] },
-    { label: "الإعدادات", subtitle: "إعدادات النظام", href: "/settings", keyword: ["اعداد", "setting"] },
-];
+import { getSearchablePages, normalizeSearchText } from "@/lib/search-indexing";
 
 const TYPE_META: Record<string, { icon: any; color: string; label: string; basePath: string }> = {
     customer: { icon: Users, color: "text-blue-500", label: "عميل", basePath: "/crm/customers" },
@@ -24,6 +14,9 @@ const TYPE_META: Record<string, { icon: any; color: string; label: string; baseP
 
 export function GlobalSearch() {
     const router = useRouter();
+    const { data: session } = useSession();
+    const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+    
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
@@ -77,11 +70,26 @@ export function GlobalSearch() {
         return () => clearTimeout(timer);
     }, [query]);
 
-    // Filtered nav shortcuts
-    const navMatches = query.length >= 1
-        ? NAV_SHORTCUTS.filter(n =>
-            n.keyword.some(k => n.label.includes(query) || n.subtitle.includes(query) || k.startsWith(query.toLowerCase())))
-        : [];
+    // Filtered nav shortcuts based on query and permissions
+    const navItems = useMemo(() => getSearchablePages(), []);
+    
+    const navMatches = useMemo(() => {
+        if (!query || query.length < 1) return [];
+        
+        const normQuery = normalizeSearchText(query);
+        
+        return navItems.filter(item => {
+            // Permission check
+            if (item.requiresSuperAdmin && !isSuperAdmin) return false;
+            
+            // Match against label, subtitle, or keywords
+            return (
+                normalizeSearchText(item.label).includes(normQuery) ||
+                normalizeSearchText(item.subtitle).includes(normQuery) ||
+                item.keywords.some(k => normalizeSearchText(k).includes(normQuery))
+            );
+        });
+    }, [query, navItems, isSuperAdmin]);
 
     const allItems = [...navMatches.map(n => ({ ...n, _type: "nav" })), ...results];
 
