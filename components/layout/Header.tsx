@@ -65,7 +65,7 @@ export function Header({ user, unreadCount: initialUnreadCount = 0, features }: 
 
           {/* App Switcher - Hidden on mobile, show on tablet+ */}
           <div className="hidden md:block">
-            <AppSwitcher features={features} />
+            <AppSwitcher features={features} user={user} />
           </div>
           <Breadcrumbs />
         </div>

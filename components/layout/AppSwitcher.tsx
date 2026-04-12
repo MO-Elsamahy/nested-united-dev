@@ -2,31 +2,45 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutGrid, Building2, Calculator, UserCog, Users2, Settings } from "lucide-react";
+import { LayoutGrid, Building2, Calculator, UserCog, Users2, Settings, Users } from "lucide-react";
 
 import { User } from "@/lib/types/database";
-import { AppFeatures, getAppFeatures } from "@/lib/features";
+import { AppFeatures } from "@/lib/features";
 
-export function AppSwitcher({ features }: { features?: AppFeatures }) {
+interface AppSwitcherProps {
+    features?: AppFeatures;
+    user?: User | null;
+}
+
+export function AppSwitcher({ features, user }: AppSwitcherProps) {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const apps = [
-        { id: "rentals", name: "إدارة التأجير", icon: Building2, href: "/dashboard", color: "text-blue-600" },
-        { id: "accounting", name: "النظام المالي", icon: Calculator, href: "/accounting", color: "text-emerald-600" },
-        { id: "hr", name: "الموارد البشرية", icon: UserCog, href: "/hr", color: "text-violet-600" },
-        { id: "crm", name: "إدارة العملاء", icon: Users2, href: "/crm", color: "text-indigo-600" },
-        { id: "settings", name: "الإعدادات", icon: Settings, href: "/settings", color: "text-gray-600" },
-    ].filter(app => {
-        // Fallback or explicit allow
-        if (!features) return true;
+    const role = user?.role;
+    const isSuperAdmin = role === "super_admin";
+    const isHRAdmin = isSuperAdmin; // HR management: super_admin only
+    const isAccountant = isSuperAdmin || role === "admin" || role === "accountant";
+    const isCRMUser = isSuperAdmin || role === "admin";
 
+    const apps = [
+        { id: "rentals",    name: "إدارة التأجير",         icon: Building2, href: "/dashboard", color: "text-blue-600",    show: true },
+        { id: "accounting", name: "النظام المالي",          icon: Calculator, href: "/accounting", color: "text-emerald-600", show: isAccountant },
+        { id: "hr",         name: "الموارد البشرية",        icon: UserCog,   href: "/hr",        color: "text-violet-600", show: isHRAdmin },
+        { id: "employee",   name: "بوابة الموظف",           icon: Users,     href: "/employee",  color: "text-orange-600", show: true },
+        { id: "crm",        name: "إدارة العملاء",          icon: Users2,    href: "/crm",       color: "text-indigo-600", show: isCRMUser },
+        { id: "settings",   name: "الإعدادات",              icon: Settings,  href: "/settings",  color: "text-gray-600",   show: isSuperAdmin },
+    ].filter(app => {
+        // 1. Role-based visibility
+        if (!app.show) return false;
+
+        // 2. Feature flag check
+        if (!features) return true;
         switch (app.id) {
             case "accounting": return features.accounting;
-            case "hr": return features.hr;
-            case "crm": return features.crm;
-            case "rentals": return features.rentals;
-            default: return true;
+            case "hr":         return features.hr;
+            case "crm":        return features.crm;
+            case "rentals":    return features.rentals;
+            default:           return true;
         }
     });
 

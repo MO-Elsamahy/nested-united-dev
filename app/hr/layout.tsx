@@ -17,12 +17,11 @@ export default async function HRLayout({ children }: { children: React.ReactNode
     // Redirect if no user
     if (!user) redirect("/login");
 
-    // Check permissions
-    const isHRAdmin = user.role === 'super_admin' || user.role === 'admin' || user.role === 'hr_manager';
+    // Check permissions — HR management is super_admin only
+    const isHRAdmin = user.role === 'super_admin';
     
     if (!isHRAdmin) {
-        // If they are a regular employee, they shouldn't even be here in the management layout
-        // Redirect them to their personal portal instead of the admin dashboard
+        // If they are not super_admin, redirect them to their personal portal
         redirect("/employee");
     }
 
