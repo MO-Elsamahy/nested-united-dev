@@ -93,8 +93,8 @@ export default async function BrowserAccountsPage() {
               <p className="text-gray-500 text-sm">Gathern</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">{gathernAccounts.length}</p>
             </div>
-            <div className="bg-green-50 p-3 rounded-xl flex items-center justify-center">
-              <GathernIcon size={24} className="text-green-500" />
+            <div className="bg-blue-900 p-3 rounded-xl flex items-center justify-center">
+              <GathernIcon size={32} className="text-white" />
             </div>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default async function BrowserAccountsPage() {
                     <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center ${account.platform === 'airbnb'
                       ? 'bg-gradient-to-br from-red-500 to-rose-600'
                       : account.platform === 'gathern'
-                        ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                        ? 'bg-blue-900'
                         : 'bg-gradient-to-br from-emerald-500 to-green-600'
                       }`}>
                       {account.platform === 'whatsapp' ? (
@@ -153,7 +153,7 @@ export default async function BrowserAccountsPage() {
                       ) : account.platform === 'airbnb' ? (
                         <AirbnbIcon size={28} className="text-white" />
                       ) : account.platform === 'gathern' ? (
-                        <GathernIcon size={28} className="text-white" />
+                        <GathernIcon size={40} className="text-white" />
                       ) : (
                         <Globe className="w-7 h-7 text-white" />
                       )}
@@ -168,12 +168,12 @@ export default async function BrowserAccountsPage() {
                         <h3 className="font-semibold text-gray-900 text-lg">
                           {account.account_name}
                         </h3>
-                        <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${account.platform === 'airbnb'
-                          ? 'bg-red-100 text-red-700'
-                          : account.platform === 'gathern'
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-emerald-100 text-emerald-700'
-                          }`}>
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${account.platform === 'airbnb'
+                            ? 'bg-red-100 text-red-700'
+                            : account.platform === 'gathern'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                            }`}>
                           {account.platform === 'airbnb'
                             ? 'Airbnb'
                             : account.platform === 'gathern'
