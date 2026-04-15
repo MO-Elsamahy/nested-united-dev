@@ -62,3 +62,24 @@ export async function PUT(
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
+
+// DELETE: Permanent delete for admin cleanup
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    
+    // Only HR Managers or Admins can delete
+    if (!session?.user || !['super_admin', 'admin', 'hr_manager'].includes(session.user.role)) {
+        return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
+    try {
+        await execute("DELETE FROM hr_requests WHERE id = ?", [id]);
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}

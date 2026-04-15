@@ -45,6 +45,7 @@ export default function NewEmployeePage() {
         sick_leave_balance: 0,
         bank_name: "",
         iban: "",
+        exclude_from_payroll: false,
     });
 
     useEffect(() => {
@@ -90,7 +91,7 @@ export default function NewEmployeePage() {
         const { name, value, type } = e.target;
         setFormData((prev) => ({
             ...prev,
-            [name]: type === "number" ? parseFloat(value) || 0 : value,
+            [name]: type === "checkbox" ? (e.target as HTMLInputElement).checked : (type === "number" ? parseFloat(value) || 0 : value),
         }));
     };
 
@@ -402,6 +403,27 @@ export default function NewEmployeePage() {
                                 min="0"
                             />
                         </div>
+                    </div>
+
+                    <div className="mt-6 pt-6 border-t font-semibold">
+                        <label className="flex items-center gap-3 cursor-pointer group">
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    name="exclude_from_payroll"
+                                    checked={formData.exclude_from_payroll}
+                                    onChange={handleChange}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:inline-start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
+                            </div>
+                            <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
+                                استبعاد الموظف من كشوف الرواتب
+                            </span>
+                        </label>
+                        <p className="text-xs text-slate-500 mt-2 mr-14 font-normal">
+                            عند تفعيل هذا الخيار، لن يتم إدراج هذا الموظف في مسودات الرواتب الشهرية التلقائية.
+                        </p>
                     </div>
                 </div>
 

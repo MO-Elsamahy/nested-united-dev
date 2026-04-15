@@ -27,10 +27,11 @@ export function JournalForm({ onClose, onSuccess, journal }: JournalFormProps) {
 
         try {
             const url = "/api/accounting/journals";
+            const method = journal?.id ? "PUT" : "POST";
             const res = await fetch(url, {
-                method: "POST",
+                method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
+                body: JSON.stringify(journal?.id ? { ...formData, id: journal.id } : formData),
             });
 
             if (!res.ok) {

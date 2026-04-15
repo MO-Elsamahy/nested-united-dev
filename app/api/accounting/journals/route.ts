@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     }
 
     try {
-        const journals = await query("SELECT * FROM accounting_journals ORDER BY name ASC");
+        const journals = await query("SELECT * FROM accounting_journals WHERE deleted_at IS NULL ORDER BY name ASC");
         return NextResponse.json(journals);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -24,8 +24,10 @@ export async function DELETE(request: Request) {
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        if (session.user.role !== "super_admin") {
-            return NextResponse.json({ error: "Forbidden. Only super admins can delete journals." }, { status: 403 });
+        const isAdmin = session.user.role === "super_admin" || session.user.role === "admin" || session.user.role === "accountant";
+        
+        if (!isAdmin) {
+            return NextResponse.json({ error: "Forbidden. Only admins and accountants can delete journals." }, { status: 403 });
         }
 
         const { searchParams } = new URL(request.url);
@@ -38,6 +40,30 @@ export async function DELETE(request: Request) {
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [generateUUID(), session.user.id, 'delete', 'journal', id, JSON.stringify({})]
+        );
+
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+// PUT: Update a journal
+export async function PUT(request: Request) {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    try {
+        const body = await request.json();
+        const { id, name, code, type, default_account_id } = body;
+
+        if (!id || !name || !code || !type) {
+            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+        }
+
+        await execute(
+            `UPDATE accounting_journals SET name = ?, code = ?, type = ?, default_account_id = ? WHERE id = ?`,
+            [name, code, type, default_account_id || null, id]
         );
 
         return NextResponse.json({ success: true });

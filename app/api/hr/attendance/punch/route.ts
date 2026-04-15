@@ -22,10 +22,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "نوع غير صالح" }, { status: 400 });
         }
 
-        // Get server time
+        // Get server time (Adjust for UTC+3 for KSA/Egypt)
         const now = new Date();
-        const today = now.toISOString().split("T")[0];
-        const currentTime = now.toISOString().slice(0, 19).replace("T", " ");
+        const localNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+        const today = localNow.toISOString().split("T")[0];
+        const currentTime = localNow.toISOString().slice(0, 19).replace("T", " ");
+
+        // We also need the local hours/minutes for late/overtime calculation
+        const localHours = localNow.getUTCHours();
+        const localMinutes = localNow.getUTCMinutes();
 
         // Check if attendance record exists for today
         const existing = await queryOne<any>(
@@ -88,7 +93,7 @@ export async function POST(request: Request) {
             let status = "present";
 
             const workStartMinutes = timeToMinutes(workStartTimeStr) + lateGraceMinutes;
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const currentMinutes = localHours * 60 + localMinutes;
 
             if (currentMinutes > workStartMinutes) {
                 lateMinutes = currentMinutes - (timeToMinutes(workStartTimeStr) + lateGraceMinutes); // Late relative to grace end? Or start? Usually start.

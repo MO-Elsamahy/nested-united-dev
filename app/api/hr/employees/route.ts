@@ -74,6 +74,7 @@ export async function POST(request: Request) {
             sick_leave_balance,
             bank_name,
             iban,
+            exclude_from_payroll,
         } = body;
 
         if (!full_name) {
@@ -97,8 +98,9 @@ export async function POST(request: Request) {
         id, user_id, employee_number, full_name, national_id, phone, email,
         department, job_title, hire_date, contract_type,
         basic_salary, housing_allowance, transport_allowance, other_allowances,
-        annual_leave_balance, sick_leave_balance, bank_name, iban, shift_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        annual_leave_balance, sick_leave_balance, bank_name, iban, shift_id,
+        exclude_from_payroll
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 user_id || null,
@@ -120,6 +122,7 @@ export async function POST(request: Request) {
                 bank_name || null,
                 iban || null,
                 body.shift_id || null,
+                exclude_from_payroll ? 1 : 0,
             ]
         );
 

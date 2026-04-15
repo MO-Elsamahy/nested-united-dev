@@ -73,6 +73,7 @@ export async function PUT(
             bank_name,
             iban,
             status,
+            exclude_from_payroll,
         } = body;
 
         await execute(
@@ -96,7 +97,8 @@ export async function PUT(
         bank_name = ?,
         iban = ?,
         status = ?,
-        shift_id = ?
+        shift_id = ?,
+        exclude_from_payroll = ?
       WHERE id = ?`,
             [
                 user_id || null,
@@ -119,6 +121,7 @@ export async function PUT(
                 iban || null,
                 status || "active",
                 body.shift_id || null,
+                exclude_from_payroll ? 1 : 0,
                 id,
             ]
         );

@@ -11,7 +11,8 @@ import {
     Calendar,
     Users,
     Filter,
-    Loader2
+    Loader2,
+    Trash2
 } from "lucide-react";
 
 export default function HRRequestsPage() {
@@ -55,6 +56,27 @@ export default function HRRequestsPage() {
                 fetchRequests();
             } else {
                 alert("حدث خطأ");
+            }
+        } catch (error) {
+            alert("فشل الاتصال");
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("هل أنت متأكد من حذف هذا الطلب نهائياً من قاعدة البيانات؟")) return;
+        
+        setProcessingId(id);
+        try {
+            const res = await fetch(`/api/hr/requests/${id}`, {
+                method: "DELETE"
+            });
+
+            if (res.ok) {
+                fetchRequests();
+            } else {
+                alert("حدث خطأ أثناء الحذف");
             }
         } catch (error) {
             alert("فشل الاتصال");
@@ -172,6 +194,14 @@ export default function HRRequestsPage() {
                                         <span>{req.status === "approved" ? "تم القبول" : "تم الرفض"}</span>
                                     </div>
                                 )}
+                                <button
+                                    onClick={() => handleDelete(req.id)}
+                                    disabled={processingId === req.id}
+                                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="حذف الطلب"
+                                >
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
                             </div>
                         </div>
                     ))

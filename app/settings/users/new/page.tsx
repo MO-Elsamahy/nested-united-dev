@@ -89,6 +89,7 @@ export default function NewUserPage() {
                             <option value="accountant">محاسب (Accountant)</option>
                             <option value="hr_manager">مدير موارد بشرية (HR Manager)</option>
                             <option value="maintenance_worker">عامل صيانة (Maintenance)</option>
+                            <option value="employee">موظف (Employee)</option>
                         </select>
                         <p className="text-gray-500 text-xs mt-1">
                             المحاسب يرى النظام المالي فقط. عامل الصيانة يرى التذاكر فقط.

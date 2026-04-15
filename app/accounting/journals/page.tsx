@@ -16,6 +16,7 @@ export default function JournalsPage() {
     const [journals, setJournals] = useState<Journal[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [editingJournal, setEditingJournal] = useState<Journal | null>(null);
 
     useEffect(() => {
         fetchJournals();
@@ -31,6 +32,20 @@ export default function JournalsPage() {
             setLoading(false);
         }
     }
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("هل أنت متأكد من حذف هذا الدفتر؟")) return;
+        try {
+            const res = await fetch(`/api/accounting/journals?id=${id}`, { method: "DELETE" });
+            if (res.ok) {
+                fetchJournals();
+            } else {
+                alert("فشل الحذف. قد لا تملك الصلاحيات الكافية.");
+            }
+        } catch (error) {
+            alert("حدث خطأ في الاتصال");
+        }
+    };
 
     const getJournalIcon = (type: string) => {
         switch (type) {
@@ -60,7 +75,7 @@ export default function JournalsPage() {
                     <p className="text-gray-600">إدارة الدفاتر المحاسبية</p>
                 </div>
                 <button
-                    onClick={() => setShowForm(true)}
+                    onClick={() => { setEditingJournal(null); setShowForm(true); }}
                     className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
                 >
                     <Plus className="w-4 h-4" /> <span>يومية جديدة</span>
@@ -80,7 +95,23 @@ export default function JournalsPage() {
                                         <div className={`p-3 rounded-lg ${getJournalColor(journal.type).split(" ")[1]}`}>
                                             {getJournalIcon(journal.type)}
                                         </div>
-                                        <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs h-fit">{journal.code}</span>
+                                        <div className="flex gap-2 h-fit">
+                                            <button
+                                                onClick={() => { setEditingJournal(journal); setShowForm(true); }}
+                                                className="p-2 hover:bg-gray-100 rounded text-gray-500 hover:text-blue-600 transition"
+                                                title="تعديل"
+                                            >
+                                                <Plus className="w-4 h-4 rotate-45" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleDelete(journal.id)}
+                                                className="p-2 hover:bg-red-50 rounded text-gray-400 hover:text-red-600 transition"
+                                                title="حذف"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                            <span className="font-mono bg-gray-100 px-2 py-1 rounded text-xs">{journal.code}</span>
+                                        </div>
                                     </div>
                                     <h3 className="font-bold text-lg mb-1">{journal.name}</h3>
 
@@ -105,8 +136,9 @@ export default function JournalsPage() {
 
             {showForm && (
                 <JournalForm
-                    onClose={() => setShowForm(false)}
-                    onSuccess={() => { setShowForm(false); fetchJournals(); }}
+                    journal={editingJournal}
+                    onClose={() => { setShowForm(false); setEditingJournal(null); }}
+                    onSuccess={() => { setShowForm(false); setEditingJournal(null); fetchJournals(); }}
                 />
             )}
         </div>
