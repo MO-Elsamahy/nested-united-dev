@@ -28,21 +28,29 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "50");
   const offset = (page - 1) * limit;
   const fromDate = searchParams.get("from_date");
+  const toDate = searchParams.get("to_date");
 
   try {
     // Build WHERE clause
     const conditions: string[] = [];
     const params: any[] = [];
 
-    // Default: last 30 days
     if (fromDate) {
       conditions.push("ual.created_at >= ?");
-      params.push(fromDate);
-    } else {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      params.push(fromDate.includes(" ") ? fromDate : `${fromDate} 00:00:00`);
+    }
+    
+    if (toDate) {
+      conditions.push("ual.created_at <= ?");
+      params.push(toDate.includes(" ") ? toDate : `${toDate} 23:59:59`);
+    }
+
+    // Default: if no user_id and no dates, limit to last 90 days to prevent overloading
+    if (!userId && !fromDate && !toDate) {
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
       conditions.push("ual.created_at >= ?");
-      params.push(thirtyDaysAgo.toISOString().slice(0, 19).replace("T", " "));
+      params.push(ninetyDaysAgo.toISOString().slice(0, 19).replace("T", " "));
     }
 
     if (userId) {

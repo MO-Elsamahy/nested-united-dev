@@ -44,6 +44,8 @@ function ActivityLogsContent() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId);
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
 
@@ -62,7 +64,7 @@ function ActivityLogsContent() {
     if (hasViewPermission === true) {
       loadLogs();
     }
-  }, [page, selectedUserId, hasViewPermission]);
+  }, [page, selectedUserId, fromDate, toDate, hasViewPermission]);
 
   const loadUsers = async () => {
     try {
@@ -90,11 +92,12 @@ function ActivityLogsContent() {
       if (selectedUserId) {
         params.append("user_id", selectedUserId);
       }
-
-      // Only show logs from last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      params.append("from_date", thirtyDaysAgo.toISOString().split("T")[0]);
+      if (fromDate) {
+        params.append("from_date", fromDate);
+      }
+      if (toDate) {
+        params.append("to_date", toDate);
+      }
 
       const response = await fetch(`/api/activity-logs?${params}`);
       if (response.ok) {
@@ -181,25 +184,73 @@ function ActivityLogsContent() {
 
       {/* Filters */}
       {isSuperAdmin && (
-        <div className="bg-white rounded-lg shadow p-4">
-          <div className="flex items-center gap-4">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <label className="text-sm font-medium">تصفية حسب المستخدم:</label>
-            <select
-              value={selectedUserId || ""}
-              onChange={(e) => {
-                setSelectedUserId(e.target.value || null);
-                setPage(1);
-              }}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">جميع المستخدمين</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name} ({user.email})
-                </option>
-              ))}
-            </select>
+        <div className="bg-white rounded-lg shadow p-4 space-y-4">
+          <div className="flex flex-wrap items-center gap-6">
+            <div className="flex items-center gap-3">
+              <Filter className="w-5 h-5 text-gray-400" />
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-wider">المستخدم</span>
+                <select
+                  value={selectedUserId || ""}
+                  onChange={(e) => {
+                    setSelectedUserId(e.target.value || null);
+                    setPage(1);
+                  }}
+                  className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all text-sm min-w-[200px]"
+                >
+                  <option value="">جميع المستخدمين</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-wider">من تاريخ</span>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(e) => {
+                    setFromDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col">
+                <span className="text-[10px] text-gray-400 font-bold mb-1 uppercase tracking-wider">إلى تاريخ</span>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(e) => {
+                    setToDate(e.target.value);
+                    setPage(1);
+                  }}
+                  className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+                />
+              </div>
+            </div>
+
+            {(selectedUserId || fromDate || toDate) && (
+              <button
+                onClick={() => {
+                  setSelectedUserId(null);
+                  setFromDate("");
+                  setToDate("");
+                  setPage(1);
+                }}
+                className="mt-5 text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+              >
+                مسح التصفية
+              </button>
+            )}
           </div>
         </div>
       )}
