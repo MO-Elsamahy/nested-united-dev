@@ -1,9 +1,12 @@
 "use client";
 
-// Temporarily disabled - /api/activity-logs needs authentication update
-// Will be re-enabled after API route is converted to use NextAuth session
+import { useActivityLog } from "@/lib/hooks/useActivityLog";
 
+/**
+ * ActivityLogger component
+ * Automatically logs page views and user activity within the dashboard
+ */
 export function ActivityLogger() {
-  // TODO: Re-enable after /api/activity-logs is updated
+  useActivityLog();
   return null;
 }
