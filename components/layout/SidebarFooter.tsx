@@ -22,7 +22,7 @@ export function SidebarFooter({ user }: SidebarFooterProps) {
                     <p className="text-xs text-gray-500 truncate capitalize">{user.role}</p>
                 </div>
                 <button
-                    onClick={() => signOut()}
+                    onClick={() => signOut({ callbackUrl: "/login" })}
                     className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     title="تسجيل الخروج"
                 >
