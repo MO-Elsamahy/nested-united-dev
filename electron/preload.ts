@@ -88,4 +88,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   sendMessage: (payload: { accountId: string; platform: 'airbnb' | 'gathern'; threadId: string; text: string; metadata?: any }) =>
     ipcRenderer.invoke('send-message', payload),
+
+  // Platform messages (direct DB read — useful for debugging)
+  getPlatformMessages: (params: { accountId?: string; limit?: number }) =>
+    ipcRenderer.invoke('get-platform-messages', params),
+
+  // Session health (latest per account)
+  getSessionHealth: () =>
+    ipcRenderer.invoke('get-session-health'),
+
+  // Session health change event (pushed by polling service)
+  onSessionHealthChanged: (callback: (data: { accountId: string; healthy: boolean; reason: string }) => void) => {
+    ipcRenderer.on('session-health-changed', (_, data) => callback(data));
+  },
+  offSessionHealthChanged: (callback: any) => {
+    ipcRenderer.removeListener('session-health-changed', callback);
+  },
 });
