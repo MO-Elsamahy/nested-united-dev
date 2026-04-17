@@ -16,8 +16,12 @@ import * as fs from "fs";
 import { spawn, ChildProcess } from "child_process";
 import mysql from "mysql2/promise";
 import { PollingService } from "./polling-service";
-import { BrowserAccountSession, sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions } from "./platform-api";
+import { BrowserAccountSession, sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, resolveBridgeResponse } from "./platform-api";
+import { attachCdpInterceptor, CdpInterceptorHandle } from "./cdp-interceptor";
 
+// Track active CDP interceptors per account so we can detach/reattach on
+// DevTools open/close and on window destruction without leaking handles.
+const cdpHandles = new Map<string, CdpInterceptorHandle>();
 
 let nextServerProcess: ChildProcess | null = null;
 
@@ -203,13 +207,10 @@ function createMainWindow() {
   );
 
 
-  // Discovery Logger (for debugging)
   // --- WEBVIEW FETCH BRIDGE HANDLER ---
-  ipcMain.on('exec-fetch-response', (event, response) => {
-    // This will be picked up by the pending promises in platform-api.ts
-    const { requestId, success, data, error } = response;
-    // We'll use a global event emitter for simplicity since platform-api and main are separate modules usually
-    app.emit('bridge-fetch-response', response);
+  // Routes exec-fetch-response from webview preload → platform-api promise map
+  ipcMain.on('exec-fetch-response', (_event, response) => {
+    resolveBridgeResponse(response);
   });
 
   dashboardSession.webRequest.onCompleted(
@@ -452,30 +453,73 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     }
   });
 
+  // ──────────────────────────────────────────────────────────────────────────
+  // CHROME DEVTOOLS PROTOCOL NETWORK INTERCEPTOR
+  // Sits at the network layer, so it captures every Airbnb / Gathern API
+  // response regardless of whether the page used fetch, XHR, WebSocket or a
+  // service worker. The captured JSON is routed to the polling service.
+  //
+  // Only one CDP client can attach at a time, so we detach when the user
+  // opens Chromium DevTools and re-attach when they close it.
+  // ──────────────────────────────────────────────────────────────────────────
+  const attachCdp = () => {
+    if (accountSession.platform !== 'airbnb' && accountSession.platform !== 'gathern') return;
+    // Avoid stacking: detach any existing handle first.
+    cdpHandles.get(accountSession.id)?.detach();
+    const handle = attachCdpInterceptor(
+      browserWindow.webContents,
+      (url, json) => {
+        if (!pollingService) return;
+        pollingService
+          .processSnapshot(accountSession.id, url, json)
+          .catch(err => console.warn(`[CDP][${accountSession.accountName}] process error:`, err?.message));
+      },
+      { label: accountSession.accountName }
+    );
+    cdpHandles.set(accountSession.id, handle);
+  };
+
+  // Attach as early as possible — dom-ready fires before the SPA's first API
+  // calls, ensuring we don't miss the initial inbox payload.
+  browserWindow.webContents.on('dom-ready', () => {
+    console.log("[Browser Window] DOM ready");
+    attachCdp();
+  });
+
   browserWindow.webContents.on('did-finish-load', () => {
     console.log("[Browser Window] Page loaded");
-
-    // Inject custom CSS
     browserWindow.webContents.insertCSS(`
       .announcement-banner { display: none !important; }
     `);
-
-  // Clean Page-as-API Approach: No more scrapers or DOM watchers
-  // Real-time synchronization is handled via the webview-preload.ts interceptor
-  });
-
-  // Handle messages from webview (like captured tokens)
-  browserWindow.webContents.on("ipc-message", (event, channel, ...args) => {
-    // This would be for webview-to-main IPC, but it's simpler to use message channel if needed
   });
 
   browserWindow.webContents.on("did-navigate-in-page", () => {
-    console.log("[Browser Window] In-page navigation detected");
+    // Same WebContents, same CDP session — nothing to do.
   });
 
-  // Re-inject on full navigation
   browserWindow.webContents.on("did-navigate", () => {
-    console.log("[Browser Window] Full navigation detected");
+    // Full navigation keeps the same WebContents too; CDP stays attached.
+    // No-op unless we ever need to reset pending-request state.
+  });
+
+  // DevTools can't coexist with our CDP client. Swap cleanly on user request.
+  browserWindow.webContents.on('devtools-opened', () => {
+    const h = cdpHandles.get(accountSession.id);
+    if (h) {
+      console.log(`[CDP][${accountSession.accountName}] detaching for DevTools`);
+      h.detach();
+      cdpHandles.delete(accountSession.id);
+    }
+  });
+
+  browserWindow.webContents.on('devtools-closed', () => {
+    console.log(`[CDP][${accountSession.accountName}] re-attaching after DevTools`);
+    attachCdp();
+  });
+
+  browserWindow.webContents.on('destroyed', () => {
+    cdpHandles.get(accountSession.id)?.detach();
+    cdpHandles.delete(accountSession.id);
   });
 
   // Handle page title updates
@@ -527,6 +571,8 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
 
   // Handle window close
   browserWindow.on("closed", () => {
+    cdpHandles.get(accountSession.id)?.detach();
+    cdpHandles.delete(accountSession.id);
     const account = browserSessions.get(accountSession.id);
     if (account) {
       account.window = undefined;
@@ -884,10 +930,10 @@ ipcMain.handle("open-browser-account", (_, accountData: any) => {
   account.window = createBrowserWindow(account);
   notifyTabsChanged();
 
-  // STAGE 2: Start Polling for API platforms immediately
+  // STAGE 2: Start health polling for API platforms (reads flow via CDP).
   if (pollingService && (account.platform === 'airbnb' || account.platform === 'gathern')) {
-    console.log(`[Main Process] 🚀 Triggering immediate polling start for ${account.accountName} (${account.platform})`);
-    pollingService.startPolling(account.id);
+    console.log(`[Main Process] 🚀 Starting health polling for ${account.accountName} (${account.platform})`);
+    pollingService.startHealthPolling(account.id);
   }
 
   return { success: true };
@@ -973,6 +1019,77 @@ async function getMainDbConnection() {
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hidden warm-up windows
+// Opens a hidden BrowserWindow for Gathern accounts that have no chatAuthToken
+// so the request sniffer captures the Bearer token automatically.
+// The window is closed after 20 seconds.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function warmUpMissingTokens() {
+  const gathernWithoutToken = Array.from(browserSessions.values()).filter(
+    s => s.platform === 'gathern' && !s.chatAuthToken
+  );
+
+  if (gathernWithoutToken.length === 0) {
+    console.log('[WarmUp] ✅  All Gathern accounts have tokens — no warm-up needed');
+    return;
+  }
+
+  console.log(`[WarmUp] 🔥  Starting token warm-up for ${gathernWithoutToken.length} Gathern account(s)`);
+
+  for (const account of gathernWithoutToken) {
+    const partition = `persist:${account.partition}`;
+    const ses = session.fromPartition(partition, { cache: true });
+
+    const win = new BrowserWindow({
+      width: 1,
+      height: 1,
+      show: false,
+      skipTaskbar: true,
+      webPreferences: {
+        session: ses,
+        preload: path.join(__dirname, 'webview-preload.js'),
+        contextIsolation: true,
+        nodeIntegration: false,
+      },
+    });
+
+    win.loadURL('https://business.gathern.co/app/chat');
+    account.window = win;
+
+    // Attach CDP so any chats the Gathern page fetches during warm-up flow
+    // into the unified inbox alongside the Bearer-token sniffing.
+    let warmHandle: CdpInterceptorHandle | null = null;
+    win.webContents.once('dom-ready', () => {
+      warmHandle = attachCdpInterceptor(
+        win.webContents,
+        (url, json) => {
+          if (!pollingService) return;
+          pollingService
+            .processSnapshot(account.id, url, json)
+            .catch(() => { /* silent during warm-up */ });
+        },
+        { label: `warm:${account.accountName}` }
+      );
+    });
+
+    setTimeout(() => {
+      try { warmHandle?.detach(); } catch { /* ignore */ }
+      if (!win.isDestroyed()) {
+        win.close();
+      }
+      const s = browserSessions.get(account.id);
+      if (s && s.window === win) {
+        s.window = undefined;
+      }
+      console.log(`[WarmUp] 🔒  Closed warm-up window for ${account.accountName}`);
+    }, 20_000);
+
+    console.log(`[WarmUp] 🌐  Opened warm-up window for ${account.accountName}`);
+  }
+}
+
 ipcMain.handle("get-platform-messages", async (_, { accountId, limit = 50 }) => {
     console.log(`[Main] Fetching messages from DB for ${accountId || 'all accounts'}`);
     const connection = await getMainDbConnection();
@@ -1012,6 +1129,28 @@ ipcMain.handle("get-session-health-status", async () => {
     } finally {
         await connection.end();
     }
+});
+
+// Session health — latest log per browser account
+ipcMain.handle("get-session-health", async () => {
+  const connection = await getMainDbConnection();
+  try {
+    const [rows]: any = await connection.execute(`
+      SELECT shl.browser_account_id, shl.platform, shl.status, shl.error_message, shl.checked_at,
+             ba.account_name
+      FROM session_health_logs shl
+      INNER JOIN (
+        SELECT browser_account_id, MAX(checked_at) AS latest
+        FROM session_health_logs GROUP BY browser_account_id
+      ) lk ON shl.browser_account_id = lk.browser_account_id AND shl.checked_at = lk.latest
+      LEFT JOIN browser_accounts ba ON ba.id = shl.browser_account_id
+    `);
+    return { success: true, health: rows };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  } finally {
+    await connection.end();
+  }
 });
 
 // Browser window controls
@@ -1077,31 +1216,6 @@ ipcMain.on("new-notification-from-webview", (_, data) => {
   mainWindow?.webContents.send("browser-notification", data);
 });
 
-// Real-time Chat Sync from Webview
-ipcMain.on("sync-chats-from-webview", async (event, { platform, chats, data }) => {
-  const senderWebContents = event.sender;
-  
-  // Find the account session that owns this webview
-  let accountId: string | undefined;
-  for (const [id, session] of Array.from(browserSessions.entries()) as [string, BrowserAccountSession][]) {
-    if (session.window?.webContents === senderWebContents) {
-      accountId = id;
-      break;
-    }
-  }
-
-  if (accountId && pollingService) {
-    console.log(`[Main Process] 🔄 Real-time sync triggered for ${platform} (${accountId})`);
-    
-    if (platform === 'gathern' && chats) {
-      await pollingService.saveGathernMessages(accountId, chats);
-    }
-    
-    // Notify dashboard that sync is complete
-    mainWindow?.webContents.send('sync-complete', { accountId, platform });
-  }
-});
-
 // Handle database notifications from renderer
 ipcMain.on("database-notification", (_, data: { title: string; body: string; id: string }) => {
   console.log("[Main Process] Received database notification:", data);
@@ -1148,7 +1262,13 @@ ipcMain.handle("send-message", async (_, payload: { accountId: string; platform:
   if (!account) return { success: false, error: "جلسة الحساب غير موجودة — يرجى فتح واجهة الحساب أولاً" };
   
   try {
-    const ok = await sendPlatformMessage(payload.accountId, payload.threadId, payload.text);
+    console.log(`[IPC send-message] ▶️ account=${payload.accountId} platform=${payload.platform} thread=${payload.threadId} textLen=${payload.text?.length || 0}`);
+    const op = sendPlatformMessage(payload.accountId, payload.threadId, payload.text);
+    const ok = await Promise.race([
+      op,
+      new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('Send timed out after 60s')), 60_000)),
+    ]);
+    console.log(`[IPC send-message] ✅ account=${payload.accountId} thread=${payload.threadId}`);
     return { success: ok };
   } catch(e: any) {
     console.error(`[IPC send-message] ❌ Error:`, e.message);
@@ -1182,9 +1302,13 @@ app.whenReady().then(() => {
   if (mainWindow) {
     pollingService = new PollingService(mainWindow);
     
-    // START POLLNG FROM DATABASE (All active accounts)
+    // START POLLING FROM DATABASE (All active accounts)
     console.log(`[Main Process] 📦 Initializing background sync for all database accounts...`);
-    pollingService.startPollingFromDB().catch((err: any) => {
+    pollingService.startPollingFromDB().then(() => {
+      // Warm-up: open a hidden window for Gathern accounts that have no Bearer token
+      // so the token sniffer can capture it automatically
+      warmUpMissingTokens();
+    }).catch((err: any) => {
       console.error("[Main Process] ❌ Failed to start DB polling:", err);
     });
 

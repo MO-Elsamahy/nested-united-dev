@@ -64,6 +64,7 @@ sync_results.json
 # Local Data
 /browser-data/
 /tmp/
+/debug/
 
 # IDE
 .idea/

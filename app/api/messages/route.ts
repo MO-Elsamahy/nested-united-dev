@@ -1,62 +1,161 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { query } from '@/lib/db';
+import { query, execute } from '@/lib/db';
+
+// ─────────────────────────────────────────────
+// GET /api/messages
+//   ?limit=50               → inbox list (one latest message per thread)
+//   ?threadId=XXX           → full thread history
+//   ?accountId=XXX          → filter by browser_account_id
+//   ?platform=airbnb|gathern → filter by platform
+// ─────────────────────────────────────────────
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const accountId = searchParams.get('accountId');
-  const threadId = searchParams.get('threadId'); // If provided, fetch history for this thread
-  const limit = parseInt(searchParams.get('limit') || '50');
+  const accountId  = searchParams.get('accountId');
+  const threadId   = searchParams.get('threadId');
+  const platform   = searchParams.get('platform');
+  const limit      = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
 
   try {
     if (threadId) {
-      // ─────────────────────────────────────────────
-      // CHAT HISTORY: Get all messages for a specific thread
-      // ─────────────────────────────────────────────
-      const messages = await query(`
-        SELECT id, platform_account_id, platform, thread_id, platform_msg_id, 
-               guest_name, message_text, is_from_me, sent_at, timestamp as received_at,
-               raw_data
-        FROM platform_messages
-        WHERE thread_id = ?
-        ORDER BY sent_at ASC
-      `, [threadId]);
-      
-      return NextResponse.json({ success: true, messages });
-    } else {
-      // ─────────────────────────────────────────────
-      // INBOX LIST: Get exactly 1 LATEST message per thread (Compatible with older MySQL)
-      // ─────────────────────────────────────────────
+      // ──────────────────────────────────────────────
+      // THREAD HISTORY — all messages for one thread
+      // ──────────────────────────────────────────────
+
+      // Accept optional accountId to scope to one browser account
+      const params: any[] = [threadId];
       let sql = `
-        SELECT pm.*, ba.account_name
+        SELECT
+          pm.id,
+          pm.browser_account_id  AS platform_account_id,
+          pm.platform,
+          pm.thread_id,
+          pm.platform_msg_id,
+          COALESCE(NULLIF(ptm.guest_name, ''), NULLIF(pm.guest_name, ''), 'Guest') AS guest_name,
+          pm.sender_name,
+          pm.message_text,
+          pm.is_from_me,
+          pm.sent_at,
+          pm.sent_at             AS received_at,
+          pm.raw_data,
+          ba.account_name
         FROM platform_messages pm
-        INNER JOIN (
-          SELECT MAX(id) as latest_id
-          FROM platform_messages
-          WHERE (platform_account_id, thread_id, sent_at) IN (
-            SELECT platform_account_id, thread_id, MAX(sent_at)
-            FROM platform_messages
-            GROUP BY platform_account_id, thread_id
-          )
-          GROUP BY platform_account_id, thread_id
-        ) latest ON pm.id = latest.latest_id
-        LEFT JOIN browser_accounts ba ON ba.id = pm.platform_account_id
-        WHERE 1=1
+        LEFT JOIN browser_accounts ba ON ba.id = pm.browser_account_id
+        LEFT JOIN platform_thread_metadata ptm
+          ON ptm.browser_account_id = pm.browser_account_id
+         AND ptm.thread_id = pm.thread_id
+         AND ptm.platform = pm.platform
+        WHERE pm.thread_id = ?
       `;
-      const params: any[] = [];
 
       if (accountId && accountId !== 'all') {
-        sql += ' AND pm.platform_account_id = ?';
+        sql += ' AND pm.browser_account_id = ?';
         params.push(accountId);
       }
 
-      sql += ' ORDER BY pm.sent_at DESC LIMIT ?';
-      params.push(limit);
+      sql += ' ORDER BY pm.sent_at ASC';
 
       const messages = await query(sql, params);
       return NextResponse.json({ success: true, messages });
     }
+
+    // ──────────────────────────────────────────────
+    // INBOX LIST — one latest message per thread
+    // Uses a subquery to get MAX(sent_at) per (browser_account_id, thread_id)
+    // ──────────────────────────────────────────────
+    const params: any[] = [];
+    let whereClauses = '1=1';
+
+    if (accountId && accountId !== 'all') {
+      whereClauses += ' AND pm.browser_account_id = ?';
+      params.push(accountId);
+    }
+
+    if (platform && platform !== 'all') {
+      whereClauses += ' AND pm.platform = ?';
+      params.push(platform);
+    }
+
+    // Add limit at the end
+    params.push(limit);
+
+    const sql = `
+      SELECT
+        pm.id,
+        pm.browser_account_id  AS platform_account_id,
+        pm.platform,
+        pm.thread_id,
+        pm.platform_msg_id,
+        COALESCE(NULLIF(ptm.guest_name, ''), NULLIF(pm.guest_name, ''), 'Guest') AS guest_name,
+        pm.sender_name,
+        pm.message_text,
+        pm.is_from_me,
+        pm.sent_at,
+        pm.sent_at             AS received_at,
+        pm.raw_data,
+        ba.account_name,
+        pa.account_name        AS platform_account_name
+      FROM platform_messages pm
+      INNER JOIN (
+        SELECT
+          browser_account_id,
+          thread_id,
+          MAX(sent_at) AS max_sent
+        FROM platform_messages
+        GROUP BY browser_account_id, thread_id
+      ) latest
+        ON  pm.browser_account_id = latest.browser_account_id
+        AND pm.thread_id          = latest.thread_id
+        AND pm.sent_at            = latest.max_sent
+      LEFT JOIN browser_accounts ba
+        ON ba.id = pm.browser_account_id
+      LEFT JOIN platform_accounts pa
+        ON pa.id = pm.platform_account_id
+      LEFT JOIN platform_thread_metadata ptm
+        ON ptm.browser_account_id = pm.browser_account_id
+       AND ptm.thread_id = pm.thread_id
+       AND ptm.platform = pm.platform
+      WHERE ${whereClauses}
+      ORDER BY pm.sent_at DESC
+      LIMIT ?
+    `;
+
+    const messages = await query(sql, params);
+    return NextResponse.json({ success: true, messages });
+
   } catch (err: any) {
-    console.error('[API Messages] ❌', err.message);
+    console.error('[API /api/messages] ❌', err.message);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
+
+// ─────────────────────────────────────────────
+// POST /api/messages/read
+// Body: { threadId, browserAccountId }
+// Marks all messages in a thread as read (sets is_read = 1)
+// ─────────────────────────────────────────────
+
+export async function POST(req: NextRequest) {
+  try {
+    const { threadId, browserAccountId } = await req.json();
+    if (!threadId) {
+      return NextResponse.json({ success: false, error: 'threadId required' }, { status: 400 });
+    }
+
+    try {
+      const params: any[] = [threadId];
+      let sql = `UPDATE platform_messages SET is_read = 1 WHERE thread_id = ? AND is_read = 0`;
+      if (browserAccountId) {
+        sql += ' AND browser_account_id = ?';
+        params.push(browserAccountId);
+      }
+      await execute(sql, params);
+    } catch (colErr: any) {
+      console.warn('[API /api/messages POST] mark-as-read skipped:', colErr.message);
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }
