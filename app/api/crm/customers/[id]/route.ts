@@ -33,14 +33,22 @@ export async function GET(
             LIMIT 50
         `, [id]);
 
-        // 3. Get Active Deals (Pipeline)
-        const deals = await query(`
+        // 3. Open deals for pipeline sidebar; total count for profile badges
+        const [deals, dealCountRow] = await Promise.all([
+            query(`
             SELECT * FROM crm_deals 
-            WHERE customer_id = ? 
+            WHERE customer_id = ? AND status = 'open'
             ORDER BY created_at DESC
-        `, [id]);
+        `, [id]),
+            queryOne<{ count: number }>(
+                `SELECT COUNT(*) as count FROM crm_deals WHERE customer_id = ?`,
+                [id]
+            ),
+        ]);
 
-        return NextResponse.json({ customer, activities, deals });
+        const total_deal_count = dealCountRow?.count ?? 0;
+
+        return NextResponse.json({ customer, activities, deals, total_deal_count });
 
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });

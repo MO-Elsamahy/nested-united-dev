@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, Plus, User, Building2, Phone, Mail, MoreVertical, AlertCircle } from "lucide-react";
+import { Search, Plus, User, Building2, Phone, Mail, MoreVertical } from "lucide-react";
+import type { CRMCustomer } from "@/lib/types/crm";
 
 export default function CustomersPage() {
-    const [customers, setCustomers] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<CRMCustomer[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState("");
+    const [loadError, setLoadError] = useState<string | null>(null);
 
-    const fetchCustomers = async () => {
+    const fetchCustomers = useCallback(async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const params = new URLSearchParams();
             if (search) params.append("search", search);
@@ -19,23 +22,29 @@ export default function CustomersPage() {
 
             const res = await fetch(`/api/crm/customers?${params}`);
             const data = await res.json();
+            if (!res.ok) {
+                setCustomers([]);
+                setLoadError(
+                    typeof data?.error === "string" ? data.error : "تعذّر تحميل قائمة العملاء"
+                );
+                return;
+            }
             setCustomers(Array.isArray(data) ? data : []);
-        } catch (error) {
-            console.error(error);
+        } catch {
+            setCustomers([]);
+            setLoadError("تعذّر تحميل قائمة العملاء");
         } finally {
             setLoading(false);
         }
-    };
+    }, [search, typeFilter]);
 
-    // Debounce search
     useEffect(() => {
         const timer = setTimeout(fetchCustomers, 500);
         return () => clearTimeout(timer);
-    }, [search, typeFilter]);
+    }, [fetchCustomers]);
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">العملاء</h1>
@@ -50,7 +59,6 @@ export default function CustomersPage() {
                 </Link>
             </div>
 
-            {/* Filters */}
             <div className="bg-white p-4 rounded-xl border shadow-sm flex flex-col md:flex-row gap-4">
                 <div className="flex-1 relative">
                     <Search className="w-5 h-5 text-gray-400 absolute right-3 top-2.5" />
@@ -73,32 +81,60 @@ export default function CustomersPage() {
                 </select>
             </div>
 
-            {/* Customers List */}
+            {loadError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                    {loadError}
+                </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {loading ? (
                     [...Array(6)].map((_, i) => (
-                        <div key={i} className="bg-white p-6 rounded-xl border shadow-sm animate-pulse h-40"></div>
+                        <div key={i} className="bg-white p-6 rounded-xl border shadow-sm animate-pulse h-40" />
                     ))
                 ) : customers.length > 0 ? (
                     customers.map((customer) => (
-                        <div key={customer.id} className="bg-white p-5 rounded-xl border shadow-sm hover:shadow-md transition group relative">
-                            <Link href={`/crm/customers/${customer.id}`} className="absolute inset-0 z-0"></Link>
+                        <div
+                            key={customer.id}
+                            className="bg-white p-5 rounded-xl border shadow-sm hover:shadow-md transition group relative"
+                        >
+                            <Link href={`/crm/customers/${customer.id}`} className="absolute inset-0 z-0" />
 
                             <div className="flex justify-between items-start mb-4 relative z-10">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${customer.type === 'company' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
-                                        }`}>
-                                        {customer.type === 'company' ? <Building2 className="w-6 h-6" /> : <User className="w-6 h-6" />}
+                                    <div
+                                        className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold ${
+                                            customer.type === "company"
+                                                ? "bg-purple-100 text-purple-600"
+                                                : "bg-blue-100 text-blue-600"
+                                        }`}
+                                    >
+                                        {customer.type === "company" ? (
+                                            <Building2 className="w-6 h-6" />
+                                        ) : (
+                                            <User className="w-6 h-6" />
+                                        )}
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition">{customer.full_name}</h3>
-                                        <span className={`text-xs px-2 py-0.5 rounded-full ${customer.type === 'company' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'
-                                            }`}>
-                                            {customer.type === 'company' ? 'شركة' : 'فرد'}
+                                        <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition">
+                                            {customer.full_name}
+                                        </h3>
+                                        <span
+                                            className={`text-xs px-2 py-0.5 rounded-full ${
+                                                customer.type === "company"
+                                                    ? "bg-purple-50 text-purple-700"
+                                                    : "bg-blue-50 text-blue-700"
+                                            }`}
+                                        >
+                                            {customer.type === "company" ? "شركة" : "فرد"}
                                         </span>
                                     </div>
                                 </div>
-                                <button className="p-1 hover:bg-gray-100 rounded-lg text-gray-400">
+                                <button
+                                    type="button"
+                                    className="p-1 hover:bg-gray-100 rounded-lg text-gray-400"
+                                    aria-label="خيارات"
+                                >
                                     <MoreVertical className="w-5 h-5" />
                                 </button>
                             </div>

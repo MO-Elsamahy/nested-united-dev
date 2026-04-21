@@ -79,6 +79,14 @@ const migrations = [
         sql: `ALTER TABLE crm_deals ADD INDEX idx_crm_deals_status_stage (status, stage)`,
     },
     {
+        name: '11. CRM deals — priority',
+        sql: `ALTER TABLE crm_deals ADD COLUMN priority VARCHAR(20) NOT NULL DEFAULT 'medium'`,
+    },
+    {
+        name: '12. CRM deals — expected_close_date',
+        sql: `ALTER TABLE crm_deals ADD COLUMN expected_close_date DATE NULL`,
+    },
+    {
         name: '9. HR Settings — gosi_employer_rate',
         sql: `INSERT IGNORE INTO hr_settings (id, setting_key, setting_value, description)
               VALUES (UUID(), 'gosi_employer_rate', '12.5', 'نسبة تأمينات صاحب العمل GOSI (%)')`,

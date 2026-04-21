@@ -1,0 +1,7 @@
+-- 11. CRM deals — priority
+ALTER TABLE crm_deals
+  ADD COLUMN priority VARCHAR(20) NOT NULL DEFAULT 'medium';
+
+-- 12. CRM deals — expected_close_date
+ALTER TABLE crm_deals
+  ADD COLUMN expected_close_date DATE NULL;

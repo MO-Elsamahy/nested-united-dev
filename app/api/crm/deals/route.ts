@@ -35,16 +35,54 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { customer_id, title, description, stage, value } = body;
+        const {
+            customer_id,
+            title,
+            notes,
+            stage,
+            value,
+            priority,
+            expected_close_date,
+        } = body;
 
         if (!customer_id || !title) {
             return NextResponse.json({ error: "customer_id and title are required" }, { status: 400 });
         }
 
+        const notesValue = notes ?? null;
+
+        const valueNum =
+            value === "" || value === undefined || value === null
+                ? 0
+                : Number(value);
+        const safeValue = Number.isFinite(valueNum) ? valueNum : 0;
+
+        const priorityValue =
+            priority === "low" || priority === "medium" || priority === "high"
+                ? priority
+                : "medium";
+
+        const closeDate =
+            expected_close_date &&
+            typeof expected_close_date === "string" &&
+            expected_close_date.trim() !== ""
+                ? expected_close_date.trim().slice(0, 10)
+                : null;
+
         const id = uuidv4();
         await execute(
-            "INSERT INTO crm_deals (id, customer_id, title, description, stage, value, status) VALUES (?, ?, ?, ?, ?, ?, 'open')",
-            [id, customer_id, title, description, stage || 'new', value || 0]
+            `INSERT INTO crm_deals (id, customer_id, title, notes, stage, value, status, priority, expected_close_date)
+             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
+            [
+                id,
+                customer_id,
+                title,
+                notesValue,
+                stage || "new",
+                safeValue,
+                priorityValue,
+                closeDate,
+            ]
         );
 
         return NextResponse.json({ success: true, id });
@@ -66,19 +104,37 @@ export async function PUT(request: Request) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        // Use queryOne for cleaner single row fetching
-        const oldDeal = await queryOne<any>("SELECT stage, status, customer_id FROM crm_deals WHERE id = ?", [id]);
+        const oldDeal = await queryOne<any>(
+            "SELECT stage, status, customer_id FROM crm_deals WHERE id = ?",
+            [id]
+        );
 
-        // Build dynamic update
-        const updates = [];
-        const params = [];
+        if (!oldDeal) {
+            return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+        }
 
-        if (stage) { updates.push('stage = ?'); params.push(stage); }
-        if (status) { updates.push('status = ?'); params.push(status); }
+        const updates: string[] = [];
+        const params: unknown[] = [];
+
+        if (stage !== undefined && stage !== null && stage !== "") {
+            updates.push("stage = ?");
+            params.push(stage);
+        }
+        if (status !== undefined && status !== null && status !== "") {
+            updates.push("status = ?");
+            params.push(status);
+        }
+
+        if (updates.length === 0) {
+            return NextResponse.json(
+                { error: "Nothing to update: provide stage and/or status" },
+                { status: 400 }
+            );
+        }
 
         params.push(id);
 
-        await execute(`UPDATE crm_deals SET ${updates.join(', ')} WHERE id = ?`, params);
+        await execute(`UPDATE crm_deals SET ${updates.join(", ")} WHERE id = ?`, params);
 
         // Log Changes
         if (stage && oldDeal && oldDeal.stage !== stage) {

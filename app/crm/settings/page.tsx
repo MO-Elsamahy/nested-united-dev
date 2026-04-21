@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings as SettingsIcon, Save, Loader2, Plus, Trash2, Edit2, Tag, Layers, Bell, Zap } from "lucide-react";
+import { Loader2, Plus, Trash2, Tag, Layers } from "lucide-react";
 
 interface Stage {
     id: string;
@@ -172,6 +172,10 @@ export default function CRMSettingsPage() {
             {/* Stages Tab */}
             {activeTab === 'stages' && (
                 <div className="space-y-6">
+                    <p className="text-sm text-gray-500 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
+                        أعمدة لوحة الصفقات (Pipeline) ثابتة في الواجهة حالياً ومطابقة لمراحل النظام. يمكنك هنا
+                        حفظ مراحل إضافية للتقارير والتوسعة لاحقاً.
+                    </p>
                     {/* Add New Stage */}
                     <div className="bg-white rounded-xl border p-6">
                         <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">

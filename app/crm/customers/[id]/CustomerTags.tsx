@@ -1,29 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Tag, Plus, X } from "lucide-react";
-
-interface CRMTag {
-    id: string;
-    name: string;
-    color: string;
-    text_color: string;
-}
+import type { CRMTag } from "@/lib/types/crm";
 
 export default function CustomerTags({ customerId }: { customerId: string }) {
     const [tags, setTags] = useState<CRMTag[]>([]);
     const [allTags, setAllTags] = useState<CRMTag[]>([]);
     const [showAddMenu, setShowAddMenu] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         fetchTags();
         fetchAllTags();
     }, [customerId]);
 
+    useEffect(() => {
+        if (!showAddMenu) return;
+        const onDown = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setShowAddMenu(false);
+            }
+        };
+        const onKey = (e: KeyboardEvent) => {
+            if (e.key === "Escape") setShowAddMenu(false);
+        };
+        document.addEventListener("mousedown", onDown);
+        document.addEventListener("keydown", onKey);
+        return () => {
+            document.removeEventListener("mousedown", onDown);
+            document.removeEventListener("keydown", onKey);
+        };
+    }, [showAddMenu]);
+
     const fetchTags = async () => {
         try {
             const res = await fetch(`/api/crm/customer-tags?customer_id=${customerId}`);
             const data = await res.json();
+            if (!res.ok) return;
             setTags(Array.isArray(data) ? data : []);
         } catch (e) {
             console.error(e);
@@ -32,8 +46,9 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
 
     const fetchAllTags = async () => {
         try {
-            const res = await fetch('/api/crm/tags');
+            const res = await fetch("/api/crm/tags");
             const data = await res.json();
+            if (!res.ok) return;
             setAllTags(Array.isArray(data) ? data : []);
         } catch (e) {
             console.error(e);
@@ -42,30 +57,38 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
 
     const handleAddTag = async (tagId: string) => {
         try {
-            await fetch('/api/crm/customer-tags', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ customer_id: customerId, tag_id: tagId })
+            const res = await fetch("/api/crm/customer-tags", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ customer_id: customerId, tag_id: tagId }),
             });
+            if (!res.ok) {
+                alert("تعذّر إضافة التصنيف");
+                return;
+            }
             fetchTags();
             setShowAddMenu(false);
-        } catch (e) {
-            alert('فشل إضافة التصنيف');
+        } catch {
+            alert("تعذّر إضافة التصنيف");
         }
     };
 
     const handleRemoveTag = async (tagId: string) => {
         try {
-            await fetch(`/api/crm/customer-tags?customer_id=${customerId}&tag_id=${tagId}`, {
-                method: 'DELETE'
+            const res = await fetch(`/api/crm/customer-tags?customer_id=${customerId}&tag_id=${tagId}`, {
+                method: "DELETE",
             });
+            if (!res.ok) {
+                alert("تعذّر حذف التصنيف");
+                return;
+            }
             fetchTags();
-        } catch (e) {
-            alert('فشل حذف التصنيف');
+        } catch {
+            alert("تعذّر حذف التصنيف");
         }
     };
 
-    const availableTags = allTags.filter(tag => !tags.find(t => t.id === tag.id));
+    const availableTags = allTags.filter((tag) => !tags.find((t) => t.id === tag.id));
 
     return (
         <div className="flex items-center gap-2 flex-wrap">
@@ -77,6 +100,7 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
                     <Tag className={`w-3 h-3 ${tag.text_color}`} />
                     <span className={`text-sm font-medium ${tag.text_color}`}>{tag.name}</span>
                     <button
+                        type="button"
                         onClick={() => handleRemoveTag(tag.id)}
                         className="opacity-0 group-hover:opacity-100 transition"
                     >
@@ -85,9 +109,9 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
                 </div>
             ))}
 
-            {/* Add Tag Button */}
-            <div className="relative">
+            <div className="relative" ref={menuRef}>
                 <button
+                    type="button"
                     onClick={() => setShowAddMenu(!showAddMenu)}
                     className="px-3 py-1 rounded-full border border-dashed border-gray-300 hover:border-blue-500 flex items-center gap-2 text-gray-500 hover:text-blue-600 transition"
                 >
@@ -99,11 +123,12 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
                     <div className="absolute top-full mt-2 bg-white border rounded-lg shadow-lg p-2 z-10 min-w-[200px]">
                         {availableTags.map((tag) => (
                             <button
+                                type="button"
                                 key={tag.id}
                                 onClick={() => handleAddTag(tag.id)}
                                 className={`w-full px-3 py-2 rounded-lg text-right hover:bg-gray-50 transition flex items-center gap-2 ${tag.text_color}`}
                             >
-                                <div className={`w-3 h-3 rounded-full ${tag.color.replace('bg-', 'bg-')}`}></div>
+                                <span className={`w-3 h-3 rounded-full shrink-0 ${tag.color}`} aria-hidden />
                                 {tag.name}
                             </button>
                         ))}

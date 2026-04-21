@@ -4,17 +4,31 @@ import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-    ArrowRight, Phone, Mail, MapPin, Edit,
-    Calendar, MessageSquare, PhoneCall, FileText,
-    Clock, CheckCircle, AlertCircle, Plus, User, Building2, Trophy, Sparkles
+    Phone,
+    Mail,
+    MapPin,
+    Edit,
+    Calendar,
+    MessageSquare,
+    PhoneCall,
+    FileText,
+    Clock,
+    CheckCircle,
+    Plus,
+    User,
+    Building2,
+    Trophy,
+    Sparkles,
 } from "lucide-react";
 import CustomerTags from "./CustomerTags";
+import type { CrmActivity, CrmDeal, CustomerDetailResponse } from "@/lib/types/crm";
+import { activityTitleForType } from "@/lib/types/crm";
 
 export default function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
 
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<CustomerDetailResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [activityForm, setActivityForm] = useState({ type: "note", description: "" });
     const [submitting, setSubmitting] = useState(false);
@@ -23,14 +37,22 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
         try {
             const res = await fetch(`/api/crm/customers/${id}`);
             if (res.ok) {
-                const json = await res.json();
-                setData(json);
+                const json = (await res.json()) as CustomerDetailResponse;
+                setData({
+                    ...json,
+                    activities: Array.isArray(json.activities) ? json.activities : [],
+                    deals: Array.isArray(json.deals) ? json.deals : [],
+                    total_deal_count:
+                        typeof json.total_deal_count === "number"
+                            ? json.total_deal_count
+                            : json.deals?.length ?? 0,
+                });
             } else {
-                alert("Customer not found");
-                router.push("/crm/customers");
+                router.replace("/crm/customers");
             }
         } catch (e) {
             console.error(e);
+            router.replace("/crm/customers");
         } finally {
             setLoading(false);
         }
@@ -52,17 +74,20 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                 body: JSON.stringify({
                     customer_id: id,
                     type: activityForm.type,
-                    title: activityForm.type === 'note' ? 'ملاحظة' : 'اتصال هاتفي',
-                    description: activityForm.description
-                })
+                    title: activityTitleForType(activityForm.type),
+                    description: activityForm.description,
+                }),
             });
 
             if (res.ok) {
                 setActivityForm({ type: "note", description: "" });
-                fetchData(); // Refresh timeline
+                fetchData();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert((err as { error?: string }).error || "تعذّر تسجيل النشاط");
             }
-        } catch (e) {
-            alert("Error adding activity");
+        } catch {
+            alert("حدث خطأ أثناء تسجيل النشاط");
         } finally {
             setSubmitting(false);
         }
@@ -72,44 +97,61 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
     if (!data) return null;
 
     const { customer, activities, deals } = data;
+    const totalDealCount =
+        typeof data.total_deal_count === "number" ? data.total_deal_count : deals.length;
 
     return (
         <div className="space-y-6">
-            {/* Header / Profile Card */}
             <div className="bg-white rounded-2xl shadow-sm border p-6">
                 <div className="flex flex-col md:flex-row gap-6 justify-between items-start">
                     <div className="flex items-start gap-4">
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold ${customer.type === 'company' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'
-                            }`}>
-                            {customer.type === 'company' ? <Building2 className="w-8 h-8" /> : <User className="w-8 h-8" />}
+                        <div
+                            className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold ${
+                                customer.type === "company"
+                                    ? "bg-purple-100 text-purple-600"
+                                    : "bg-blue-100 text-blue-600"
+                            }`}
+                        >
+                            {customer.type === "company" ? (
+                                <Building2 className="w-8 h-8" />
+                            ) : (
+                                <User className="w-8 h-8" />
+                            )}
                         </div>
                         <div>
                             <div className="flex items-center gap-3">
                                 <h1 className="text-2xl font-bold text-gray-900">{customer.full_name}</h1>
-                                <span className={`px-2 py-0.5 rounded-full text-xs ${customer.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                                    }`}>
-                                    {customer.status === 'active' ? 'نشط' : customer.status}
+                                <span
+                                    className={`px-2 py-0.5 rounded-full text-xs ${
+                                        customer.status === "active"
+                                            ? "bg-green-100 text-green-700"
+                                            : "bg-red-100 text-red-700"
+                                    }`}
+                                >
+                                    {customer.status === "active" ? "نشط" : customer.status}
                                 </span>
                             </div>
                             <div className="flex flex-wrap gap-4 mt-2 text-gray-500 text-sm">
-                                {deals.length > 0 ? (
+                                {totalDealCount > 0 ? (
                                     <div className="px-3 py-1 rounded-full bg-amber-100 text-amber-700 font-bold border border-amber-200 flex items-center gap-2">
                                         <Trophy className="w-4 h-4" />
-                                        <span>عميل سابق ({deals.length} صفقات)</span>
+                                        <span>
+                                            عميل له صفقات ({totalDealCount}{" "}
+                                            {totalDealCount === 1 ? "صفقة" : "صفقات"})
+                                        </span>
                                     </div>
                                 ) : (
                                     <div className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 font-medium border border-blue-100 flex items-center gap-2">
                                         <Sparkles className="w-4 h-4" />
-                                        <span>عميل جديد</span>
+                                        <span>بدون صفقات مسجلة</span>
                                     </div>
                                 )}
 
-                                {/* Customer Tags */}
                                 <CustomerTags customerId={customer.id} />
 
                                 <div className="flex items-center gap-1">
                                     <Phone className="w-4 h-4" />
-                                    <span dir="ltr">{customer.phone}</span>
+                                    <span dir="ltr">{customer.phone || "—"}</span>
                                 </div>
                                 {customer.email && (
                                     <div className="flex items-center gap-1">
@@ -134,19 +176,19 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                             <Plus className="w-4 h-4" />
                             صفقة جديدة
                         </Link>
-                        <button className="bg-white border text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-2 transition">
+                        <Link
+                            href={`/crm/customers/${id}/edit`}
+                            className="bg-white border text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-2 transition"
+                        >
                             <Edit className="w-4 h-4" />
                             تعديل
-                        </button>
+                        </Link>
                     </div>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Right Column: Timeline & Activities */}
                 <div className="lg:col-span-2 space-y-6">
-
-                    {/* Activity Input */}
                     <div className="bg-white rounded-xl shadow-sm border p-4">
                         <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                             <MessageSquare className="w-5 h-5 text-gray-500" />
@@ -156,25 +198,34 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                             <div className="flex gap-2 mb-3">
                                 <button
                                     type="button"
-                                    onClick={() => setActivityForm({ ...activityForm, type: 'note' })}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${activityForm.type === 'note' ? 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                        }`}
+                                    onClick={() => setActivityForm({ ...activityForm, type: "note" })}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                                        activityForm.type === "note"
+                                            ? "bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200"
+                                            : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                                    }`}
                                 >
                                     ملاحظة
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setActivityForm({ ...activityForm, type: 'call' })}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${activityForm.type === 'call' ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                        }`}
+                                    onClick={() => setActivityForm({ ...activityForm, type: "call" })}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                                        activityForm.type === "call"
+                                            ? "bg-blue-50 text-blue-700 ring-1 ring-blue-200"
+                                            : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                                    }`}
                                 >
                                     اتصال
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setActivityForm({ ...activityForm, type: 'meeting' })}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${activityForm.type === 'meeting' ? 'bg-purple-50 text-purple-700 ring-1 ring-purple-200' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                                        }`}
+                                    onClick={() => setActivityForm({ ...activityForm, type: "meeting" })}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+                                        activityForm.type === "meeting"
+                                            ? "bg-purple-50 text-purple-700 ring-1 ring-purple-200"
+                                            : "bg-gray-50 text-gray-500 hover:bg-gray-100"
+                                    }`}
                                 >
                                     اجتماع
                                 </button>
@@ -182,10 +233,12 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                             <textarea
                                 required
                                 value={activityForm.description}
-                                onChange={e => setActivityForm({ ...activityForm, description: e.target.value })}
+                                onChange={(e) =>
+                                    setActivityForm({ ...activityForm, description: e.target.value })
+                                }
                                 placeholder="اكتب تفاصيل النشاط هنا..."
                                 className="w-full border rounded-lg p-3 min-h-[100px] focus:ring-2 focus:ring-blue-500 outline-none mb-3"
-                            ></textarea>
+                            />
                             <div className="flex justify-end">
                                 <button
                                     type="submit"
@@ -198,7 +251,6 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                         </form>
                     </div>
 
-                    {/* Timeline */}
                     <div className="bg-white rounded-xl shadow-sm border p-6 relative">
                         <h3 className="font-bold text-gray-900 mb-6 flex items-center gap-2">
                             <Clock className="w-5 h-5 text-gray-500" />
@@ -206,26 +258,39 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                         </h3>
 
                         <div className="space-y-8 relative before:absolute before:inset-0 before:mr-5 before:-ml-px before:h-full before:w-0.5 before:bg-gray-100 before:z-0">
-                            {activities.map((activity: any) => (
+                            {activities.map((activity: CrmActivity) => (
                                 <div key={activity.id} className="relative z-10 flex gap-4">
-                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-sm shrink-0 ${activity.type === 'call' ? 'bg-blue-100 text-blue-600' :
-                                        activity.type === 'meeting' ? 'bg-purple-100 text-purple-600' :
-                                            activity.type === 'status_change' ? 'bg-green-100 text-green-600' :
-                                                'bg-yellow-100 text-yellow-600'
-                                        }`}>
-                                        {activity.type === 'call' ? <PhoneCall className="w-4 h-4" /> :
-                                            activity.type === 'meeting' ? <User className="w-4 h-4" /> :
-                                                activity.type === 'status_change' ? <CheckCircle className="w-4 h-4" /> :
-                                                    <FileText className="w-4 h-4" />}
+                                    <div
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center border-4 border-white shadow-sm shrink-0 ${
+                                            activity.type === "call"
+                                                ? "bg-blue-100 text-blue-600"
+                                                : activity.type === "meeting"
+                                                  ? "bg-purple-100 text-purple-600"
+                                                  : activity.type === "status_change"
+                                                    ? "bg-green-100 text-green-600"
+                                                    : "bg-yellow-100 text-yellow-600"
+                                        }`}
+                                    >
+                                        {activity.type === "call" ? (
+                                            <PhoneCall className="w-4 h-4" />
+                                        ) : activity.type === "meeting" ? (
+                                            <Calendar className="w-4 h-4" />
+                                        ) : activity.type === "status_change" ? (
+                                            <CheckCircle className="w-4 h-4" />
+                                        ) : (
+                                            <FileText className="w-4 h-4" />
+                                        )}
                                     </div>
                                     <div className="flex-1 bg-gray-50 rounded-xl p-4 border border-gray-100">
                                         <div className="flex items-center justify-between mb-2">
                                             <span className="font-bold text-gray-900">{activity.title}</span>
                                             <span className="text-xs text-gray-400" dir="ltr">
-                                                {new Date(activity.performed_at).toLocaleString('ar-EG')}
+                                                {new Date(activity.performed_at).toLocaleString("ar-EG")}
                                             </span>
                                         </div>
-                                        <p className="text-gray-600 text-sm whitespace-pre-wrap">{activity.description}</p>
+                                        <p className="text-gray-600 text-sm whitespace-pre-wrap">
+                                            {activity.description}
+                                        </p>
                                         <div className="mt-2 text-xs text-gray-400">
                                             بواسطة: {activity.performed_by_name || "النظام"}
                                         </div>
@@ -239,9 +304,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                     </div>
                 </div>
 
-                {/* Left Column: Info & Deals */}
                 <div className="space-y-6">
-                    {/* Notes Card */}
                     <div className="bg-white rounded-xl shadow-sm border p-4">
                         <h3 className="font-bold text-gray-900 mb-3 text-sm">ملاحظات عامة</h3>
                         <p className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg border border-yellow-100 min-h-[80px]">
@@ -249,34 +312,43 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                         </p>
                     </div>
 
-                    {/* Active Deals */}
                     <div className="bg-white rounded-xl shadow-sm border p-4">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-gray-900 text-sm">الصفقات النشطة</h3>
-                            <Link href={`/crm/deals/new?customer_id=${id}`} className="text-blue-600 text-xs hover:underline">
+                            <Link
+                                href={`/crm/deals/new?customer_id=${id}`}
+                                className="text-blue-600 text-xs hover:underline"
+                            >
                                 + إضافة
                             </Link>
                         </div>
                         <div className="space-y-3">
-                            {deals.map((deal: any) => (
+                            {deals.map((deal: CrmDeal) => (
                                 <div key={deal.id} className="border rounded-lg p-3 hover:bg-gray-50 transition block">
                                     <div className="flex justify-between items-start">
                                         <span className="font-bold text-sm text-gray-800">{deal.title}</span>
-                                        <span className={`text-[10px] px-2 py-1 rounded-full ${deal.stage === 'won' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                                            }`}>
+                                        <span
+                                            className={`text-[10px] px-2 py-1 rounded-full ${
+                                                deal.stage === "won"
+                                                    ? "bg-green-100 text-green-700"
+                                                    : "bg-blue-100 text-blue-700"
+                                            }`}
+                                        >
                                             {deal.stage}
                                         </span>
                                     </div>
                                     <div className="mt-2 flex justify-between items-center text-xs text-gray-500">
                                         <span>{deal.value} ر.س</span>
                                         {deal.expected_close_date && (
-                                            <span>{new Date(deal.expected_close_date).toLocaleDateString('ar-EG')}</span>
+                                            <span>
+                                                {new Date(deal.expected_close_date).toLocaleDateString("ar-EG")}
+                                            </span>
                                         )}
                                     </div>
                                 </div>
                             ))}
                             {deals.length === 0 && (
-                                <p className="text-center text-gray-400 text-xs py-4">لا توجد صفقات</p>
+                                <p className="text-center text-gray-400 text-xs py-4">لا توجد صفقات مفتوحة</p>
                             )}
                         </div>
                     </div>
