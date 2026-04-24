@@ -29,7 +29,7 @@ export const authOptions: NextAuthOptions = {
 
                 // Find user by email
                 const user = await queryOne<DBUser>(
-                    "SELECT * FROM users WHERE email = ?",
+                    "SELECT * FROM users WHERE email = ? AND deleted_at IS NULL",
                     [credentials.email]
                 );
 

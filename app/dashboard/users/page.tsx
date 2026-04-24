@@ -36,7 +36,7 @@ async function checkSuperAdmin() {
 
 async function getUsers() {
   const users = await query<DBUser>(
-    "SELECT * FROM users ORDER BY created_at DESC"
+    "SELECT * FROM users WHERE deleted_at IS NULL ORDER BY created_at DESC"
   );
   // Convert MySQL boolean
   return users.map((u) => ({

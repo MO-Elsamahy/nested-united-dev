@@ -28,7 +28,7 @@ export default async function DashboardLayout({
   // Get user data from users table
   console.log("Session User ID:", session.user.id);
   const user = await queryOne<User>(
-    "SELECT * FROM users WHERE id = ?",
+    "SELECT * FROM users WHERE id = ? AND deleted_at IS NULL",
     [String(session.user.id)]
   );
 

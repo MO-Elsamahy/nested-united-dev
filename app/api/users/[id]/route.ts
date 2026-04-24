@@ -168,7 +168,21 @@ export async function DELETE(
   }
 
   try {
-    await execute("DELETE FROM users WHERE id = ?", [id]);
+    const { executeTransaction } = await import("@/lib/db");
+    
+    await executeTransaction(async (conn) => {
+      // 1. Mark user as deleted and inactive
+      await conn.execute(
+        "UPDATE users SET deleted_at = NOW(), is_active = 0 WHERE id = ?",
+        [id]
+      );
+
+      // 2. Mark linked employee as terminated
+      await conn.execute(
+        "UPDATE hr_employees SET status = 'terminated' WHERE user_id = ?",
+        [id]
+      );
+    });
 
     // Log activity
     await logActivityInServer({
@@ -177,7 +191,7 @@ export async function DELETE(
       page_path: "/dashboard/users",
       resource_type: "user",
       resource_id: id,
-      description: `حذف مستخدم: ${user.name} (${user.email})`,
+      description: `حذف (أرشفة) مستخدم: ${user.name} (${user.email}) وتغيير حالة الموظف المرتبط إلى منتهي`,
       metadata: { user_id: id, user_name: user.name },
     });
 

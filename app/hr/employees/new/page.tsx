@@ -136,7 +136,7 @@ export default function NewEmployeePage() {
                                 type="text"
                                 name="full_name"
                                 required
-                                value={formData.full_name}
+                                value={formData.full_name ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="أحمد محمد العلي"
@@ -149,7 +149,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="text"
                                 name="employee_number"
-                                value={formData.employee_number}
+                                value={formData.employee_number ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="EMP001"
@@ -162,7 +162,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="text"
                                 name="national_id"
-                                value={formData.national_id}
+                                value={formData.national_id ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="1xxxxxxxxx"
@@ -175,7 +175,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="text"
                                 name="phone"
-                                value={formData.phone}
+                                value={formData.phone ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="05xxxxxxxx"
@@ -189,7 +189,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="email"
                                 name="email"
-                                value={formData.email}
+                                value={formData.email ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="example@email.com"
@@ -234,7 +234,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="text"
                                 name="department"
-                                value={formData.department}
+                                value={formData.department ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="تأجير / محاسبة / موارد بشرية"
@@ -247,7 +247,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="text"
                                 name="job_title"
-                                value={formData.job_title}
+                                value={formData.job_title ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="موظف استقبال"
@@ -260,7 +260,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="date"
                                 name="hire_date"
-                                value={formData.hire_date}
+                                value={formData.hire_date ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                             />
@@ -322,7 +322,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="number"
                                 name="basic_salary"
-                                value={formData.basic_salary}
+                                value={formData.basic_salary ?? 0}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 min="0"
@@ -335,7 +335,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="number"
                                 name="housing_allowance"
-                                value={formData.housing_allowance}
+                                value={formData.housing_allowance ?? 0}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 min="0"
@@ -348,7 +348,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="number"
                                 name="transport_allowance"
-                                value={formData.transport_allowance}
+                                value={formData.transport_allowance ?? 0}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 min="0"
@@ -361,7 +361,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="number"
                                 name="other_allowances"
-                                value={formData.other_allowances}
+                                value={formData.other_allowances ?? 0}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 min="0"
@@ -384,7 +384,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="number"
                                 name="annual_leave_balance"
-                                value={formData.annual_leave_balance}
+                                value={formData.annual_leave_balance ?? 0}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 min="0"
@@ -397,7 +397,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="number"
                                 name="sick_leave_balance"
-                                value={formData.sick_leave_balance}
+                                value={formData.sick_leave_balance ?? 0}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 min="0"
@@ -444,7 +444,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="text"
                                 name="bank_name"
-                                value={formData.bank_name}
+                                value={formData.bank_name ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="بنك الراجحي"
@@ -457,7 +457,7 @@ export default function NewEmployeePage() {
                             <input
                                 type="text"
                                 name="iban"
-                                value={formData.iban}
+                                value={formData.iban ?? ""}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 placeholder="SA..."

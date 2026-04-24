@@ -128,7 +128,7 @@ export default async function MaintenancePage() {
             {isWorker ? "التذاكر المعينة لك" : "متابعة وإدارة الصيانة"}
           </p>
         </div>
-        {isAdmin && (
+        {(isAdmin || isWorker) && (
           <Link
             href="/dashboard/maintenance/new"
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
