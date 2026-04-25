@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
 import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // أنظمة البوابة — يجب أن تبقى متوافقة مع `app/portal/page.tsx` و `lib/features`
 const SYSTEMS = ["rentals", "accounting", "hr", "crm"] as const;
 const ROLES = ["super_admin", "admin", "accountant", "hr_manager", "maintenance_worker", "employee"] as const;
 
-function assertSuperAdmin(session: Awaited<ReturnType<typeof getServerSession>>) {
+function assertSuperAdmin(session: Session | null) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const role = (session.user as { role?: string }).role;
     if (role !== "super_admin") {

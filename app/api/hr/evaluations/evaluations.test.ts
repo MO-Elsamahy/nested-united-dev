@@ -74,9 +74,12 @@ describe('Evaluations API', () => {
             expect(body.success).toBe(true);
 
             // Verify the header insert call (first call in transaction)
-            const headerInsertCall = mockExecute.mock.calls.find(c => c[0].includes('INSERT INTO hr_evaluations'));
+            const headerInsertCall = mockExecute.mock.calls.find(
+                (c) => typeof c[0] === "string" && c[0].includes("INSERT INTO hr_evaluations")
+            );
+            expect(headerInsertCall).toBeDefined();
             // total_score = 4+5=9, max_possible = 5+5=10, percentage = 90
-            expect(headerInsertCall[1]).toEqual(expect.arrayContaining([9, 10, 90]));
+            expect(headerInsertCall![1]).toEqual(expect.arrayContaining([9, 10, 90]));
 
             // Verify individual score inserts (2 calls)
             const scoreInsertCalls = mockExecute.mock.calls.filter(c => c[0].includes('INSERT INTO hr_evaluation_scores'));
