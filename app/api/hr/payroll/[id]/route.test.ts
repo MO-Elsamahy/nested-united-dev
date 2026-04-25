@@ -8,6 +8,10 @@ import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vite
 const mockQuery = vi.fn();
 const mockQueryOne = vi.fn();
 const mockExecute = vi.fn();
+const mockConnExecute = vi.fn();
+const mockExecuteTransaction = vi.fn(async (cb: (conn: { execute: typeof mockConnExecute }) => Promise<void>) => {
+    await cb({ execute: mockConnExecute });
+});
 let uuidCounter = 0;
 const mockGenerateUUID = vi.fn(() => `uuid-${++uuidCounter}`);
 
@@ -15,7 +19,13 @@ vi.mock('@/lib/db', () => ({
     query: (...args: any[]) => mockQuery(...args),
     queryOne: (...args: any[]) => mockQueryOne(...args),
     execute: (...args: any[]) => mockExecute(...args),
+    executeTransaction: (...args: any[]) => mockExecuteTransaction(...args),
     generateUUID: () => mockGenerateUUID(),
+}));
+
+vi.mock('@/lib/hr-payroll-run-logs', () => ({
+    insertHrPayrollRunLog: vi.fn().mockResolvedValue(undefined),
+    ensureHrPayrollRunLogsTable: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
@@ -79,6 +89,8 @@ describe('HR Payroll Approval — Accounting Integration', () => {
         mockQuery.mockReset();
         mockQueryOne.mockReset();
         mockExecute.mockReset();
+        mockConnExecute.mockReset();
+        mockExecuteTransaction.mockClear();
         uuidCounter = 0;
         // Restore UUID mock after reset
         mockGenerateUUID.mockImplementation(() => `uuid-${++uuidCounter}`);
@@ -296,5 +308,46 @@ describe('HR Payroll Approval — Accounting Integration', () => {
         const res = await PUT(req, { params: Promise.resolve({ id: 'payroll-001' }) });
 
         expect(res.status).toBe(400);
+    });
+
+    it('reverts approval: soft-deletes move and returns to draft', async () => {
+        mockQueryOne.mockResolvedValueOnce(
+            makePayrollRun({
+                status: 'approved',
+                accounting_move_id: 'move-abc',
+            })
+        );
+        mockConnExecute.mockResolvedValue([{ affectedRows: 1 } as any, []]);
+
+        const req = new Request('http://localhost/api/hr/payroll/payroll-001', {
+            method: 'PUT',
+            body: JSON.stringify({ action: 'revert_approval', note: 'تصحيح بعد مراجعة' }),
+        });
+        const res = await PUT(req, { params: Promise.resolve({ id: 'payroll-001' }) });
+        const body = await res.json();
+
+        expect(res.status).toBe(200);
+        expect(body.success).toBe(true);
+        expect(mockExecuteTransaction).toHaveBeenCalledTimes(1);
+
+        const sqlCalls = mockConnExecute.mock.calls.map((c) => String(c[0]));
+        expect(sqlCalls.some((s) => s.includes('UPDATE accounting_moves SET deleted_at'))).toBe(true);
+        expect(sqlCalls.some((s) => s.includes("SET status = 'draft'") && s.includes('hr_payroll_runs'))).toBe(
+            true
+        );
+        expect(sqlCalls.some((s) => s.includes('salary_confirmed_at = NULL'))).toBe(true);
+    });
+
+    it('rejects revert_approval when payroll is still draft', async () => {
+        mockQueryOne.mockResolvedValueOnce(makePayrollRun({ status: 'draft' }));
+
+        const req = new Request('http://localhost/api/hr/payroll/payroll-001', {
+            method: 'PUT',
+            body: JSON.stringify({ action: 'revert_approval' }),
+        });
+        const res = await PUT(req, { params: Promise.resolve({ id: 'payroll-001' }) });
+
+        expect(res.status).toBe(400);
+        expect(mockExecuteTransaction).not.toHaveBeenCalled();
     });
 });

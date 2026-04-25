@@ -58,10 +58,11 @@ export default function HRSettingsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(settings),
             });
+            const data = await res.json().catch(() => ({}));
             if (res.ok) {
                 alert("تم حفظ الإعدادات بنجاح");
             } else {
-                alert("حدث خطأ أثناء الحفظ");
+                alert(data?.error || "حدث خطأ أثناء الحفظ");
             }
         } catch (error) {
             alert("خطأ في الاتصال");
@@ -205,6 +206,11 @@ export default function HRSettingsPage() {
                         </div>
                         <h2 className="text-lg font-bold text-gray-900">الربط المحاسبي</h2>
                     </div>
+
+                    <p className="text-sm text-violet-800 bg-violet-50 border border-violet-100 rounded-lg px-4 py-3 mb-4">
+                        عند اعتماد مسير رواتب، يُنشأ قيد محاسبي في اليومية والحسابات المحددين أدناه. إذا تركت الحقول فارغة، يبحث النظام تلقائياً عن يومية/حسابات بالرمز{" "}
+                        <strong>SAL</strong> (مثل «الرواتب والأجور») في دليل الحسابات واليوميات.
+                    </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>

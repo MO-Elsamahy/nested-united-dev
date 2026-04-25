@@ -87,7 +87,12 @@ export default function JournalEntriesPage() {
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
-                                        <button className="text-blue-600 hover:underline text-xs">عرض</button>
+                                        <Link
+                                            href={`/accounting/moves/${move.id}`}
+                                            className="text-blue-600 hover:underline text-xs shrink-0"
+                                        >
+                                            عرض
+                                        </Link>
                                     </td>
                                 </tr>
                             ))}

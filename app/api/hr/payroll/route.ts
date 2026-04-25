@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { loadHrSettingsMap } from "@/lib/hr-settings";
 
 // GET: List all payroll runs
 export async function GET(request: Request) {
@@ -45,9 +46,10 @@ export async function POST(request: Request) {
         }
 
         // 2. Get Settings (Rates)
-        const settingsRows = await query<any>("SELECT * FROM hr_settings");
-        const settings: Record<string, string> = {};
-        settingsRows?.forEach((s: any) => settings[s.setting_key] = s.setting_value);
+        const settingsRaw = await loadHrSettingsMap();
+        const settings: Record<string, string> = Object.fromEntries(
+            Object.entries(settingsRaw).map(([k, v]) => [k, v == null ? "" : String(v)])
+        );
 
         const overtimeRate = parseFloat(settings['overtime_rate'] || '1.5');
         const gosiRate = parseFloat(settings['gosi_employee_rate'] || '9.75');

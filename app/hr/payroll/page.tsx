@@ -1,22 +1,53 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Plus, DollarSign, Calendar, CheckCircle, Clock } from "lucide-react";
+import { Plus, Calendar, CheckCircle, Clock, Pencil, Trash2, Loader2 } from "lucide-react";
 
 export default function PayrollListPage() {
     const [runs, setRuns] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+
+    const loadRuns = useCallback(async () => {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/hr/payroll");
+            const data = await res.json();
+            setRuns(Array.isArray(data) ? data : []);
+        } catch {
+            setRuns([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        fetch("/api/hr/payroll")
-            .then((res) => res.json())
-            .then((data) => {
-                setRuns(Array.isArray(data) ? data : []);
-                setLoading(false);
+        void loadRuns();
+    }, [loadRuns]);
+
+    async function handleDeleteDraft(id: string) {
+        if (!confirm("حذف مسودة المسير نهائياً؟ لا يمكن التراجع.")) return;
+        setDeletingId(id);
+        try {
+            const res = await fetch(`/api/hr/payroll/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "delete" }),
             });
-    }, []);
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(typeof (body as { error?: string }).error === "string" ? (body as { error: string }).error : "تعذّر الحذف");
+                return;
+            }
+            await loadRuns();
+        } catch {
+            alert("فشل الاتصال");
+        } finally {
+            setDeletingId(null);
+        }
+    }
 
     const getStatusBadge = (status: string) => {
         if (status === "approved" || status === "paid") {
@@ -30,7 +61,9 @@ export default function PayrollListPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">مسيرات الرواتب</h1>
-                    <p className="text-gray-500">إدارة الرواتب الشهرية</p>
+                    <p className="text-gray-500 max-w-2xl">
+                        إدارة الرواتب الشهرية. للمسودات: افتح «مراجعة وتعديل» لتعديل صفوف الموظفين والاعتماد؛ المسيرات المعتمدة للعرض والتصدير فقط.
+                    </p>
                 </div>
                 <Link
                     href="/hr/payroll/new"
@@ -78,12 +111,40 @@ export default function PayrollListPage() {
                                             <div className="text-xs text-gray-400">{new Date(run.created_at).toLocaleDateString("ar-SA")}</div>
                                         </td>
                                         <td className="px-6 py-4 text-center">
-                                            <Link
-                                                href={`/hr/payroll/${run.id}`}
-                                                className="text-violet-600 hover:text-violet-800 text-sm font-medium"
-                                            >
-                                                عرض التفاصيل
-                                            </Link>
+                                            <div className="flex flex-wrap items-center justify-center gap-2">
+                                                <Link
+                                                    href={`/hr/payroll/${run.id}`}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                                                        run.status === "draft"
+                                                            ? "bg-violet-600 text-white hover:bg-violet-700"
+                                                            : "text-violet-600 hover:bg-violet-50 border border-violet-100"
+                                                    }`}
+                                                >
+                                                    {run.status === "draft" ? (
+                                                        <>
+                                                            <Pencil className="w-3.5 h-3.5" />
+                                                            مراجعة وتعديل
+                                                        </>
+                                                    ) : (
+                                                        "عرض التفاصيل"
+                                                    )}
+                                                </Link>
+                                                {run.status === "draft" && (
+                                                    <button
+                                                        type="button"
+                                                        disabled={deletingId === run.id}
+                                                        onClick={() => void handleDeleteDraft(run.id)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                                    >
+                                                        {deletingId === run.id ? (
+                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="w-3.5 h-3.5" />
+                                                        )}
+                                                        حذف
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

@@ -1,8 +1,11 @@
-
+import type { ResultSetHeader } from "mysql2";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { query, queryOne, execute, generateUUID, executeTransaction } from "@/lib/db";
+import { resolvePayrollAccountingIntegration } from "@/lib/hr-payroll-accounting-defaults";
+import { loadHrSettingsMap } from "@/lib/hr-settings";
+import { insertHrPayrollRunLog, ensureHrPayrollRunLogsTable } from "@/lib/hr-payroll-run-logs";
 
 // GET: Get Single Payroll Details
 export async function GET(
@@ -25,7 +28,18 @@ export async function GET(
             ORDER BY e.full_name
         `, [id]);
 
-        return NextResponse.json({ run, details });
+        await ensureHrPayrollRunLogsTable();
+        const logs = await query(
+            `SELECT l.id, l.payroll_run_id, l.user_id, l.action, l.note, l.meta, l.created_at,
+                    u.name AS user_name
+             FROM hr_payroll_run_logs l
+             LEFT JOIN users u ON l.user_id = u.id
+             WHERE l.payroll_run_id = ?
+             ORDER BY l.created_at DESC`,
+            [id]
+        );
+
+        return NextResponse.json({ run, details, logs });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -41,7 +55,8 @@ export async function PUT(
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const { action } = await request.json(); // "approve" or "delete"
+        const body = await request.json().catch(() => ({}));
+        const action = body?.action;
 
         const run = await queryOne<any>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
         if (!run) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -52,28 +67,31 @@ export async function PUT(
             }
 
             // Fetch HR settings for accounting integration
-            const settingsRows = await query<any>("SELECT * FROM hr_settings");
-            const settings: Record<string, string> = {};
-            settingsRows?.forEach((s: any) => settings[s.setting_key] = s.setting_value);
+            const settings = await loadHrSettingsMap();
 
-            const salaryExpenseAccountId = settings['salary_expense_account_id'];
-            const salaryPayableAccountId = settings['salary_payable_account_id'];
-            const salaryJournalId = settings['salary_journal_id'];
-            const gosiExpenseAccountId = settings['gosi_expense_account_id'];   // optional — employer GOSI
-            const gosiEmployerRate = parseFloat(settings['gosi_employer_rate'] || '12.5');
+            const gosiExpenseAccountId = settings["gosi_expense_account_id"]; // optional — employer GOSI
+            const gosiEmployerRate = parseFloat(String(settings["gosi_employer_rate"] || "12.5"));
 
-            // Validate that accounting integration is configured
+            const resolved = await resolvePayrollAccountingIntegration(settings);
+            const salaryExpenseAccountId = resolved.salaryExpenseAccountId;
+            const salaryPayableAccountId = resolved.salaryPayableAccountId;
+            const salaryJournalId = resolved.salaryJournalId;
+
             if (!salaryExpenseAccountId || !salaryPayableAccountId || !salaryJournalId) {
-                return NextResponse.json({
-                    error: "Accounting integration not configured. Please set up salary accounts and journal in HR settings.",
-                    details: {
-                        missing: {
-                            expense_account: !salaryExpenseAccountId,
-                            payable_account: !salaryPayableAccountId,
-                            journal: !salaryJournalId
-                        }
-                    }
-                }, { status: 400 });
+                return NextResponse.json(
+                    {
+                        error:
+                            "لم يُضبط الربط المحاسبي للرواتب في إعدادات الموارد البشرية، ولم يُعثر تلقائياً على يومية/حسابات بالرمز SAL (الرواتب والأجور). أنشئ يومية بكود SAL وحساب مصروف رواتب وحساب مستحقات، أو عيّنها يدوياً من إعدادات HR.",
+                        details: {
+                            missing: {
+                                expense_account: !salaryExpenseAccountId,
+                                payable_account: !salaryPayableAccountId,
+                                journal: !salaryJournalId,
+                            },
+                        },
+                    },
+                    { status: 400 }
+                );
             }
 
             // Aggregate payroll details to compute employer GOSI base
@@ -101,6 +119,7 @@ export async function PUT(
                 const totalLiability = netSalaryTotal + employerGosiAmount;
 
                 // Create the move header
+                const periodRef = `SAL-${run.period_year}-${String(run.period_month).padStart(2, "0")}`;
                 await execute(
                     `INSERT INTO accounting_moves (id, journal_id, date, ref, narration, state, amount_total, created_by)
                      VALUES (?, ?, ?, ?, ?, 'posted', ?, ?)`,
@@ -108,8 +127,8 @@ export async function PUT(
                         moveId,
                         salaryJournalId,
                         approvalDate,
-                        `PAYROLL-${run.period_month}-${run.period_year}`,
-                        `مسير رواتب ${run.period_month}/${run.period_year} — ${run.total_employees} موظف`,
+                        periodRef,
+                        `يومية SAL — مسير رواتب ${run.period_month}/${run.period_year} (${run.total_employees} موظف)`,
                         totalLiability,
                         session.user.id
                     ]
@@ -180,6 +199,22 @@ export async function PUT(
                     ]
                 );
 
+                try {
+                    await insertHrPayrollRunLog({
+                        payrollRunId: id,
+                        userId: session.user.id,
+                        action: "approved",
+                        meta: {
+                            accounting_move_id: moveId,
+                            period: `${run.period_month}/${run.period_year}`,
+                            net_salary_total: netSalaryTotal,
+                            employer_gosi: employerGosiAmount,
+                        },
+                    });
+                } catch (logErr) {
+                    console.error("hr_payroll_run_logs (approve):", logErr);
+                }
+
                 return NextResponse.json({
                     success: true,
                     accounting_move_id: moveId,
@@ -202,18 +237,108 @@ export async function PUT(
             }
         }
 
+        if (action === "revert_approval") {
+            if (run.status !== "approved") {
+                return NextResponse.json(
+                    {
+                        error:
+                            run.status === "paid"
+                                ? "لا يمكن إلغاء اعتماد مسير حالته «مدفوع». تواصل مع المحاسبة."
+                                : "إلغاء الاعتماد متاح فقط للمسيرات المعتمدة (ليست مسودة).",
+                    },
+                    { status: 400 }
+                );
+            }
+
+            const revertNote =
+                typeof body?.note === "string" ? body.note.trim().slice(0, 2000) : null;
+            const moveId = run.accounting_move_id as string | null | undefined;
+            let clearedConfirmations = 0;
+
+            try {
+                await executeTransaction(async (conn) => {
+                    if (moveId) {
+                        await conn.execute(
+                            `UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL`,
+                            [moveId]
+                        );
+                    }
+
+                    await conn.execute(
+                        `UPDATE hr_payroll_runs
+                         SET status = 'draft', approved_by = NULL, approved_at = NULL, accounting_move_id = NULL
+                         WHERE id = ?`,
+                        [id]
+                    );
+
+                    const [clearRes] = await conn.execute(
+                        `UPDATE hr_payroll_details
+                         SET salary_confirmed_at = NULL, salary_confirmed_by = NULL
+                         WHERE payroll_run_id = ? AND salary_confirmed_at IS NOT NULL`,
+                        [id]
+                    );
+                    clearedConfirmations = (clearRes as ResultSetHeader).affectedRows ?? 0;
+
+                    await insertHrPayrollRunLog(
+                        {
+                            payrollRunId: id,
+                            userId: session.user.id,
+                            action: "reverted_approval",
+                            note: revertNote || null,
+                            meta: {
+                                previous_accounting_move_id: moveId ?? null,
+                                period: `${run.period_month}/${run.period_year}`,
+                                cleared_salary_confirmations: clearedConfirmations,
+                            },
+                        },
+                        conn
+                    );
+
+                    if (moveId) {
+                        await conn.execute(
+                            `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+                             VALUES (?, ?, 'delete', 'move', ?, ?)`,
+                            [
+                                generateUUID(),
+                                session.user.id,
+                                moveId,
+                                JSON.stringify({
+                                    source: "payroll_revert_approval",
+                                    payroll_run_id: id,
+                                    accounting_move_id: moveId,
+                                    note: revertNote || undefined,
+                                }),
+                            ]
+                        );
+                    }
+                });
+
+                return NextResponse.json({
+                    success: true,
+                    message: "تم إلغاء اعتماد المسير وإخفاء القيد المحاسبي من التقارير. يمكنك التعديل ثم إعادة الاعتماد.",
+                    cleared_salary_confirmations: clearedConfirmations,
+                });
+            } catch (error: any) {
+                console.error("Payroll revert_approval error:", error);
+                return NextResponse.json(
+                    { error: "تعذر إلغاء الاعتماد.", details: error.message },
+                    { status: 500 }
+                );
+            }
+        }
+
         if (action === "update_line") {
             if (run.status !== 'draft') {
                 return NextResponse.json({ error: "Can only update draft payrolls" }, { status: 400 });
             }
 
-            const { 
-                detail_id, 
+            const {
+                detail_id,
                 basic_salary, housing_allowance, transport_allowance, other_allowances,
                 overtime_amount, absence_deduction, late_deduction, gosi_deduction,
                 custom_addition, custom_addition_note,
-                custom_deduction, custom_deduction_note 
-            } = await request.json();
+                custom_deduction, custom_deduction_note
+            } = body;
 
             // Fetch the detail line
             const detail = await queryOne<any>("SELECT * FROM hr_payroll_details WHERE id = ? AND payroll_run_id = ?", [detail_id, id]);

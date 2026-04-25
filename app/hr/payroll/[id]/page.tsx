@@ -4,7 +4,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CheckCircle, Trash2, Printer, Loader2, AlertTriangle, Download, Edit2, Save, X, PlusCircle, MinusCircle } from "lucide-react";
+import { ArrowRight, CheckCircle, Trash2, Printer, Loader2, AlertTriangle, Download, Edit2, Save, X, PlusCircle, MinusCircle, Undo2, ScrollText } from "lucide-react";
 
 export default function PayrollDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
@@ -98,7 +98,7 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
 
     const handleAction = async (action: "approve" | "delete") => {
         if (!confirm(action === "approve"
-            ? "هل أنت متأكد من اعتماد هذا المسير؟ لا يمكن التراجع عن هذا الإجراء وسيتم إنشاء قيد محاسبي."
+            ? "هل أنت متأكد من اعتماد هذا المسير؟ سيتم إنشاء قيد محاسبي. يمكن لاحقاً إلغاء الاعتماد من صفحة المسير إن لزم."
             : "هل أنت متأكد من حذف هذه المسودة؟")) return;
 
         setProcessing(true);
@@ -127,11 +127,48 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
         }
     };
 
+    const handleRevertApproval = async () => {
+        if (
+            !confirm(
+                "إلغاء اعتماد المسير؟ سيعود للمسودة، يُلغى تأكيد استلام الرواتب للموظفين، ويُخفى القيد المحاسبي من التقارير (دون حذفه من الأرشيف الداخلي). يمكنك التعديل ثم إعادة الاعتماد."
+            )
+        )
+            return;
+        const note = window.prompt("ملاحظة تُسجّل في سجل المسير (اختياري):", "");
+        if (note === null) return;
+
+        setProcessing(true);
+        try {
+            const res = await fetch(`/api/hr/payroll/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    action: "revert_approval",
+                    note: note.trim() || undefined,
+                }),
+            });
+            const json = await res.json().catch(() => ({}));
+            if (res.ok) {
+                setSuccessMsg("تم إلغاء الاعتماد وتسجيل الإجراء في سجل المسير.");
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                alert(json.error || "تعذر إلغاء الاعتماد");
+            }
+        } catch {
+            alert("فشل الاتصال");
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     if (loading) return <div className="text-center py-12">جاري التحميل...</div>;
     if (!data) return <div className="text-center py-12">غير موجود</div>;
 
     const { run, details } = data;
-    const isDraft = run.status === 'draft';
+    const logs = Array.isArray(data.logs) ? data.logs : [];
+    const isDraft = run.status === "draft";
+    const isApproved = run.status === "approved";
+    const isPaid = run.status === "paid";
 
     return (
         <div className="space-y-6">
@@ -151,9 +188,16 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                     <div>
                         <div className="flex items-center gap-3">
                             <h1 className="text-2xl font-bold text-gray-900">مسير رواتب </h1>
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${isDraft ? "bg-yellow-100 text-yellow-700" : "bg-green-100 text-green-700"
-                                }`}>
-                                {isDraft ? "مسودة" : "معتمد"}
+                            <span
+                                className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                    isDraft
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : isPaid
+                                          ? "bg-blue-100 text-blue-800"
+                                          : "bg-green-100 text-green-700"
+                                }`}
+                            >
+                                {isDraft ? "مسودة" : isPaid ? "مدفوع" : "معتمد"}
                             </span>
                         </div>
                         <p className="text-gray-500">
@@ -184,6 +228,21 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                         </>
                     ) : (
                         <>
+                            {isApproved && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleRevertApproval()}
+                                    disabled={processing}
+                                    className="flex items-center gap-2 px-4 py-2 border border-amber-200 text-amber-800 hover:bg-amber-50 rounded-xl transition disabled:opacity-50"
+                                >
+                                    {processing ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                        <Undo2 className="w-4 h-4" />
+                                    )}
+                                    <span>إلغاء الاعتماد</span>
+                                </button>
+                            )}
                             <button
                                 onClick={() => window.print()}
                                 className="flex items-center gap-2 px-4 py-2 border text-gray-600 hover:bg-gray-50 rounded-xl transition"
@@ -211,6 +270,52 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                     )}
                 </div>
             </div>
+
+            {!isDraft && (
+                <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-3 border-b bg-gray-50">
+                        <ScrollText className="w-4 h-4 text-gray-500" />
+                        <h2 className="text-sm font-semibold text-gray-800">سجل المسير</h2>
+                    </div>
+                    {logs.length === 0 ? (
+                        <p className="px-4 py-6 text-sm text-gray-500 text-center">
+                            لا توجد أحداث مسجّلة بعد. بعد اعتماد المسير أو إلغاء الاعتماد يظهر السجل هنا.
+                        </p>
+                    ) : (
+                        <ul className="divide-y max-h-56 overflow-y-auto text-sm">
+                            {logs.map((entry: any) => (
+                                <li key={entry.id} className="px-4 py-3 flex flex-col gap-1">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="font-medium text-gray-900">
+                                            {entry.action === "approved"
+                                                ? "اعتماد المسير"
+                                                : entry.action === "reverted_approval"
+                                                  ? "إلغاء الاعتماد"
+                                                  : entry.action}
+                                        </span>
+                                        <span className="text-xs text-gray-500 tabular-nums">
+                                            {entry.created_at
+                                                ? new Date(entry.created_at).toLocaleString("ar-SA", {
+                                                      dateStyle: "short",
+                                                      timeStyle: "short",
+                                                  })
+                                                : ""}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-gray-600">
+                                        {entry.user_name ? <>بواسطة {entry.user_name}</> : <>بواسطة مستخدم النظام</>}
+                                    </div>
+                                    {entry.note ? (
+                                        <p className="text-xs text-amber-900 bg-amber-50 rounded-lg px-2 py-1.5 border border-amber-100">
+                                            {entry.note}
+                                        </p>
+                                    ) : null}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

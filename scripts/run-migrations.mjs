@@ -96,6 +96,20 @@ const migrations = [
         sql: `INSERT IGNORE INTO hr_settings (id, setting_key, setting_value, description)
               VALUES (UUID(), 'gosi_expense_account_id', NULL, 'حساب مصروف GOSI صاحب العمل (اختياري)')`,
     },
+    {
+        name: '13. HR — payroll run activity log',
+        sql: `CREATE TABLE IF NOT EXISTS hr_payroll_run_logs (
+            id CHAR(36) NOT NULL PRIMARY KEY,
+            payroll_run_id CHAR(36) NOT NULL,
+            user_id CHAR(36) NULL,
+            action VARCHAR(50) NOT NULL,
+            note TEXT NULL,
+            meta JSON NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_payroll_run_logs_run (payroll_run_id),
+            INDEX idx_payroll_run_logs_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
+    },
 ];
 
 // ─── Auto-wire accounting settings ───────────────────────────────────────────
