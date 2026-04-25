@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
     ArrowRight,
     Save,
@@ -22,7 +23,9 @@ interface User {
 }
 
 export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
+    const { data: session } = useSession();
     const router = useRouter();
+    const isSuperAdmin = session?.user && (session.user as { role?: string }).role === "super_admin";
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [users, setUsers] = useState<User[]>([]);
@@ -118,20 +121,48 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         }
     };
 
-    const handleDelete = async () => {
-        if (!confirm("هل أنت متأكد من حذف هذا الموظف؟")) return;
+    const handleTerminate = async () => {
+        if (
+            !confirm(
+                "إنهاء خدمات هذا الموظف؟ سيُسجَّل كـ «منتهي» ويبقى في السجل (للرواتب والتقارير السابقة) ولن يُدرج في المسيرات الجديدة إن استُبعد."
+            )
+        )
+            return;
 
         try {
-            const response = await fetch(`/api/hr/employees/${id}`, {
-                method: "DELETE",
-            });
-
+            const response = await fetch(`/api/hr/employees/${id}`, { method: "DELETE" });
+            const data = await response.json().catch(() => ({}));
             if (response.ok) {
                 router.push("/hr/employees");
             } else {
-                alert("حدث خطأ أثناء الحذف");
+                alert(data.error || "تعذر تنفيذ الطلب");
             }
-        } catch (error) {
+        } catch {
+            alert("خطأ في الاتصال");
+        }
+    };
+
+    const handlePermanentDelete = async () => {
+        if (
+            !confirm(
+                "حذف نهائي من قاعدة البيانات؟ لا يمكن التراجع. يُسمح فقط إذا لم يكن للموظف مسير رواتب أو حضور أو طلبات مرتبطة."
+            )
+        )
+            return;
+        if (!confirm("تأكيد نهائي: حذف السجل بالكامل؟")) return;
+
+        try {
+            const response = await fetch(`/api/hr/employees/${id}?permanent=1`, { method: "DELETE" });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) {
+                router.push("/hr/employees");
+            } else if (response.status === 409 && Array.isArray(data.blocks)) {
+                const lines = data.blocks.map((b: { label: string; count: number }) => `${b.label}: ${b.count}`).join("\n");
+                alert(`${data.error || "مرفوض"}\n\n${lines}`);
+            } else {
+                alert(data.error || "تعذر الحذف النهائي");
+            }
+        } catch {
             alert("خطأ في الاتصال");
         }
     };
@@ -168,13 +199,25 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                         <p className="text-gray-500">{formData.full_name}</p>
                     </div>
                 </div>
-                <button
-                    onClick={handleDelete}
-                    className="flex items-center gap-2 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition"
-                >
-                    <Trash2 className="w-5 h-5" />
-                    حذف الموظف
-                </button>
+                <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <button
+                        type="button"
+                        onClick={handleTerminate}
+                        className="flex items-center gap-2 text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-4 py-2 rounded-lg transition text-sm font-medium"
+                    >
+                        إنهاء الخدمة
+                    </button>
+                    {isSuperAdmin && (
+                        <button
+                            type="button"
+                            onClick={handlePermanentDelete}
+                            className="flex items-center gap-2 text-red-600 hover:bg-red-50 px-4 py-2 rounded-lg transition border border-red-200 text-sm font-medium"
+                        >
+                            <Trash2 className="w-5 h-5" />
+                            حذف نهائي
+                        </button>
+                    )}
+                </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -191,6 +234,9 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                         <option value="inactive">غير نشط (إجازة طويلة)</option>
                         <option value="terminated">منتهي خدماته</option>
                     </select>
+                    <p className="text-xs text-gray-500 mt-2">
+                        لإزالة السجل بالكامل من النظام (بدون إبقاء صف)، استخدم «حذف نهائي» أعلاه إن كنت مسؤول النظام وليس للموظف أي مسير رواتب أو حضور مرتبط.
+                    </p>
                 </div>
 
                 {/* Personal Info */}

@@ -133,7 +133,7 @@ export async function PUT(
     }
 }
 
-// DELETE: حذف موظف
+// DELETE: إنهاء خدمات (افتراضي) أو حذف نهائي (?permanent=1) لمسؤول أعلى فقط عند عدم وجود سجلات مرتبطة
 export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -145,14 +145,85 @@ export async function DELETE(
 
     try {
         const { id } = await params;
+        const url = new URL(request.url);
+        const permanent =
+            url.searchParams.get("permanent") === "1" || url.searchParams.get("permanent") === "true";
+        const role = (session.user as { role?: string }).role;
 
-        // Soft delete by setting status to terminated
-        await execute(
-            "UPDATE hr_employees SET status = 'terminated' WHERE id = ?",
-            [id]
-        );
+        const exists = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE id = ?", [id]);
+        if (!exists) {
+            return NextResponse.json({ error: "الموظف غير موجود" }, { status: 404 });
+        }
 
-        return NextResponse.json({ success: true });
+        if (permanent) {
+            if (role !== "super_admin") {
+                return NextResponse.json(
+                    { error: "الحذف النهائي متاح لمسؤول النظام (super_admin) فقط." },
+                    { status: 403 }
+                );
+            }
+
+            const blocks: { key: string; label: string; count: number }[] = [];
+            const checks: { sql: string; label: string; key: string }[] = [
+                {
+                    key: "payroll",
+                    label: "سطور مسيرات رواتب",
+                    sql: "SELECT COUNT(*) AS c FROM hr_payroll_details WHERE employee_id = ?",
+                },
+                {
+                    key: "attendance",
+                    label: "سجلات حضور وانصراف",
+                    sql: "SELECT COUNT(*) AS c FROM hr_attendance WHERE employee_id = ?",
+                },
+                {
+                    key: "requests",
+                    label: "طلبات الموارد البشرية",
+                    sql: "SELECT COUNT(*) AS c FROM hr_requests WHERE employee_id = ?",
+                },
+                {
+                    key: "evaluations",
+                    label: "تقييمات الأداء",
+                    sql: "SELECT COUNT(*) AS c FROM hr_evaluations WHERE employee_id = ?",
+                },
+                {
+                    key: "eval_config",
+                    label: "إعدادات التقييم",
+                    sql: "SELECT COUNT(*) AS c FROM hr_employee_eval_config WHERE employee_id = ?",
+                },
+                {
+                    key: "messages",
+                    label: "رسائل HR للموظف",
+                    sql: "SELECT COUNT(*) AS c FROM hr_employee_messages WHERE employee_id = ?",
+                },
+            ];
+
+            for (const { sql, label, key } of checks) {
+                try {
+                    const row = await queryOne<{ c: number }>(sql, [id]);
+                    const c = Number(row?.c ?? 0);
+                    if (c > 0) blocks.push({ key, label, count: c });
+                } catch {
+                    // جدول غير موجود في بعض النسخ — نتجاهل
+                }
+            }
+
+            if (blocks.length > 0) {
+                return NextResponse.json(
+                    {
+                        error:
+                            "لا يمكن الحذف النهائي لوجود بيانات مرتبطة بهذا الموظف. احذف أو انقل السجلات أولاً، أو استخدم «إنهاء الخدمة» فقط.",
+                        blocks,
+                    },
+                    { status: 409 }
+                );
+            }
+
+            await execute("DELETE FROM hr_employees WHERE id = ?", [id]);
+            return NextResponse.json({ success: true, mode: "deleted" });
+        }
+
+        await execute("UPDATE hr_employees SET status = 'terminated' WHERE id = ?", [id]);
+        return NextResponse.json({ success: true, mode: "terminated" });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

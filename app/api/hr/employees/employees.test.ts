@@ -164,16 +164,79 @@ describe('Employees CRUD API', () => {
         });
 
         it('DELETE performs a soft delete (terminated status)', async () => {
+            mockQueryOne.mockResolvedValueOnce({ id: empId });
             mockExecute.mockResolvedValue({});
             const res = await DELETE(new Request('http://localhost/api/hr/employees/123', {
                 method: 'DELETE'
             }), { params: getParams() });
 
             expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.mode).toBe('terminated');
             expect(mockExecute).toHaveBeenCalledWith(
                 expect.stringContaining("UPDATE hr_employees SET status = 'terminated'"),
                 [empId]
             );
+        });
+
+        it('DELETE with permanent=1 returns 403 for non-super_admin', async () => {
+            mockQueryOne.mockResolvedValueOnce({ id: empId });
+            vi.mocked(getServerSession).mockResolvedValueOnce({
+                user: { id: 'admin-001', role: 'hr_manager' },
+            } as any);
+            const res = await DELETE(
+                new Request('http://localhost/api/hr/employees/123?permanent=1', { method: 'DELETE' }),
+                { params: getParams() }
+            );
+            expect(res.status).toBe(403);
+            expect(mockExecute).not.toHaveBeenCalled();
+        });
+
+        it('DELETE with permanent=1 deletes row when super_admin and no blocking rows', async () => {
+            vi.mocked(getServerSession).mockResolvedValueOnce({
+                user: { id: 'admin-001', role: 'super_admin' },
+            } as any);
+            mockQueryOne
+                .mockResolvedValueOnce({ id: empId })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 });
+            mockExecute.mockResolvedValue({});
+
+            const res = await DELETE(
+                new Request('http://localhost/api/hr/employees/123?permanent=1', { method: 'DELETE' }),
+                { params: getParams() }
+            );
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.mode).toBe('deleted');
+            expect(mockExecute).toHaveBeenCalledWith(
+                expect.stringContaining('DELETE FROM hr_employees'),
+                [empId]
+            );
+        });
+
+        it('DELETE with permanent=1 returns 409 when payroll lines exist', async () => {
+            vi.mocked(getServerSession).mockResolvedValueOnce({
+                user: { id: 'admin-001', role: 'super_admin' },
+            } as any);
+            mockQueryOne
+                .mockResolvedValueOnce({ id: empId })
+                .mockResolvedValueOnce({ c: 3 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 })
+                .mockResolvedValueOnce({ c: 0 });
+            const res = await DELETE(
+                new Request('http://localhost/api/hr/employees/123?permanent=1', { method: 'DELETE' }),
+                { params: getParams() }
+            );
+            expect(res.status).toBe(409);
+            expect(mockExecute).not.toHaveBeenCalled();
         });
     });
 });
