@@ -23,6 +23,11 @@ import { attachCdpInterceptor, CdpInterceptorHandle } from "./cdp-interceptor";
 // DevTools open/close and on window destruction without leaking handles.
 const cdpHandles = new Map<string, CdpInterceptorHandle>();
 
+// Mitigate Chromium/Electron freezing or dropping keystrokes in inputs when the window
+// loses focus, is occluded, or the renderer is background-throttled (common on Windows).
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+app.commandLine.appendSwitch("disable-backgrounding-occluded-windows", "true");
+
 let nextServerProcess: ChildProcess | null = null;
 
 // Start Next.js standalone server
@@ -241,6 +246,7 @@ function createMainWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       webviewTag: true,
+      backgroundThrottling: false,
     },
   });
 

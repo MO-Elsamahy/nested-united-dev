@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, X, Shield, Users, Calculator, Building2, Wrench, UserCheck, LucideIcon } from "lucide-react";
+import {
+    Check,
+    X,
+    Shield,
+    Users,
+    Calculator,
+    Building2,
+    Wrench,
+    UserCheck,
+    LucideIcon,
+    Users2,
+} from "lucide-react";
 
 interface SystemInfo {
     label: string;
@@ -17,6 +28,7 @@ const systemLabels: Record<string, SystemInfo> = {
     rentals: { label: "إدارة التأجير", icon: Building2 },
     accounting: { label: "النظام المالي", icon: Calculator },
     hr: { label: "الموارد البشرية", icon: Users },
+    crm: { label: "إدارة العملاء (CRM)", icon: Users2 },
 };
 
 const roleLabels: Record<string, RoleInfo> = {
@@ -62,24 +74,41 @@ export default function RolePermissionsPage() {
     async function togglePermission(role: string, system: string, currentValue: boolean) {
         if (role === "super_admin") return;
         setSaving(`${role}-${system}`);
+        const next = !currentValue;
 
-        await fetch("/api/settings/role-permissions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ role, system_id: system, can_access: !currentValue }),
-        });
+        try {
+            const res = await fetch("/api/settings/role-permissions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ role, system_id: system, can_access: next }),
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                alert(
+                    typeof (body as { error?: string }).error === "string"
+                        ? (body as { error: string }).error
+                        : "تعذّر حفظ الصلاحية"
+                );
+                await fetchPermissions();
+                return;
+            }
 
-        setData((prev: any) => ({
-            ...prev,
-            permissions: {
-                ...prev.permissions,
-                [role]: {
-                    ...prev.permissions[role],
-                    [system]: !currentValue,
+            setData((prev: any) => ({
+                ...prev,
+                permissions: {
+                    ...prev.permissions,
+                    [role]: {
+                        ...prev.permissions[role],
+                        [system]: next,
+                    },
                 },
-            },
-        }));
-        setSaving(null);
+            }));
+        } catch {
+            alert("خطأ في الاتصال أثناء حفظ الصلاحية");
+            await fetchPermissions();
+        } finally {
+            setSaving(null);
+        }
     }
 
     if (loading) return <div className="p-8 text-center">جاري التحميل...</div>;
