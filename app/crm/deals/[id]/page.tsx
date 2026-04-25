@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,7 +9,7 @@ import {
     CheckCircle2, XCircle, Handshake, CreditCard, PackageCheck,
     BadgeCheck, MessagesSquare, AlertTriangle, History,
     MessageSquare, PhoneCall, CalendarDays, MailIcon, RefreshCw,
-    StickyNote, Activity
+    StickyNote, Activity, Trash2, Archive, RotateCcw
 } from "lucide-react";
 
 const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
@@ -99,9 +99,15 @@ export default function DealDetailPage() {
     const [deal, setDeal] = useState<any>(null);
     const [activities, setActivities] = useState<any[]>([]);
     const [error, setError] = useState("");
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+    const [archiving, setArchiving] = useState(false);
 
-    useEffect(() => {
+    const loadDeal = useCallback((opts?: { silent?: boolean }) => {
         if (!id) return;
+        const silent = Boolean(opts?.silent);
+        if (!silent) setLoading(true);
         fetch(`/api/crm/deals/${id}`)
             .then(res => res.json())
             .then(data => {
@@ -113,8 +119,54 @@ export default function DealDetailPage() {
                 }
             })
             .catch(() => setError("خطأ في تحميل بيانات الصفقة"))
-            .finally(() => setLoading(false));
+            .finally(() => {
+                if (!silent) setLoading(false);
+            });
     }, [id]);
+
+    useEffect(() => {
+        loadDeal();
+    }, [loadDeal]);
+
+    const handleArchiveOrReopen = async (nextStatus: "open" | "closed") => {
+        setArchiving(true);
+        try {
+            const res = await fetch("/api/crm/deals", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id, status: nextStatus }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                setArchiveDialogOpen(false);
+                loadDeal({ silent: true });
+            } else {
+                alert((data as { error?: string }).error || "تعذّر تحديث حالة الصفقة");
+            }
+        } catch {
+            alert("حدث خطأ أثناء تحديث الصفقة");
+        } finally {
+            setArchiving(false);
+        }
+    };
+
+    const handleDeleteDeal = async () => {
+        setDeleting(true);
+        try {
+            const res = await fetch(`/api/crm/deals/${id}`, { method: "DELETE" });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                router.replace("/crm/deals");
+                return;
+            }
+            alert((data as { error?: string }).error || "تعذّر حذف الصفقة");
+        } catch {
+            alert("حدث خطأ أثناء الحذف");
+        } finally {
+            setDeleting(false);
+            setDeleteDialogOpen(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -143,23 +195,134 @@ export default function DealDetailPage() {
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
+            {archiveDialogOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="archive-deal-title"
+                >
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+                        <h2 id="archive-deal-title" className="text-lg font-bold text-gray-900">
+                            أرشفة الصفقة؟
+                        </h2>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                            الأرشفة تعني إنهاء متابعة الصفقة: تبقى كل البيانات والسجل في النظام، وتنتقل الصفقة
+                            إلى تبويب «المؤرشفة» في مسار الصفقات. هذا{" "}
+                            <span className="font-semibold">ليس</span> حذفاً نهائياً.
+                        </p>
+                        <div className="flex gap-2 justify-end pt-2">
+                            <button
+                                type="button"
+                                disabled={archiving}
+                                onClick={() => setArchiveDialogOpen(false)}
+                                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                type="button"
+                                disabled={archiving}
+                                onClick={() => handleArchiveOrReopen("closed")}
+                                className="px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 disabled:opacity-50"
+                            >
+                                {archiving ? "جاري التنفيذ..." : "تأكيد الأرشفة"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {deleteDialogOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="delete-deal-title"
+                >
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 space-y-4">
+                        <h2 id="delete-deal-title" className="text-lg font-bold text-gray-900">
+                            حذف الصفقة نهائياً؟
+                        </h2>
+                        <p className="text-sm text-gray-600 leading-relaxed">
+                            سيتم <span className="font-semibold text-red-700">مسح</span> الصفقة{" "}
+                            <span className="font-semibold text-gray-900">{deal.title}</span> وسجل أنشطتها من
+                            قاعدة البيانات. لا يمكن التراجع. إذا أردت الإبقاء على السجل استخدم «أرشفة الصفقة».
+                        </p>
+                        <div className="flex gap-2 justify-end pt-2">
+                            <button
+                                type="button"
+                                disabled={deleting}
+                                onClick={() => setDeleteDialogOpen(false)}
+                                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                type="button"
+                                disabled={deleting}
+                                onClick={handleDeleteDeal}
+                                className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {deleting ? "جاري الحذف..." : "حذف نهائي"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex items-start gap-4">
                 <Link href="/crm/deals" className="p-2 hover:bg-gray-100 rounded-lg mt-1 transition">
                     <ArrowRight className="w-5 h-5 text-gray-500" />
                 </Link>
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap justify-between">
+                        <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-2xl font-bold text-gray-900">{deal.title}</h1>
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${stage.bg} ${stage.color}`}>
                             <StageIcon className="w-3.5 h-3.5" />
                             {stage.label}
                         </span>
                         {deal.status === 'closed' && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                                مغلقة
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-100">
+                                مؤرشفة
                             </span>
                         )}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 shrink-0">
+                            {deal.status === "open" ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setArchiveDialogOpen(true)}
+                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50/80 text-amber-900 text-sm font-medium hover:bg-amber-100 transition"
+                                >
+                                    <Archive className="w-4 h-4" />
+                                    أرشفة الصفقة
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    disabled={archiving}
+                                    onClick={() => {
+                                        if (!confirm("إعادة فتح الصفقة وإرجاعها للمسار النشط؟")) return;
+                                        void handleArchiveOrReopen("open");
+                                    }}
+                                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"
+                                >
+                                    <RotateCcw className="w-4 h-4" />
+                                    إعادة فتح
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => setDeleteDialogOpen(true)}
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-700 text-sm font-medium hover:bg-red-50 transition"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                حذف نهائي
+                            </button>
+                        </div>
                     </div>
                     <p className="text-sm text-gray-400 mt-1">
                         #{deal.id.substring(0, 8)} • أنشئت {formatDate(deal.created_at)}

@@ -129,6 +129,20 @@ describe('CRM Customers API', () => {
         expect(Array.isArray(body)).toBe(true);
     });
 
+    it('GET applies active_deals and deals_total filters in SQL', async () => {
+        mockQuery.mockResolvedValueOnce([]);
+
+        const url =
+            'http://localhost/api/crm/customers?active_deals=yes&deals_total=2-4&tag_id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+        const res = await GET(new Request(url));
+        expect(res.status).toBe(200);
+        expect(mockQuery).toHaveBeenCalled();
+        const sql = mockQuery.mock.calls[0][0] as string;
+        expect(sql).toContain("open') > 0");
+        expect(sql).toContain('BETWEEN 2 AND 4');
+        expect(sql).toContain('crm_customer_tags');
+    });
+
     // ── Unauthorized ──────────────────────────────────────────────────────────
 
     it('returns 401 if user is not authenticated', async () => {

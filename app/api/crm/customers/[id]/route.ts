@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, queryOne, execute } from "@/lib/db";
+import { query, queryOne, execute, executeTransaction } from "@/lib/db";
 
 export async function GET(
     request: Request,
@@ -76,6 +76,39 @@ export async function PUT(
 
         return NextResponse.json({ success: true });
 
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+// DELETE: Remove customer and CRM data linked to them (deals, activities, tags)
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    try {
+        const customer = await queryOne<{ id: string }>("SELECT id FROM customers WHERE id = ?", [id]);
+        if (!customer) {
+            return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+        }
+
+        await executeTransaction(async (conn) => {
+            await conn.execute(
+                `DELETE a FROM crm_activities a
+                 INNER JOIN crm_deals d ON a.deal_id = d.id AND d.customer_id = ?`,
+                [id]
+            );
+            await conn.execute("DELETE FROM crm_activities WHERE customer_id = ?", [id]);
+            await conn.execute("DELETE FROM crm_deals WHERE customer_id = ?", [id]);
+            await conn.execute("DELETE FROM crm_customer_tags WHERE customer_id = ?", [id]);
+            await conn.execute("DELETE FROM customers WHERE id = ?", [id]);
+        });
+
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

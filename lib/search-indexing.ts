@@ -14,6 +14,8 @@ export interface SearchablePage {
     href: string;
     keywords: string[];
     requiresSuperAdmin: boolean;
+    /** If set, only these roles see this shortcut in global search. */
+    allowedRoles?: string[];
 }
 
 function flattenNav(sections: NavSection[], moduleName: string): SearchablePage[] {
@@ -32,7 +34,8 @@ function flattenNav(sections: NavSection[], moduleName: string): SearchablePage[
                     // Add more smart keywords based on href
                     ...item.href.split('/').filter(p => p && p !== 'dashboard' && p !== moduleName.toLowerCase())
                 ],
-                requiresSuperAdmin: !!item.requiresSuperAdmin
+                requiresSuperAdmin: !!item.requiresSuperAdmin,
+                allowedRoles: item.allowedRoles,
             });
         });
     });

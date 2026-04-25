@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, queryOne } from "@/lib/db";
+import { query, queryOne, execute } from "@/lib/db";
 
 // GET /api/crm/deals/[id] — Get single deal with activities
 export async function GET(
@@ -47,6 +47,30 @@ export async function GET(
         );
 
         return NextResponse.json({ deal, activities });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+// DELETE /api/crm/deals/[id] — Remove deal and its activities
+export async function DELETE(
+    request: Request,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    try {
+        const { id } = await params;
+        const existing = await queryOne<{ id: string }>("SELECT id FROM crm_deals WHERE id = ?", [id]);
+        if (!existing) {
+            return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+        }
+
+        await execute("DELETE FROM crm_activities WHERE deal_id = ?", [id]);
+        await execute("DELETE FROM crm_deals WHERE id = ?", [id]);
+
+        return NextResponse.json({ success: true });
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
     }

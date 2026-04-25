@@ -11,6 +11,20 @@ export interface CRMCustomer {
     notes: string | null;
     status: string;
     created_at?: string;
+    /** Populated on list endpoint — total deals (any status) */
+    total_deal_count?: number;
+    /** Populated on list endpoint — deals with status = open */
+    open_deal_count?: number;
+    /** Populated on list endpoint — comma-separated tag names (Arabic list separator) */
+    tag_labels?: string | null;
+}
+
+/** CRM tag row (e.g. VIP, عميل محتمل) */
+export interface CrmTag {
+    id: string;
+    name: string;
+    color: string | null;
+    text_color: string | null;
 }
 
 export interface CrmActivity {

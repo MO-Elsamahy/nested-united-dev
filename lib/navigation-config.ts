@@ -30,6 +30,8 @@ export interface NavItem {
     href: string;
     icon: any;
     requiresSuperAdmin?: boolean;
+    /** If set, only these roles see the item (e.g. CRM reports & settings). */
+    allowedRoles?: string[];
 }
 
 export interface NavSection {
@@ -148,15 +150,25 @@ export const CRM_NAV: NavSection[] = [
     {
         title: "التقارير",
         items: [
-            { label: "التقارير", href: "/crm/reports", icon: PieChart }
-        ]
+            {
+                label: "التقارير",
+                href: "/crm/reports",
+                icon: PieChart,
+                allowedRoles: ["super_admin", "hr_manager"],
+            },
+        ],
     },
     {
         title: "الإعدادات",
         items: [
-            { label: "إعدادات العملاء", href: "/crm/settings", icon: Settings } // Renamed
-        ]
-    }
+            {
+                label: "إعدادات العملاء",
+                href: "/crm/settings",
+                icon: Settings,
+                allowedRoles: ["super_admin", "hr_manager"],
+            },
+        ],
+    },
 ];
 
 export const SETTINGS_NAV: NavSection[] = [

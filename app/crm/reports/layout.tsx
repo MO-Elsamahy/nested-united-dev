@@ -1,0 +1,13 @@
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
+
+export default async function CRMReportsLayout({ children }: { children: React.ReactNode }) {
+    const session = await getServerSession(authOptions);
+    const role = (session?.user as { role?: string } | undefined)?.role;
+    if (!canAccessCrmReportsAndSettings(role)) {
+        redirect("/crm");
+    }
+    return <>{children}</>;
+}

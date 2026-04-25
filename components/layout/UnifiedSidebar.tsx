@@ -5,7 +5,13 @@ import type { User } from "@/lib/types/database";
 import { SidebarItem } from "./SidebarItem";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarFooter } from "./SidebarFooter";
-import { NavSection } from "@/lib/navigation-config";
+import { NavSection, NavItem } from "@/lib/navigation-config";
+
+function isNavItemVisibleForUser(item: NavItem, userRole: string): boolean {
+    if (item.requiresSuperAdmin && userRole !== "super_admin") return false;
+    if (item.allowedRoles?.length) return item.allowedRoles.includes(userRole);
+    return true;
+}
 
 interface AppSidebarProps {
     user: User | { name: string; role: string; email?: string; id?: string };
@@ -55,8 +61,10 @@ export function UnifiedSidebar({
                     </div>
                 ) : (
                     sections.map((section, sectionIdx) => {
-                        // Filter out empty sections if any
-                        if (section.items.length === 0) return null;
+                        const visibleItems = section.items.filter((item) =>
+                            isNavItemVisibleForUser(item, user.role)
+                        );
+                        if (visibleItems.length === 0) return null;
 
                         return (
                             <div key={sectionIdx} className="mb-4">
@@ -66,8 +74,13 @@ export function UnifiedSidebar({
                                     </div>
                                 )}
                                 <div className="space-y-1">
-                                    {section.items.map((item) => (
-                                        <SidebarItem key={item.href} {...item} />
+                                    {visibleItems.map((item) => (
+                                        <SidebarItem
+                                            key={item.href}
+                                            label={item.label}
+                                            href={item.href}
+                                            icon={item.icon}
+                                        />
                                     ))}
                                 </div>
                             </div>

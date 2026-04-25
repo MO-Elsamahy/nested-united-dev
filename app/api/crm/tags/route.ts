@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, execute, queryOne } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
+import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
 
 // GET: List all tags
 export async function GET(request: Request) {
@@ -46,6 +47,10 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const role = (session.user as { role?: string }).role;
+    if (!canAccessCrmReportsAndSettings(role)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     try {
         const { searchParams } = new URL(request.url);

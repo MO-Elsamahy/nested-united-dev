@@ -39,6 +39,7 @@ export async function POST(request: Request) {
             customer_id,
             title,
             notes,
+            description,
             stage,
             value,
             priority,
@@ -49,7 +50,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: "customer_id and title are required" }, { status: 400 });
         }
 
-        const notesValue = notes ?? null;
+        const rawNotes = description !== undefined && description !== null ? description : notes;
+        const notesValue =
+            rawNotes === undefined || rawNotes === null || rawNotes === "" ? null : rawNotes;
 
         const valueNum =
             value === "" || value === undefined || value === null
@@ -174,6 +177,12 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: "Deal ID required" }, { status: 400 });
         }
 
+        const existing = await queryOne<{ id: string }>("SELECT id FROM crm_deals WHERE id = ?", [id]);
+        if (!existing) {
+            return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+        }
+
+        await execute("DELETE FROM crm_activities WHERE deal_id = ?", [id]);
         await execute("DELETE FROM crm_deals WHERE id = ?", [id]);
         return NextResponse.json({ success: true });
     } catch (error: any) {

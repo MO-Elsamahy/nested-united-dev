@@ -78,10 +78,13 @@ export function GlobalSearch() {
         
         const normQuery = normalizeSearchText(query);
         
+        const userRole = (session?.user as { role?: string } | undefined)?.role ?? "";
+
         return navItems.filter(item => {
             // Permission check
             if (item.requiresSuperAdmin && !isSuperAdmin) return false;
-            
+            if (item.allowedRoles?.length && !item.allowedRoles.includes(userRole)) return false;
+
             // Match against label, subtitle, or keywords
             return (
                 normalizeSearchText(item.label).includes(normQuery) ||
@@ -89,7 +92,7 @@ export function GlobalSearch() {
                 item.keywords.some(k => normalizeSearchText(k).includes(normQuery))
             );
         });
-    }, [query, navItems, isSuperAdmin]);
+    }, [query, navItems, isSuperAdmin, session?.user]);
 
     const allItems = [...navMatches.map(n => ({ ...n, _type: "nav" })), ...results];
 
