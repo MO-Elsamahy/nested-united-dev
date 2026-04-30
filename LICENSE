@@ -1,9 +1,32 @@
-Copyright (c) 2026 MZ Software Solutions (Mohammed Amir Al-Samahy & Ezz El-Din)
+# PROPRIETARY LICENSE - MZ SOFTWARE SOLUTIONS
 
-All rights reserved.
+**Project**: Nested United ERP System  
+**Copyright (c) 2026 MZ Software & Tech Solutions**  
+**Authors**: Mohammed Amir Al-Samahy & Ezz El-Din
 
-This software and associated documentation files (the "Software") are the proprietary property of MZ Software Solutions. 
+---
 
-1. You may NOT use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software without explicit, prior written permission from MZ Software Solutions.
-2. The Software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the Software or the use or other dealings in the Software.
-3. This Agreement does not grant the client any intellectual property rights in MZ Software Solution's pre-existing tools, libraries, or general algorithms.
+## 1. OWNERSHIP AND RIGHTS
+This software and its associated documentation (the "Software") are the exclusive proprietary property of **MZ Software & Tech Solutions**. This project is specifically developed and managed for **Nested United**. 
+
+All intellectual property rights, including but not limited to source code, database schemas, UI/UX designs, and proprietary algorithms, are reserved globally.
+
+## 2. RESTRICTIONS
+Unauthorized use, reproduction, modification, distribution, or reverse engineering of this Software is strictly prohibited. 
+
+Under this Proprietary License, the following actions are **NOT PERMITTED** without explicit, prior written consent from MZ Software & Tech Solutions:
+- Copying or cloning the repository for personal or third-party use.
+- Modifying the source code for any purpose other than authorized maintenance.
+- Redistributing the Software or any of its components.
+- Using the Software to create a derivative product or competing platform.
+
+## 3. NO WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## 4. CONFIDENTIALITY
+The source code and architecture of this Software are considered trade secrets. Any person with access to the codebase is bound by a non-disclosure obligation to maintain the confidentiality of the system's logic and structure.
+
+---
+
+**Managed by MZ Software & Tech Solutions**  
+*Building Enterprise Excellence*
