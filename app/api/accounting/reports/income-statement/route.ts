@@ -23,7 +23,13 @@ export async function GET(request: Request) {
         }
 
         // Query for income and expense accounts
-        const results = await query<any>(`
+        const results = await query<{
+            id: string;
+            code: string;
+            name: string;
+            type: string;
+            amount: number;
+        }>(`
             SELECT 
                 a.id,
                 a.code,
@@ -46,15 +52,15 @@ export async function GET(request: Request) {
         `, [from_date, to_date]);
 
         // Separate into revenue and expenses
-        const revenue_accounts = results.filter((r: any) => r.type === 'income');
-        const expense_accounts = results.filter((r: any) =>
+        const revenue_accounts = results.filter((r) => r.type === 'income');
+        const expense_accounts = results.filter((r) =>
             r.type === 'expense' || r.type === 'cost_of_sales'
         );
 
-        const total_revenue = revenue_accounts.reduce((sum: number, acc: any) =>
+        const total_revenue = revenue_accounts.reduce((sum, acc) =>
             sum + Number(acc.amount), 0
         );
-        const total_expenses = expense_accounts.reduce((sum: number, acc: any) =>
+        const total_expenses = expense_accounts.reduce((sum, acc) =>
             sum + Number(acc.amount), 0
         );
         const net_income = total_revenue - total_expenses;
@@ -72,8 +78,8 @@ export async function GET(request: Request) {
             net_income: net_income
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Income statement error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

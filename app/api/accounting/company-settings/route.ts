@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
+import { CompanySettings } from "@/lib/types/accounting";
+import { User } from "@/lib/types/database";
 
 // GET /api/accounting/company-settings - Get company settings
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
     try {
         const session = await getServerSession(authOptions);
         if (!session?.user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const settings = await query("SELECT * FROM company_settings LIMIT 1");
+        const settings = await query<CompanySettings>("SELECT * FROM company_settings LIMIT 1");
 
         if (!settings || settings.length === 0) {
             return NextResponse.json({ error: "Company settings not found" }, { status: 404 });
@@ -22,10 +24,10 @@ export async function GET(req: NextRequest) {
         delete safeSettings.smtp_password;
 
         return NextResponse.json(safeSettings);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching company settings:", error);
         return NextResponse.json(
-            { error: "Failed to fetch company settings", details: error.message },
+            { error: "Failed to fetch company settings", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }
@@ -40,7 +42,7 @@ export async function PUT(req: NextRequest) {
         }
 
         // Check if user is super admin
-        const users: any = await query("SELECT role FROM users WHERE id = ?", [session.user.id]);
+        const users = await query<User>("SELECT role FROM users WHERE id = ?", [session.user.id]);
         if (!users || users.length === 0 || users[0].role !== "super_admin") {
             return NextResponse.json(
                 { error: "Forbidden. Only super admins can update company settings." },
@@ -82,7 +84,7 @@ export async function PUT(req: NextRequest) {
         } = body;
 
         // Get existing settings
-        const existing: any = await query("SELECT * FROM company_settings LIMIT 1");
+        const existing = await query<CompanySettings>("SELECT * FROM company_settings LIMIT 1");
 
         if (!existing || existing.length === 0) {
             return NextResponse.json(
@@ -95,7 +97,7 @@ export async function PUT(req: NextRequest) {
 
         // Build update query dynamically to only update provided fields
         const updates: string[] = [];
-        const values: any[] = [];
+        const values: (string | number | boolean | null)[] = [];
 
         if (company_name !== undefined) { updates.push("company_name = ?"); values.push(company_name); }
         if (company_name_en !== undefined) { updates.push("company_name_en = ?"); values.push(company_name_en); }
@@ -140,15 +142,15 @@ export async function PUT(req: NextRequest) {
         await query(sql, values);
 
         // Fetch updated settings
-        const updated = await query("SELECT * FROM company_settings WHERE id = ?", [settingsId]);
+        const updated = await query<CompanySettings>("SELECT * FROM company_settings WHERE id = ?", [settingsId]);
         const safeSettings = { ...updated[0] };
         delete safeSettings.smtp_password;
 
         return NextResponse.json(safeSettings);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error updating company settings:", error);
         return NextResponse.json(
-            { error: "Failed to update company settings", details: error.message },
+            { error: "Failed to update company settings", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

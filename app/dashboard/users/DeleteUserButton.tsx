@@ -33,8 +33,8 @@ export function DeleteUserButton({ userId, userName, userEmail }: DeleteUserButt
       setIsOpen(false);
       router.refresh();
       alert("تم حذف المستخدم بنجاح");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {
       setLoading(false);
     }

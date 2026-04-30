@@ -7,6 +7,25 @@ import Link from "next/link";
 import { use } from "react";
 import { usePermission } from "@/lib/hooks/usePermission";
 
+interface Unit {
+    unit_name: string;
+    unit_code?: string;
+    capacity?: number;
+    city?: string;
+    address?: string;
+    status: string;
+}
+
+interface Calendar {
+    id: string;
+    platform: string;
+    is_primary: boolean;
+    ical_url: string;
+    platform_account?: {
+        account_name: string;
+    };
+}
+
 export default function EditUnitPage({
   params,
 }: {
@@ -17,9 +36,8 @@ export default function EditUnitPage({
   const canEdit = usePermission("edit");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [unit, setUnit] = useState<any>(null);
-  const [calendars, setCalendars] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [unit, setUnit] = useState<Unit | null>(null);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
 
   useEffect(() => {
     if (canEdit === false) {
@@ -33,10 +51,9 @@ export default function EditUnitPage({
       fetch(`/api/units/${id}/calendars`).then((res) => res.json()),
       fetch(`/api/accounts`).then((res) => res.json()),
     ])
-      .then(([unitData, calendarsData, accountsData]) => {
+      .then(([unitData, calendarsData]) => {
         setUnit(unitData);
         setCalendars(calendarsData || []);
-        setAccounts(accountsData || []);
       })
       .catch(console.error);
   }, [id]);
@@ -70,8 +87,8 @@ export default function EditUnitPage({
 
       router.push(`/dashboard/units/${id}`);
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ');
     } finally {
       setLoading(false);
     }

@@ -26,8 +26,8 @@ export async function GET(
     }
 
     return NextResponse.json(booking);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -113,8 +113,8 @@ export async function PUT(
     });
 
     return NextResponse.json(updatedBooking);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -157,7 +157,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
   }
 }

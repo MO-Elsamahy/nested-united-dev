@@ -1,13 +1,30 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowRight, Printer, Search } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ArrowRight, Printer } from "lucide-react";
 import Link from "next/link";
+import { AccountingAccount } from "@/lib/types/accounting";
+
+interface GLMove {
+    date: string;
+    ref: string;
+    line_name?: string;
+    move_narration: string;
+    partner_name?: string;
+    debit: number;
+    credit: number;
+    running_balance: number;
+}
+
+interface GLData {
+    opening_balance: number;
+    moves: GLMove[];
+}
 
 export default function GeneralLedgerPage() {
-    const [accounts, setAccounts] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<AccountingAccount[]>([]);
     const [selectedAccount, setSelectedAccount] = useState("");
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<GLData | null>(null);
     const [loading, setLoading] = useState(false);
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
@@ -15,10 +32,10 @@ export default function GeneralLedgerPage() {
     useEffect(() => {
         fetch("/api/accounting/accounts")
             .then(r => r.json())
-            .then(setAccounts);
+            .then(data => setAccounts(Array.isArray(data) ? data : []));
     }, []);
 
-    async function fetchReport() {
+    const fetchReport = useCallback(async () => {
         if (!selectedAccount) return;
         setLoading(true);
         try {
@@ -27,9 +44,11 @@ export default function GeneralLedgerPage() {
             if (from) p.set("from", from);
             if (to) p.set("to", to);
             const res = await fetch(`/api/accounting/reports/general-ledger?${p}`);
-            if (res.ok) setData(await res.json());
+            if (res.ok) setData(await res.json() as GLData);
+        } catch (e: unknown) {
+            console.error(e);
         } finally { setLoading(false); }
-    }
+    }, [selectedAccount, from, to]);
 
     const selectedAccountName = accounts.find(a => a.id === selectedAccount)?.name || "";
 
@@ -68,9 +87,21 @@ export default function GeneralLedgerPage() {
                         <label className="block text-sm font-medium mb-1">إلى</label>
                         <input type="date" value={to} onChange={e => setTo(e.target.value)} className="w-full border rounded-lg p-2" />
                     </div>
-                    <button onClick={fetchReport} className="bg-blue-600 text-white px-4 py-2 rounded-lg mb-[1px] h-[42px]">عرض</button>
+                    <button 
+                        onClick={fetchReport} 
+                        disabled={loading}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg mb-[1px] h-[42px] disabled:bg-blue-300"
+                    >
+                        {loading ? "جاري..." : "عرض"}
+                    </button>
                 </div>
             </div>
+
+            {loading && (
+                <div className="flex justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+            )}
 
             {data && (
                 <div className="bg-white border rounded-xl overflow-hidden print:border-none">
@@ -97,7 +128,7 @@ export default function GeneralLedgerPage() {
                                 <td colSpan={6} className="px-6 py-3 text-left">الرصيد الافتتاحي</td>
                                 <td className="px-6 py-3 dir-ltr">{Number(data.opening_balance).toLocaleString()}</td>
                             </tr>
-                            {data.moves.map((m: any, i: number) => (
+                            {data.moves.map((m: GLMove, i: number) => (
                                 <tr key={i}>
                                     <td className="px-6 py-3 whitespace-nowrap">{new Date(m.date).toLocaleDateString('en-CA')}</td>
                                     <td className="px-6 py-3 font-mono text-gray-500">{m.ref}</td>

@@ -1,7 +1,6 @@
 import {
   app,
   BrowserWindow,
-  BrowserView,
   ipcMain,
   session,
   Notification,
@@ -16,7 +15,8 @@ import * as fs from "fs";
 import { spawn, ChildProcess } from "child_process";
 import mysql from "mysql2/promise";
 import { PollingService } from "./polling-service";
-import { BrowserAccountSession, sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, resolveBridgeResponse } from "./platform-api";
+import { sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, resolveBridgeResponse } from "./platform-api";
+import { BrowserAccountSession } from "./types";
 import { attachCdpInterceptor, CdpInterceptorHandle } from "./cdp-interceptor";
 
 // Track active CDP interceptors per account so we can detach/reattach on
@@ -32,7 +32,7 @@ let nextServerProcess: ChildProcess | null = null;
 
 // Start Next.js standalone server
 async function startNextServer(): Promise<number> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     const port = 3456;
 
     let serverPath: string;
@@ -108,7 +108,6 @@ let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let pollingService: PollingService | null = null;
 const isDev = !app.isPackaged;
-const PROD_APP_URL = process.env.APP_URL || "https://go.nestedunited.com/";
 let isAppQuitting = false;
 const APP_USER_MODEL_ID = "com.rentals.dashboard";
 
@@ -159,8 +158,9 @@ function createMainWindow() {
           for (const [id, acct] of browserSessions.entries()) {
             if (acct.platform === 'gathern') {
               let acctUpdated = false;
-              if (acct[field] !== token) {
-                (acct as any)[field] = token;
+              const acctRecord = acct as unknown as Record<string, unknown>;
+              if (acctRecord[field] !== token) {
+                acctRecord[field] = token;
                 acctUpdated = true;
               }
               if (extractedUserId && acct.platformUserId !== extractedUserId) {
@@ -179,7 +179,10 @@ function createMainWindow() {
                   );
                   await conn.end();
                   console.log(`[Token Sniffer] ✅ Gathern ${field} & userId saved for ${id}`);
-                } catch (e: any) { console.error(`[Token Sniffer] DB Error:`, e.message); }
+                } catch (e: unknown) { 
+                  const errorMessage = e instanceof Error ? e.message : String(e);
+                  console.error(`[Token Sniffer] DB Error:`, errorMessage); 
+                }
               }
             }
           }
@@ -207,7 +210,7 @@ function createMainWindow() {
           }
         }
 
-      } catch (e: any) { /* silent error */ }
+      } catch (_e: unknown) { /* silent error */ }
     }
   );
 
@@ -612,7 +615,7 @@ function notifyTabsChanged() {
 }
 
 // Inject script to monitor notifications
-function injectNotificationMonitor(browserWindow: BrowserWindow, account: BrowserAccountSession) {
+function _injectNotificationMonitor(browserWindow: BrowserWindow, account: BrowserAccountSession) {
   // Special handling for WhatsApp - Badge Monitoring
   if (account.platform === "whatsapp") {
     const whatsappMonitor = `
@@ -896,9 +899,9 @@ ipcMain.handle("remove-browser-account", (_, accountId: string) => {
   return { success: true };
 });
 
-ipcMain.handle("open-browser-account", (_, accountData: any) => {
+ipcMain.handle("open-browser-account", (_, accountData: unknown) => {
   // Graceful fallback for stale frontend builds that only send the ID
-  if (typeof accountData === "string") {
+  if (typeof accountData === "string" || !accountData || typeof accountData !== 'object') {
     dialog.showErrorBox(
       "تحديث مطلوب للسيرفر",
       "تم اكتشاف كود قديم قادم من الموقع. السيرفر بتاعك محتاج يتعمله (npm run build) عشان يبعت البيانات كاملة للبرنامج بدل ما يبعت ID فقط (واللي بيخليه يفتح واتساب بالغلط)."
@@ -906,40 +909,42 @@ ipcMain.handle("open-browser-account", (_, accountData: any) => {
     return { success: false, error: "Stale frontend build detected. Please run npm run build on your server." };
   }
 
-  let account = browserSessions.get(accountData.id);
+  const data = accountData as { id: string; platform?: string; accountName?: string; partition?: string; createdBy?: string };
+  let account = browserSessions.get(data.id);
 
   // If the account was created remotely and doesn't exist locally, add it
   if (!account) {
-    if (!accountData.platform) {
+    if (!data.platform) {
       return { success: false, error: "Invalid account data. Missing platform." };
     }
     const newAccount: BrowserAccountSession = {
-      id: accountData.id,
-      platform: accountData.platform,
-      accountName: accountData.accountName || "Unknown",
-      partition: accountData.partition || `persist:fallback-${Date.now()}`,
-      createdBy: accountData.createdBy || "system"
+      id: data.id,
+      platform: data.platform as 'airbnb' | 'gathern' | 'whatsapp',
+      accountName: data.accountName || "Unknown",
+      partition: data.partition || `persist:fallback-${Date.now()}`,
+      createdBy: data.createdBy || "system"
     };
-    browserSessions.set(accountData.id, newAccount);
+    browserSessions.set(data.id, newAccount);
     account = newAccount;
     saveSessions(); // Save to local storage so it persists
   }
+  const resolvedAccount = account!;
 
   // If window exists and not destroyed, focus it
-  if (account.window && !account.window.isDestroyed()) {
-    account.window.focus();
+  if (resolvedAccount.window && !resolvedAccount.window.isDestroyed()) {
+    resolvedAccount.window.focus();
     notifyTabsChanged();
     return { success: true };
   }
 
   // Create new window
-  account.window = createBrowserWindow(account);
+  resolvedAccount.window = createBrowserWindow(resolvedAccount);
   notifyTabsChanged();
 
   // STAGE 2: Start health polling for API platforms (reads flow via CDP).
-  if (pollingService && (account.platform === 'airbnb' || account.platform === 'gathern')) {
-    console.log(`[Main Process] 🚀 Starting health polling for ${account.accountName} (${account.platform})`);
-    pollingService.startHealthPolling(account.id);
+  if (pollingService && (resolvedAccount.platform === 'airbnb' || resolvedAccount.platform === 'gathern')) {
+    console.log(`[Main Process] 🚀 Starting health polling for ${resolvedAccount.accountName} (${resolvedAccount.platform})`);
+    pollingService.startHealthPolling(resolvedAccount.id);
   }
 
   return { success: true };
@@ -965,7 +970,7 @@ ipcMain.handle("open-auth-window", async (_, { platform, accountId, partition })
     // If it doesn't exist (e.g. first time authenticating), create a temporary session
     account = {
       id: accountId,
-      platform: platform as any,
+      platform: platform as 'airbnb' | 'gathern' | 'whatsapp',
       accountName: accountId, // Fallback name
       partition: partition || accountId,
       createdBy: "system"
@@ -1003,7 +1008,7 @@ ipcMain.handle("open-auth-window", async (_, { platform, accountId, partition })
 // __dirname = electron/dist/ → ../../ = project root
 async function getMainDbConnection() {
   const envPath = path.join(__dirname, '../../.env');
-  const env: any = {};
+  const env: Record<string, string> = {};
   if (fs.existsSync(envPath)) {
     const content = fs.readFileSync(envPath, 'utf8');
     content.split('\n').forEach(line => {
@@ -1096,12 +1101,12 @@ function warmUpMissingTokens() {
   }
 }
 
-ipcMain.handle("get-platform-messages", async (_, { accountId, limit = 50 }) => {
+ipcMain.handle("get-platform-messages", async (_event, { accountId, limit = 50 }: { accountId?: string; limit?: number }) => {
     console.log(`[Main] Fetching messages from DB for ${accountId || 'all accounts'}`);
     const connection = await getMainDbConnection();
     try {
         let sql = "SELECT * FROM platform_messages";
-        const params: any[] = [];
+        const params: (string | number)[] = [];
         if (accountId) {
             sql += " WHERE platform_account_id = ?";
             params.push(accountId);
@@ -1110,9 +1115,10 @@ ipcMain.handle("get-platform-messages", async (_, { accountId, limit = 50 }) => 
         params.push(limit);
         const [rows] = await connection.execute(sql, params);
         return { success: true, messages: rows };
-    } catch (err: any) {
-        console.error("[Main] Failed to fetch messages:", err);
-        return { success: false, error: err.message };
+    } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error("[Main] Failed to fetch messages:", errorMessage);
+        return { success: false, error: errorMessage };
     } finally {
         await connection.end();
     }
@@ -1121,7 +1127,7 @@ ipcMain.handle("get-platform-messages", async (_, { accountId, limit = 50 }) => 
 ipcMain.handle("get-session-health-status", async () => {
     const connection = await getMainDbConnection();
     try {
-        const [rows]: any = await connection.execute(
+        const [rows] = await connection.execute(
             `SELECT browser_account_id as id, status, last_check_at, error_message 
              FROM session_health_logs 
              WHERE id IN (
@@ -1129,8 +1135,9 @@ ipcMain.handle("get-session-health-status", async () => {
              )`
         );
         return rows;
-    } catch (err: any) {
-        console.error("[Main] Failed to fetch health status:", err);
+    } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error("[Main] Failed to fetch health status:", errorMessage);
         return [];
     } finally {
         await connection.end();
@@ -1141,7 +1148,7 @@ ipcMain.handle("get-session-health-status", async () => {
 ipcMain.handle("get-session-health", async () => {
   const connection = await getMainDbConnection();
   try {
-    const [rows]: any = await connection.execute(`
+    const [rows] = await connection.execute(`
       SELECT shl.browser_account_id, shl.platform, shl.status, shl.error_message, shl.checked_at,
              ba.account_name
       FROM session_health_logs shl
@@ -1152,8 +1159,9 @@ ipcMain.handle("get-session-health", async () => {
       LEFT JOIN browser_accounts ba ON ba.id = shl.browser_account_id
     `);
     return { success: true, health: rows };
-  } catch (err: any) {
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return { success: false, error: errorMessage };
   } finally {
     await connection.end();
   }
@@ -1234,7 +1242,7 @@ ipcMain.on("database-notification", (_, data: { title: string; body: string; id:
 });
 
 // Test notification handler
-ipcMain.handle("test-notification", (_, data: any) => {
+ipcMain.handle("test-notification", (_event, data: { accountId: string; accountName: string; platform: string; count: number }) => {
   console.log("[Main Process] Test notification triggered:", data);
   mainWindow?.webContents.send("browser-notification", data);
   return { success: true };
@@ -1263,7 +1271,7 @@ ipcMain.handle("get-open-tabs", () => {
   return openTabs;
 });
 
-ipcMain.handle("send-message", async (_, payload: { accountId: string; platform: string; threadId: string; text: string; metadata?: any }) => {
+ipcMain.handle("send-message", async (_event, payload: { accountId: string; platform: string; threadId: string; text: string; metadata?: Record<string, unknown> }) => {
   const account: BrowserAccountSession | undefined = browserSessions.get(payload.accountId);
   if (!account) return { success: false, error: "جلسة الحساب غير موجودة — يرجى فتح واجهة الحساب أولاً" };
   
@@ -1276,9 +1284,10 @@ ipcMain.handle("send-message", async (_, payload: { accountId: string; platform:
     ]);
     console.log(`[IPC send-message] ✅ account=${payload.accountId} thread=${payload.threadId}`);
     return { success: ok };
-  } catch(e: any) {
-    console.error(`[IPC send-message] ❌ Error:`, e.message);
-    return { success: false, error: e.message || "حدث خطأ غير متوقع أثناء الإرسال" };
+  } catch(e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
+    console.error(`[IPC send-message] ❌ Error:`, errorMessage);
+    return { success: false, error: errorMessage || "حدث خطأ غير متوقع أثناء الإرسال" };
   }
 });
 
@@ -1314,8 +1323,9 @@ app.whenReady().then(() => {
       // Warm-up: open a hidden window for Gathern accounts that have no Bearer token
       // so the token sniffer can capture it automatically
       warmUpMissingTokens();
-    }).catch((err: any) => {
-      console.error("[Main Process] ❌ Failed to start DB polling:", err);
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[Main Process] ❌ Failed to start DB polling:", msg);
     });
 
     setInterval(() => {
@@ -1340,7 +1350,7 @@ app.on("window-all-closed", () => {
   }
 });
 
-app.on("before-quit", async (event) => {
+app.on("before-quit", async (_event) => {
   isAppQuitting = true;
   stopNextServer();
 
@@ -1354,12 +1364,14 @@ app.on("before-quit", async (event) => {
     browserSessions.forEach((account: BrowserAccountSession) => {
       const partition = `persist:${account.partition}`;
       const ses = session.fromPartition(partition);
-      ses.cookies.flushStore().catch((err: any) => {
-        console.error(`Error flushing cookies for ${account.accountName}:`, err);
+      ses.cookies.flushStore().catch((err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        console.error(`Error flushing cookies for ${account.accountName}:`, errorMessage);
       });
     });
-  } catch (err) {
-    console.error('Error flushing cookies before quit:', err);
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    console.error('Error flushing cookies before quit:', errorMessage);
   }
 
   // Close all browser windows

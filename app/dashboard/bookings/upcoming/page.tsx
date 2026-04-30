@@ -5,7 +5,22 @@ import Link from "next/link";
 import { ArrowRight, CalendarDays, User, Phone, Home, Layers } from "lucide-react";
 import { redirect } from "next/navigation";
 
-async function getUpcomingBookings() {
+interface UpcomingBooking {
+  id: string;
+  type: "manual" | "ical";
+  guest_name: string;
+  phone: string | null;
+  checkin_date: string;
+  checkout_date: string;
+  amount: number | null;
+  currency: string | null;
+  platform: string | null;
+  unit: { id: string; unit_name: string; unit_code: string | null };
+  platform_account: { id: string; account_name: string } | null;
+  notes: string | null;
+}
+
+async function getUpcomingBookings(): Promise<UpcomingBooking[]> {
   const today = new Date().toISOString().split("T")[0];
 
   // Calculate date 7 days from now
@@ -14,46 +29,46 @@ async function getUpcomingBookings() {
   const nextWeekStr = nextWeekDate.toISOString().split("T")[0];
 
   // Get bookings from bookings table (MySQL)
-  const bookings = await query<any>(
+  const bookings = await query<Record<string, unknown>>(
     "SELECT b.*, u.unit_name, u.unit_code FROM bookings b LEFT JOIN units u ON b.unit_id = u.id WHERE b.checkin_date >= ? AND b.checkin_date <= ? ORDER BY b.checkin_date ASC",
     [today, nextWeekStr]
   );
 
   // Get reservations from iCal sync (MySQL)
-  const reservations = await query<any>(
+  const reservations = await query<Record<string, unknown>>(
     "SELECT r.*, u.unit_name, u.unit_code FROM reservations r LEFT JOIN units u ON r.unit_id = u.id WHERE r.start_date >= ? AND r.start_date <= ? ORDER BY r.start_date ASC",
     [today, nextWeekStr]
   );
 
   // Combine and format
-  const formattedBookings = bookings.map((b) => ({
-    id: b.id,
+  const formattedBookings: UpcomingBooking[] = bookings.map((b) => ({
+    id: b.id as string,
     type: "manual",
-    guest_name: b.guest_name || "غير محدد",
-    phone: b.phone,
-    checkin_date: b.checkin_date,
-    checkout_date: b.checkout_date,
-    amount: b.amount,
-    currency: b.currency,
-    platform: b.platform,
-    unit: { id: b.unit_id, unit_name: b.unit_name, unit_code: b.unit_code },
+    guest_name: (b.guest_name as string) || "غير محدد",
+    phone: b.phone as string | null,
+    checkin_date: b.checkin_date as string,
+    checkout_date: b.checkout_date as string,
+    amount: b.amount as number | null,
+    currency: b.currency as string | null,
+    platform: b.platform as string | null,
+    unit: { id: b.unit_id as string, unit_name: b.unit_name as string, unit_code: b.unit_code as string | null },
     platform_account: null,
-    notes: b.notes,
+    notes: b.notes as string | null,
   }));
 
-  const formattedReservations = reservations.map((r) => ({
-    id: r.id,
+  const formattedReservations: UpcomingBooking[] = reservations.map((r) => ({
+    id: r.id as string,
     type: "ical",
-    guest_name: r.summary || "حجز من iCal",
+    guest_name: (r.summary as string) || "حجز من iCal",
     phone: null,
-    checkin_date: r.start_date,
-    checkout_date: r.end_date,
+    checkin_date: r.start_date as string,
+    checkout_date: r.end_date as string,
     amount: null,
     currency: null,
-    platform: r.platform,
-    unit: { id: r.unit_id, unit_name: r.unit_name, unit_code: r.unit_code },
+    platform: r.platform as string | null,
+    unit: { id: r.unit_id as string, unit_name: r.unit_name as string, unit_code: r.unit_code as string | null },
     platform_account: null,
-    notes: r.summary,
+    notes: r.summary as string | null,
   }));
 
   const allBookings = [...formattedBookings, ...formattedReservations].sort((a, b) =>
@@ -91,7 +106,7 @@ export default async function UpcomingBookingsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {bookings.map((booking: any) => (
+          {bookings.map((booking: UpcomingBooking) => (
             <div
               key={`${booking.type}-${booking.id}`}
               className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"

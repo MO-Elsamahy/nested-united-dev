@@ -32,14 +32,7 @@ export function EditPermissionsButton({ userId, userName }: EditPermissionsButto
   const [loading, setLoading] = useState(false);
   const [permissions, setPermissions] = useState<Permission[]>([]);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadPermissions();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, userId]);
-
-  const loadPermissions = async () => {
+  async function loadPermissions() {
     try {
       const response = await fetch(`/api/users/${userId}/permissions`);
       if (response.ok) {
@@ -63,7 +56,14 @@ export function EditPermissionsButton({ userId, userName }: EditPermissionsButto
     } catch (error) {
       console.error("Error loading permissions:", error);
     }
-  };
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      loadPermissions();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, userId]);
 
   const handleSave = async () => {
     setLoading(true);
@@ -85,7 +85,7 @@ export function EditPermissionsButton({ userId, userName }: EditPermissionsButto
       } else {
         alert("حدث خطأ أثناء حفظ الصلاحيات");
       }
-    } catch (error) {
+    } catch (_error) {
       alert("حدث خطأ أثناء حفظ الصلاحيات");
     } finally {
       setLoading(false);

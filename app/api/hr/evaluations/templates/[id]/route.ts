@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, execute, queryOne, generateUUID, executeTransaction } from "@/lib/db";
+import { EvaluationTemplate, EvaluationCriterion } from "@/lib/types/hr";
 
 export async function GET(
     request: Request,
@@ -14,7 +15,7 @@ export async function GET(
     }
 
     try {
-        const template = await queryOne<any>(
+        const template = await queryOne<EvaluationTemplate>(
             "SELECT * FROM hr_evaluation_templates WHERE id = ?",
             [resolvedParams.id]
         );
@@ -23,14 +24,14 @@ export async function GET(
             return NextResponse.json({ error: "القالب غير موجود" }, { status: 404 });
         }
 
-        const criteria = await query(
+        const criteria = await query<EvaluationCriterion>(
             "SELECT * FROM hr_evaluation_criteria WHERE template_id = ? ORDER BY sort_order ASC",
             [resolvedParams.id]
         );
 
         return NextResponse.json({ ...template, criteria });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -74,8 +75,8 @@ export async function PUT(
         });
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -96,7 +97,7 @@ export async function DELETE(
             [resolvedParams.id]
         );
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

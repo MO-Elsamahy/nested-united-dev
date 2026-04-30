@@ -34,7 +34,7 @@ export default function NewRequestPage() {
                 const data = await res.json();
                 alert(data.error || "حدث خطأ");
             }
-        } catch (error) {
+        } catch (_error) {
             alert("حدث خطأ في الاتصال");
         } finally {
             setLoading(false);

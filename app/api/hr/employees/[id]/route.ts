@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { queryOne, execute } from "@/lib/db";
+import { Employee } from "@/lib/types/hr";
 
 // GET: تفاصيل موظف واحد
 export async function GET(
@@ -15,7 +16,7 @@ export async function GET(
 
     try {
         const { id } = await params;
-        const employee = await queryOne(
+        const employee = await queryOne<Employee>(
             `SELECT e.*, u.name as user_name, u.email as user_email
        FROM hr_employees e
        LEFT JOIN users u ON e.user_id = u.id
@@ -28,8 +29,8 @@ export async function GET(
         }
 
         return NextResponse.json(employee);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -48,7 +49,7 @@ export async function PUT(
         const body = await request.json();
 
         // Check if employee exists
-        const existing = await queryOne("SELECT id FROM hr_employees WHERE id = ?", [id]);
+        const existing = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE id = ?", [id]);
         if (!existing) {
             return NextResponse.json({ error: "الموظف غير موجود" }, { status: 404 });
         }
@@ -74,6 +75,7 @@ export async function PUT(
             iban,
             status,
             exclude_from_payroll,
+            salary_currency,
         } = body;
 
         await execute(
@@ -98,7 +100,8 @@ export async function PUT(
         iban = ?,
         status = ?,
         shift_id = ?,
-        exclude_from_payroll = ?
+        exclude_from_payroll = ?,
+        salary_currency = ?
       WHERE id = ?`,
             [
                 user_id || null,
@@ -122,14 +125,15 @@ export async function PUT(
                 status || "active",
                 body.shift_id || null,
                 exclude_from_payroll ? 1 : 0,
+                salary_currency || "SAR",
                 id,
             ]
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Update employee error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -148,7 +152,7 @@ export async function DELETE(
         const url = new URL(request.url);
         const permanent =
             url.searchParams.get("permanent") === "1" || url.searchParams.get("permanent") === "true";
-        const role = (session.user as { role?: string }).role;
+        const role = session.user.role;
 
         const exists = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE id = ?", [id]);
         if (!exists) {
@@ -224,7 +228,7 @@ export async function DELETE(
 
         await execute("UPDATE hr_employees SET status = 'terminated' WHERE id = ?", [id]);
         return NextResponse.json({ success: true, mode: "terminated" });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

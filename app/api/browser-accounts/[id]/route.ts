@@ -26,8 +26,8 @@ export async function GET(
     }
 
     return NextResponse.json(account);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -59,12 +59,12 @@ export async function PATCH(
 
   // Build update query
   const updates: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | boolean | null)[] = [];
 
   for (const [key, value] of Object.entries(body)) {
     if (key !== "id") {
       updates.push(`${key} = ?`);
-      values.push(value);
+      values.push(value as string | number | boolean | null);
     }
   }
   updates.push("updated_at = NOW()");
@@ -88,8 +88,8 @@ export async function PATCH(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -132,7 +132,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
   }
 }

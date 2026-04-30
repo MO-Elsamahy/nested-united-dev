@@ -1,15 +1,11 @@
 "use client";
 // Force rebuild
 
-import { usePathname } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import { Building2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { User } from "@/lib/types/database";
 import { DASHBOARD_NAV } from "@/lib/navigation-config";
 import { UnifiedSidebar } from "./UnifiedSidebar";
-import { SidebarHeader } from "./SidebarHeader"; // Import if needed for custom header, but UnifiedSidebar handles it usually, or we pass props.
-import { SidebarFooter } from "./SidebarFooter"; // Same
 
 import { AppFeatures } from "@/lib/features";
 
@@ -24,7 +20,6 @@ interface UserPermission {
 }
 
 export function Sidebar({ user, features }: SidebarProps) {
-    const pathname = usePathname();
     const [permissions, setPermissions] = useState<UserPermission[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshKey, setRefreshKey] = useState(0);

@@ -2,19 +2,20 @@ import { NextResponse } from "next/server";
 import { query, execute, generateUUID } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { AccountingJournal } from "@/lib/types/accounting";
 
 // GET: List all journals
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     const session = await getServerSession(authOptions);
     if (!session) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
-        const journals = await query("SELECT * FROM accounting_journals WHERE deleted_at IS NULL ORDER BY name ASC");
+        const journals = await query<AccountingJournal>("SELECT * FROM accounting_journals WHERE deleted_at IS NULL ORDER BY name ASC");
         return NextResponse.json(journals);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -43,8 +44,8 @@ export async function DELETE(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -67,8 +68,8 @@ export async function PUT(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

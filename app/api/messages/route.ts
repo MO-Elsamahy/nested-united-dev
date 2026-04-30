@@ -9,6 +9,28 @@ import { query, execute } from '@/lib/db';
 //   ?platform=airbnb|gathern → filter by platform
 // ─────────────────────────────────────────────
 
+interface MessageRow {
+  id: string;
+  platform_account_id: string;
+  platform: string;
+  thread_id: string;
+  platform_msg_id: string | null;
+  guest_name: string;
+  sender_name: string | null;
+  message_text: string | null;
+  is_from_me: number;
+  sent_at: string;
+  received_at: string;
+  raw_data: string | null;
+  account_name: string | null;
+  platform_account_name?: string | null;
+}
+
+interface PostBody {
+  threadId?: string;
+  browserAccountId?: string;
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const accountId  = searchParams.get('accountId');
@@ -23,7 +45,7 @@ export async function GET(req: NextRequest) {
       // ──────────────────────────────────────────────
 
       // Accept optional accountId to scope to one browser account
-      const params: any[] = [threadId];
+      const params: unknown[] = [threadId];
       let sql = `
         SELECT
           pm.id,
@@ -55,7 +77,7 @@ export async function GET(req: NextRequest) {
 
       sql += ' ORDER BY pm.sent_at ASC';
 
-      const messages = await query(sql, params);
+      const messages = await query<MessageRow>(sql, params);
       return NextResponse.json({ success: true, messages });
     }
 
@@ -63,7 +85,7 @@ export async function GET(req: NextRequest) {
     // INBOX LIST — one latest message per thread
     // Uses a subquery to get MAX(sent_at) per (browser_account_id, thread_id)
     // ──────────────────────────────────────────────
-    const params: any[] = [];
+    const params: unknown[] = [];
     let whereClauses = '1=1';
 
     if (accountId && accountId !== 'all') {
@@ -120,12 +142,13 @@ export async function GET(req: NextRequest) {
       LIMIT ?
     `;
 
-    const messages = await query(sql, params);
+    const messages = await query<MessageRow>(sql, params);
     return NextResponse.json({ success: true, messages });
 
-  } catch (err: any) {
-    console.error('[API /api/messages] ❌', err.message);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[API /api/messages] ❌', msg);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }
 
@@ -137,25 +160,27 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { threadId, browserAccountId } = await req.json();
+    const { threadId, browserAccountId } = await req.json() as PostBody;
     if (!threadId) {
       return NextResponse.json({ success: false, error: 'threadId required' }, { status: 400 });
     }
 
     try {
-      const params: any[] = [threadId];
+      const params: unknown[] = [threadId];
       let sql = `UPDATE platform_messages SET is_read = 1 WHERE thread_id = ? AND is_read = 0`;
       if (browserAccountId) {
         sql += ' AND browser_account_id = ?';
         params.push(browserAccountId);
       }
       await execute(sql, params);
-    } catch (colErr: any) {
-      console.warn('[API /api/messages POST] mark-as-read skipped:', colErr.message);
+    } catch (colErr: unknown) {
+      const msg = colErr instanceof Error ? colErr.message : String(colErr);
+      console.warn('[API /api/messages POST] mark-as-read skipped:', msg);
     }
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Plus, Search, FileText, Eye, Edit, Trash2, Check, X, RotateCcw } from "lucide-react";
+import { Plus, Search, FileText, Eye, Edit, Trash2, Check, X } from "lucide-react";
+import { useCallback } from "react";
 
 interface Invoice {
     id: string;
@@ -11,7 +12,7 @@ interface Invoice {
     invoice_type: string;
     partner_name: string;
     invoice_date: string;
-    due_date: string;
+    due_date?: string | null;
     total_amount: number;
     amount_paid: number;
     amount_due: number;
@@ -24,13 +25,9 @@ export default function InvoicesPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [stateFilter, setStateFilter] = useState("");
     const { data: session } = useSession();
-    const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+    const isSuperAdmin = (session?.user as { role?: string })?.role === "super_admin";
 
-    useEffect(() => {
-        fetchInvoices();
-    }, [stateFilter]);
-
-    async function fetchInvoices() {
+    const fetchInvoices = useCallback(async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
@@ -43,7 +40,11 @@ export default function InvoicesPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [stateFilter]);
+
+    useEffect(() => {
+        fetchInvoices();
+    }, [fetchInvoices]);
 
     const handleDelete = async (id: string, isDraft: boolean) => {
         const confirmMsg = isDraft 
@@ -102,7 +103,7 @@ export default function InvoicesPage() {
     });
 
     const getStateBadge = (state: string) => {
-        const badges: Record<string, { color: string; text: string; icon: any }> = {
+        const badges: Record<string, { color: string; text: string; icon: React.ElementType }> = {
             draft: { color: "bg-gray-100 text-gray-700", text: "مسودة", icon: FileText },
             confirmed: { color: "bg-blue-100 text-blue-700", text: "مؤكدة", icon: Check },
             partial: { color: "bg-yellow-100 text-yellow-700", text: "دفع جزئي", icon: FileText },
@@ -200,7 +201,7 @@ export default function InvoicesPage() {
                                         {new Date(invoice.invoice_date).toLocaleDateString("ar-SA")}
                                     </td>
                                     <td className="px-6 py-4 text-gray-500">
-                                        {new Date(invoice.due_date).toLocaleDateString("ar-SA")}
+                                        {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("ar-SA") : "—"}
                                     </td>
                                     <td className="px-6 py-4 font-medium">
                                         {Number(invoice.total_amount).toLocaleString("ar-SA")} ر.س

@@ -1,13 +1,21 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Megaphone, Plus, Pin, Trash2, Calendar, AlertCircle } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Megaphone, Plus, Pin, Trash2, Calendar, Edit2, X } from "lucide-react";
+
+interface Announcement {
+    id: string;
+    title: string;
+    content: string;
+    priority: string;
+    is_pinned: boolean | number;
+    expires_at?: string;
+    published_at: string;
+    created_by_name?: string;
+}
 
 export default function AnnouncementsPage() {
-    const [announcements, setAnnouncements] = useState<any[]>([]);
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
 
@@ -20,6 +28,7 @@ export default function AnnouncementsPage() {
         expires_at: "",
     });
     const [submitting, setSubmitting] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const fetchAnnouncements = async () => {
         setLoading(true);
@@ -27,7 +36,7 @@ export default function AnnouncementsPage() {
             const res = await fetch("/api/hr/announcements");
             const data = await res.json();
             setAnnouncements(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
         } finally {
             setLoading(false);
@@ -42,20 +51,56 @@ export default function AnnouncementsPage() {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const res = await fetch("/api/hr/announcements", {
-                method: "POST",
+            const url = editingId ? `/api/hr/announcements/${editingId}` : "/api/hr/announcements";
+            const method = editingId ? "PUT" : "POST";
+
+            const res = await fetch(url, {
+                method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),
             });
             if (res.ok) {
                 setShowForm(false);
+                setEditingId(null);
                 setFormData({ title: "", content: "", priority: "normal", is_pinned: false, expires_at: "" });
                 fetchAnnouncements();
             } else {
                 alert("حدث خطأ");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleEdit = (ann: Announcement) => {
+        setEditingId(ann.id);
+        setFormData({
+            title: ann.title,
+            content: ann.content,
+            priority: ann.priority,
+            is_pinned: !!ann.is_pinned,
+            expires_at: ann.expires_at ? new Date(ann.expires_at).toISOString().split('T')[0] : "",
+        });
+        setShowForm(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm("هل أنت متأكد من حذف هذا الإعلان؟")) return;
+        setSubmitting(true);
+        try {
+            const res = await fetch(`/api/hr/announcements/${id}`, {
+                method: "DELETE",
+            });
+            if (res.ok) {
+                fetchAnnouncements();
+            } else {
+                alert("حدث خطأ");
+            }
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setSubmitting(false);
         }
@@ -77,10 +122,14 @@ export default function AnnouncementsPage() {
                 </button>
             </div>
 
-            {/* Create Form */}
             {showForm && (
                 <div className="bg-white rounded-xl shadow-lg border p-6 animate-in slide-in-from-top-4">
-                    <h3 className="font-bold text-lg mb-4">إنشاء إعلان جديد</h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="font-bold text-lg">{editingId ? "تعديل الإعلان" : "إنشاء إعلان جديد"}</h3>
+                        <button onClick={() => { setShowForm(false); setEditingId(null); }} className="text-gray-400 hover:text-gray-600">
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">العنوان</label>
@@ -151,7 +200,7 @@ export default function AnnouncementsPage() {
                                 disabled={submitting}
                                 className="bg-violet-600 text-white px-6 py-2 rounded-lg hover:bg-violet-700 disabled:opacity-50"
                             >
-                                {submitting ? "جاري النشر..." : "نشر الإعلان"}
+                                {submitting ? (editingId ? "جاري التحديث..." : "جاري النشر...") : (editingId ? "تحديث الإعلان" : "نشر الإعلان")}
                             </button>
                         </div>
                     </form>
@@ -180,8 +229,26 @@ export default function AnnouncementsPage() {
                                 <p className="text-gray-600">{ann.content}</p>
                             </div>
 
-                            <div className="flex items-center gap-3 text-sm text-gray-500">
-                                <span>بواسطة: {ann.created_by_name || "النظام"}</span>
+                            <div className="flex flex-col items-end gap-3">
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => handleEdit(ann)}
+                                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                                        title="تعديل"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(ann.id)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                        title="حذف"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                <div className="text-sm text-gray-500 whitespace-nowrap">
+                                    بواسطة: {ann.created_by_name || "النظام"}
+                                </div>
                             </div>
                         </div>
                     ))

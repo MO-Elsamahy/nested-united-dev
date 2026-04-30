@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { queryOne, execute, generateUUID } from "@/lib/db";
+import { Attendance, Shift, Employee } from "@/lib/types/hr";
 
 // POST: تسجيل حضور أو انصراف
 export async function POST(request: Request) {
@@ -33,13 +34,13 @@ export async function POST(request: Request) {
         const localMinutes = localNow.getUTCMinutes();
 
         // Check if attendance record exists for today
-        const existing = await queryOne<any>(
+        const existing = await queryOne<Attendance>(
             `SELECT * FROM hr_attendance WHERE employee_id = ? AND date = ?`,
             [employee_id, today]
         );
 
         // Get Employee Shift Info
-        const employee = await queryOne<any>(
+        const employee = await queryOne<Employee>(
             "SELECT shift_id FROM hr_employees WHERE id = ?",
             [employee_id]
         );
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
         let shiftName = "Global Settings";
 
         if (employee?.shift_id) {
-            const shift = await queryOne<any>(
+            const shift = await queryOne<Shift>(
                 "SELECT * FROM hr_shifts WHERE id = ?",
                 [employee.shift_id]
             );
@@ -161,8 +162,8 @@ export async function POST(request: Request) {
             });
         }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Attendance punch error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, Suspense, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FileText, Filter, Download, User, Calendar, Eye } from "lucide-react";
-import Link from "next/link";
+
 import { usePermission } from "@/lib/hooks/usePermission";
 
 interface ActivityLog {
@@ -14,7 +14,7 @@ interface ActivityLog {
   resource_type: string | null;
   resource_id: string | null;
   description: string | null;
-  metadata: any;
+  metadata: Record<string, unknown> | null;
   ip_address: string | null;
   user_agent: string | null;
   created_at: string;
@@ -49,29 +49,12 @@ function ActivityLogsContent() {
   const [users, setUsers] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    if (hasViewPermission === false) {
-      router.push("/dashboard");
-      return;
-    }
-    if (hasViewPermission === true) {
-      loadUsers();
-      loadLogs();
-    }
-  }, [hasViewPermission, router]);
-
-  useEffect(() => {
-    if (hasViewPermission === true) {
-      loadLogs();
-    }
-  }, [page, selectedUserId, fromDate, toDate, hasViewPermission]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       const response = await fetch("/api/users");
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.map((u: any) => ({ id: u.id, name: u.name, email: u.email })));
+        setUsers(data.map((u: { id: string; name: string; email: string }) => ({ id: u.id, name: u.name, email: u.email })));
         setIsSuperAdmin(true);
       } else if (response.status === 403) {
         setIsSuperAdmin(false);
@@ -80,9 +63,9 @@ function ActivityLogsContent() {
       console.error("Error loading users:", error);
       setIsSuperAdmin(false);
     }
-  };
+  }, []);
 
-  const loadLogs = async () => {
+  const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({
@@ -110,7 +93,24 @@ function ActivityLogsContent() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, selectedUserId, fromDate, toDate]);
+
+  useEffect(() => {
+    if (hasViewPermission === false) {
+      router.push("/dashboard");
+      return;
+    }
+    if (hasViewPermission === true) {
+      loadUsers();
+      loadLogs();
+    }
+  }, [hasViewPermission, router, loadUsers, loadLogs]);
+
+  useEffect(() => {
+    if (hasViewPermission === true) {
+      loadLogs();
+    }
+  }, [page, selectedUserId, fromDate, toDate, hasViewPermission, loadLogs]);
 
   const getActionLabel = (actionType: string) => {
     const labels: Record<string, string> = {

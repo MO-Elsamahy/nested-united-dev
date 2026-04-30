@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Calendar, X, ChevronDown, ChevronUp, Filter } from "lucide-react";
+import { Search, X, ChevronDown, ChevronUp, Filter } from "lucide-react";
 
 interface Unit {
     id: string;

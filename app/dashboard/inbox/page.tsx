@@ -29,7 +29,7 @@ export default async function InboxPage() {
                     رسائل Airbnb وGathern في مكان واحد — يتحدث تلقائياً كل 15 ثانية
                 </p>
             </div>
-            <InboxClient accounts={accounts as any[]} />
+            <InboxClient accounts={accounts as { id: string; account_name: string; platform: 'airbnb' | 'gathern' }[]} />
         </div>
     );
 }

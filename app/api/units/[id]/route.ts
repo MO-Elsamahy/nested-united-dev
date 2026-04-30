@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { Unit, UnitCalendar } from "@/lib/types/pms";
 import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
 
 // GET single unit with all related data
@@ -13,7 +14,7 @@ export async function GET(
     const { id } = await params;
 
     // Get unit
-    const unit = await queryOne<any>(
+    const unit = await queryOne<Unit>(
       "SELECT * FROM units WHERE id = ?",
       [id]
     );
@@ -23,7 +24,7 @@ export async function GET(
     }
 
     // Get related data
-    const unit_calendars = await query(
+    const unit_calendars = await query<UnitCalendar>(
       "SELECT id, platform, ical_url, is_primary, platform_account_id FROM unit_calendars WHERE unit_id = ?",
       [id]
     );
@@ -50,9 +51,9 @@ export async function GET(
       bookings,
       maintenance_tickets,
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Get Unit Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }
 
@@ -129,7 +130,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(newUnit);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Server Error:", error);
     return NextResponse.json({ error: "حدث خطأ غير متوقع في السيرفر" }, { status: 500 });
   }
@@ -200,7 +201,7 @@ export async function PUT(
     });
 
     return NextResponse.json({ success: true, message: "تم تحديث الوحدة بنجاح" });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Update Unit Error:", error);
     return NextResponse.json({ error: "حدث خطأ أثناء تحديث الوحدة" }, { status: 500 });
   }
@@ -257,7 +258,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true, message: "تم حذف الوحدة بنجاح" });
-  } catch (error: any) {
+  } catch (error) {
     console.error("Delete Unit Error:", error);
     return NextResponse.json({ error: "حدث خطأ أثناء حذف الوحدة" }, { status: 500 });
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
+import { AccountingInvoice, CompanySettings, AccountingInvoiceLine } from "@/lib/types/accounting";
 import { v4 as uuidv4 } from "uuid";
 
 // GET /api/accounting/invoices - List all invoices with filters
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
             AND i.invoice_type = ?
         `;
 
-        const params: any[] = [type];
+        const params: (string | number)[] = [type];
 
         if (partnerIdFilter) {
             sql += ` AND i.partner_id = ?`;
@@ -55,13 +56,13 @@ export async function GET(req: NextRequest) {
 
         sql += ` ORDER BY i.invoice_date DESC, i.created_at DESC`;
 
-        const invoices = await query(sql, params);
+        const invoices = await query<AccountingInvoice>(sql, params);
 
         return NextResponse.json(invoices);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error fetching invoices:", error);
         return NextResponse.json(
-            { error: "Failed to fetch invoices", details: error.message },
+            { error: "Failed to fetch invoices", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }
@@ -97,7 +98,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Get company settings for invoice numbering
-        const settings: any = await query(
+        const settings = await query<CompanySettings>(
             "SELECT * FROM company_settings LIMIT 1"
         );
 
@@ -117,20 +118,20 @@ export async function POST(req: NextRequest) {
         let taxAmount = 0;
         let discountAmount = 0;
 
-        const processedLines = lines.map((line: any) => {
-            const qty = parseFloat(line.quantity) || 1;
-            const price = parseFloat(line.unit_price) || 0;
+        const processedLines = lines.map((line: AccountingInvoiceLine) => {
+            const qty = parseFloat(String(line.quantity)) || 1;
+            const price = parseFloat(String(line.unit_price)) || 0;
             const lineSubtotal = qty * price;
 
             let lineDiscount = 0;
             if (line.discount_type === "percentage") {
-                lineDiscount = (lineSubtotal * parseFloat(line.discount_value || 0)) / 100;
+                lineDiscount = (lineSubtotal * parseFloat(String(line.discount_value || 0))) / 100;
             } else {
-                lineDiscount = parseFloat(line.discount_value || 0);
+                lineDiscount = parseFloat(String(line.discount_value || 0));
             }
 
             const lineTotalBeforeTax = lineSubtotal - lineDiscount;
-            const taxRate = parseFloat(line.tax_rate || 0);
+            const taxRate = parseFloat(String(line.tax_rate || 0));
             const lineTax = (lineTotalBeforeTax * taxRate) / 100;
             const lineTotalWithTax = lineTotalBeforeTax + lineTax;
 
@@ -212,7 +213,7 @@ export async function POST(req: NextRequest) {
         );
 
         // Fetch the created invoice with partner details
-        const createdInvoice: any = await query(
+        const createdInvoice = await query<AccountingInvoice>(
             `SELECT i.*, p.name as partner_name
              FROM accounting_invoices i
              LEFT JOIN accounting_partners p ON i.partner_id = p.id
@@ -221,10 +222,10 @@ export async function POST(req: NextRequest) {
         );
 
         return NextResponse.json(createdInvoice[0], { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error creating invoice:", error);
         return NextResponse.json(
-            { error: "Failed to create invoice", details: error.message },
+            { error: "Failed to create invoice", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

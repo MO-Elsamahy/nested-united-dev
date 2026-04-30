@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne } from "@/lib/db";
+import { Employee } from "@/lib/types/hr";
 
 export async function GET() {
     const session = await getServerSession(authOptions);
@@ -11,7 +12,7 @@ export async function GET() {
 
     try {
         // 1. Get Employee ID
-        const employee = await queryOne<any>(
+        const employee = await queryOne<Employee>(
             "SELECT id FROM hr_employees WHERE user_id = ? AND status = 'active'",
             [session.user.id]
         );
@@ -21,7 +22,7 @@ export async function GET() {
         }
 
         // 2. Fetch Unread Messages
-        const messages = await query<any>(
+        const messages = await query<{ id: string; title: string; type: string; created_at: string; is_read: number | boolean }>(
             `SELECT id, title as title, 'message' as type, created_at, is_read 
              FROM hr_employee_messages 
              WHERE employee_id = ? AND is_read = 0
@@ -30,7 +31,7 @@ export async function GET() {
         );
 
         // 3. Fetch Recent Request Updates (approved/rejected in last 48h)
-        const requestUpdates = await query<any>(
+        const requestUpdates = await query<{ id: string; title: string; type: string; created_at: string; is_read: number | boolean }>(
             `SELECT id, 
                 CONCAT('تم ', IF(status='approved', 'قبول', 'رفض'), ' طلبك: ', 
                 CASE request_type 
@@ -57,7 +58,7 @@ export async function GET() {
             .slice(0, 10);
 
         return NextResponse.json(allNotifications);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

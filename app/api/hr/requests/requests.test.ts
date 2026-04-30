@@ -11,9 +11,9 @@ const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'req-uuid-123');
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
-    queryOne: (...args: any[]) => mockQueryOne(...args),
-    execute: (...args: any[]) => mockExecute(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
+    queryOne: (...args: unknown[]) => mockQueryOne(...args),
+    execute: (...args: unknown[]) => mockExecute(...args),
     generateUUID: () => mockGenerateUUID(),
 }));
 
@@ -28,7 +28,7 @@ describe('HR Requests API', () => {
     beforeEach(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'user-001', role: 'employee' },
-        } as any);
+        } as { user: { id: string; role: string } });
     });
 
     afterEach(() => {
@@ -50,7 +50,7 @@ describe('HR Requests API', () => {
                     reason: 'Vacation'
                 })
             }));
-            const body = await res?.json();
+            const _body = await res?.json();
 
             expect(res?.status).toBe(200);
             expect(mockExecute).toHaveBeenCalledWith(
@@ -61,7 +61,7 @@ describe('HR Requests API', () => {
 
         it('calculates days_count correctly (multi day)', async () => {
             mockQueryOne.mockResolvedValueOnce({ id: 'emp-1' });
-            const res = await POST(new Request('http://localhost/api/hr/requests', {
+            const _res = await POST(new Request('http://localhost/api/hr/requests', {
                 method: 'POST',
                 body: JSON.stringify({
                     request_type: 'annual_leave',
@@ -78,7 +78,7 @@ describe('HR Requests API', () => {
 
         it('returns 403 if no employee record found for user', async () => {
             mockQueryOne.mockResolvedValueOnce(null);
-            const res = await POST(new Request('http://localhost/api/hr/requests', {
+            const _res = await POST(new Request('http://localhost/api/hr/requests', {
                 method: 'POST',
                 body: JSON.stringify({ request_type: 'annual_leave', start_date: '2026-05-01', reason: 'X' })
             }));
@@ -133,7 +133,7 @@ describe('HR Requests API', () => {
 
         it('does NOT deduct balance on rejection', async () => {
             mockExecute.mockResolvedValueOnce({});
-            const res = await PUT(new Request(`http://localhost/api/hr/requests/${reqId}`, {
+            const _res = await PUT(new Request(`http://localhost/api/hr/requests/${reqId}`, {
                 method: 'PUT',
                 body: JSON.stringify({ status: 'rejected' })
             }), { params });

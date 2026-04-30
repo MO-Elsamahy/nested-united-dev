@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowRight, Plus, Settings, Loader2, Trash2, Save, X, Pencil } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { EvaluationTemplate } from "@/lib/types/hr";
 
 export default function ManageTemplatesPage() {
-    const router = useRouter();
-    const [templates, setTemplates] = useState<any[]>([]);
+    const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -18,7 +17,7 @@ export default function ManageTemplatesPage() {
     const [description, setDescription] = useState("");
     const [criteria, setCriteria] = useState([{ criterion_name: "", max_score: 10 }]);
 
-    const fetchTemplates = async () => {
+    const fetchTemplates = useCallback(async () => {
         try {
             const res = await fetch("/api/hr/evaluations/templates");
             const data = await res.json();
@@ -26,11 +25,11 @@ export default function ManageTemplatesPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchTemplates();
-    }, []);
+    }, [fetchTemplates]);
 
     const handleAddCriterion = () => {
         setCriteria([...criteria, { criterion_name: "", max_score: 10 }]);
@@ -40,7 +39,7 @@ export default function ManageTemplatesPage() {
         setCriteria(criteria.filter((_, i) => i !== index));
     };
 
-    const handleCriterionChange = (index: number, field: string, value: any) => {
+    const handleCriterionChange = (index: number, field: string, value: string | number) => {
         const newCriteria = [...criteria];
         newCriteria[index] = { ...newCriteria[index], [field]: value };
         setCriteria(newCriteria);
@@ -63,20 +62,20 @@ export default function ManageTemplatesPage() {
             } else {
                 alert("فشل تحميل بيانات القالب");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setLoading(false);
         }
     };
 
-    const resetForm = () => {
+    const resetForm = useCallback(() => {
         setIsCreating(false);
         setEditingId(null);
         setName("");
         setDescription("");
         setCriteria([{ criterion_name: "", max_score: 10 }]);
-    };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -104,8 +103,8 @@ export default function ManageTemplatesPage() {
             } else {
                 alert("حدث خطأ أثناء الحفظ");
             }
-        } catch (error) {
-            alert("فشل الإتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الإتصال");
         } finally {
             setIsSubmitting(false);
         }
@@ -121,8 +120,8 @@ export default function ManageTemplatesPage() {
             } else {
                 alert("قد يكون هناك موظفين أو تقييمات مرتبطة بهذا القالب");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         }
     };
 

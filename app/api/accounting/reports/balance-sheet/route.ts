@@ -15,7 +15,13 @@ export async function GET(request: Request) {
         const as_of_date = searchParams.get("as_of_date") || new Date().toISOString().split('T')[0];
 
         // Query for balance sheet accounts (assets, liabilities, equity)
-        const results = await query<any>(`
+        const results = await query<{
+            id: string;
+            code: string;
+            name: string;
+            type: string;
+            balance: number;
+        }>(`
             SELECT 
                 a.id,
                 a.code,
@@ -44,23 +50,23 @@ export async function GET(request: Request) {
         `, [as_of_date]);
 
         // Separate by category
-        const assets = results.filter((r: any) => r.type.startsWith('asset_'));
-        const liabilities = results.filter((r: any) => r.type.startsWith('liability_'));
-        const equity = results.filter((r: any) => r.type === 'equity');
+        const assets = results.filter((r) => r.type.startsWith('asset_'));
+        const liabilities = results.filter((r) => r.type.startsWith('liability_'));
+        const equity = results.filter((r) => r.type === 'equity');
 
-        const total_assets = assets.reduce((sum: number, acc: any) =>
+        const total_assets = assets.reduce((sum, acc) =>
             sum + Number(acc.balance), 0
         );
-        const total_liabilities = liabilities.reduce((sum: number, acc: any) =>
+        const total_liabilities = liabilities.reduce((sum, acc) =>
             sum + Number(acc.balance), 0
         );
-        const total_equity = equity.reduce((sum: number, acc: any) =>
+        const total_equity = equity.reduce((sum, acc) =>
             sum + Number(acc.balance), 0
         );
 
         // Calculate retained earnings from income statement
         // (This is a simplified version - in practice you might want to query separately)
-        const retained_earnings_result = await query<any>(`
+        const retained_earnings_result = await query<{ net_income: number }>(`
             SELECT 
                 SUM(CASE 
                     WHEN a.type = 'income' THEN ml.credit - ml.debit 
@@ -102,8 +108,8 @@ export async function GET(request: Request) {
             }
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Balance sheet error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

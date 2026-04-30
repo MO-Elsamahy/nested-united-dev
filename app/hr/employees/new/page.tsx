@@ -10,21 +10,27 @@ import {
     User,
     Briefcase,
     DollarSign,
-    Building,
     CreditCard,
 } from "lucide-react";
 
-interface User {
+interface AuthUser {
     id: string;
     name: string;
     email: string;
 }
 
+interface Shift {
+    id: string;
+    name: string;
+    start_time: string;
+    end_time: string;
+}
+
 export default function NewEmployeePage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
-    const [users, setUsers] = useState<User[]>([]);
-    const [shifts, setShifts] = useState<any[]>([]);
+    const [users, setUsers] = useState<AuthUser[]>([]);
+    const [shifts, setShifts] = useState<Shift[]>([]);
     const [formData, setFormData] = useState({
         user_id: "",
         shift_id: "",
@@ -46,6 +52,7 @@ export default function NewEmployeePage() {
         bank_name: "",
         iban: "",
         exclude_from_payroll: false,
+        salary_currency: "SAR",
     });
 
     useEffect(() => {
@@ -80,8 +87,8 @@ export default function NewEmployeePage() {
             } else {
                 alert(data.error || "حدث خطأ");
             }
-        } catch (error) {
-            alert("حدث خطأ في الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setLoading(false);
         }
@@ -317,16 +324,32 @@ export default function NewEmployeePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                الراتب الأساسي
+                                الراتب الأساسي *
                             </label>
                             <input
                                 type="number"
                                 name="basic_salary"
+                                required
                                 value={formData.basic_salary ?? 0}
                                 onChange={handleChange}
                                 className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500"
                                 min="0"
                             />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                العملة
+                            </label>
+                            <select
+                                name="salary_currency"
+                                value={formData.salary_currency || "SAR"}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500 bg-white"
+                            >
+                                <option value="SAR">ريال سعودي (SAR)</option>
+                                <option value="EGP">جنيه مصري (EGP)</option>
+                                <option value="USD">دولار أمريكي (USD)</option>
+                            </select>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -372,7 +395,7 @@ export default function NewEmployeePage() {
                     <div className="mt-4 p-4 bg-gray-50 rounded-xl flex items-center justify-between">
                         <span className="text-gray-600">إجمالي الراتب الشهري:</span>
                         <span className="text-2xl font-bold text-green-600">
-                            {totalSalary.toLocaleString()} ر.س
+                            {totalSalary.toLocaleString()} {formData.salary_currency || "SAR"}
                         </span>
                     </div>
 

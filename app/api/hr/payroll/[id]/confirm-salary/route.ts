@@ -15,20 +15,20 @@ export async function POST(
 
     try {
         // 1. Get Employee ID for current user
-        const employee = await queryOne<any>("SELECT id FROM hr_employees WHERE user_id = ?", [session.user.id]);
+        const employee = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE user_id = ?", [session.user.id]);
         if (!employee) {
             return NextResponse.json({ error: "Employee record not found for this user" }, { status: 404 });
         }
 
         // 2. Check if payroll run exists and is approved
-        const run = await queryOne<any>("SELECT status FROM hr_payroll_runs WHERE id = ?", [payrollRunId]);
+        const run = await queryOne<{ status: string }>("SELECT status FROM hr_payroll_runs WHERE id = ?", [payrollRunId]);
         if (!run) return NextResponse.json({ error: "Payroll run not found" }, { status: 404 });
         if (run.status !== 'approved' && run.status !== 'paid') {
             return NextResponse.json({ error: "Can only confirm salaries for approved payroll runs" }, { status: 400 });
         }
 
         // 3. Find the detail line
-        const detail = await queryOne<any>(
+        const detail = await queryOne<{ id: string; salary_confirmed_at: string | null }>(
             "SELECT id, salary_confirmed_at FROM hr_payroll_details WHERE payroll_run_id = ? AND employee_id = ?",
             [payrollRunId, employee.id]
         );
@@ -55,8 +55,8 @@ export async function POST(
 
         return NextResponse.json({ success: true, message: "تم تأكيد استلام الراتب بنجاح" });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Confirm salary error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
     }
 }

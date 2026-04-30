@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { execute, queryOne } from "@/lib/db";
+import { HRRequest } from "@/lib/types/hr";
 
 // PUT: Approve / Reject Request
 export async function PUT(
@@ -42,24 +43,24 @@ export async function PUT(
         // 2. If Approved & is Leave, deduct balance?
         // This is "Business Logic" - ideally we check request type.
         if (status === "approved") {
-            const req = await queryOne<any>("SELECT * FROM hr_requests WHERE id = ?", [id]);
-            if (req && (req.request_type === 'annual_leave' || req.request_type === 'sick_leave')) {
+            const req = await queryOne<HRRequest & { request_type: string }>("SELECT * FROM hr_requests WHERE id = ?", [id]);
+            if (req) {
                 // Deduct from balance
-                const balanceField = req.request_type === 'annual_leave' ? 'annual_leave_balance' : 'sick_leave_balance';
-                await execute(
-                    `UPDATE hr_employees SET ${balanceField} = ${balanceField} - ? WHERE id = ?`,
-                    [req.days_count, req.employee_id]
-                );
-
-                // Also - Auto-generate Attendance records as "Leave"?
-                // That would be cool logic for Phase 3/4 integration.
-                // For now, let's just deduct balance.
+                // Handle various leave types
+                const dbReqType = req.request_type;
+                const balanceField = dbReqType === 'annual_leave' ? 'annual_leave_balance' : 'sick_leave_balance';
+                if (dbReqType === 'annual_leave' || dbReqType === 'sick_leave') {
+                    await execute(
+                        `UPDATE hr_employees SET ${balanceField} = ${balanceField} - ? WHERE id = ?`,
+                        [req.days_count, req.employee_id]
+                    );
+                }
             }
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -79,7 +80,7 @@ export async function DELETE(
     try {
         await execute("DELETE FROM hr_requests WHERE id = ?", [id]);
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

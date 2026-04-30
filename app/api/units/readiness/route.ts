@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     );
 
     // Transform to match expected format
-    let filteredUnits = (units as any[]).map((u) => ({
+    let filteredUnits = (units as Record<string, unknown>[]).map((u) => ({
       ...u,
       platform_account: u.pa_id
         ? { id: u.pa_id, platform: u.pa_platform, account_name: u.pa_account_name }
@@ -46,8 +46,8 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(filteredUnits);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/units/readiness:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

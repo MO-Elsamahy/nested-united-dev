@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, queryOne, execute } from "@/lib/db";
+import { queryOne, execute } from "@/lib/db";
 import { logActivityInServer } from "@/lib/permissions";
 
 // GET single user
@@ -75,7 +75,7 @@ export async function PUT(
 
   // Build update query
   const updates: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | boolean | null)[] = [];
 
   if (name) {
     updates.push("name = ?");
@@ -125,8 +125,8 @@ export async function PUT(
     });
 
     return NextResponse.json(updatedUser);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -196,7 +196,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

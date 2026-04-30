@@ -21,9 +21,9 @@ const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'run-uuid');
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
-    queryOne: (...args: any[]) => mockQueryOne(...args),
-    execute: (...args: any[]) => mockExecute(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
+    queryOne: (...args: unknown[]) => mockQueryOne(...args),
+    execute: (...args: unknown[]) => mockExecute(...args),
     generateUUID: () => mockGenerateUUID(),
 }));
 
@@ -81,7 +81,7 @@ const setupSingleEmployee = (emp = makeEmp(), att = NO_ATT) => {
     mockExecute.mockResolvedValue({});
 };
 
-const getDetailInsertParams = (): any[] | undefined => {
+const getDetailInsertParams = (): unknown[] | undefined => {
     const call = mockExecute.mock.calls.find(([sql]) =>
         String(sql).includes('INSERT INTO hr_payroll_details')
     );
@@ -93,7 +93,7 @@ describe('Payroll Engine — Salary Calculations', () => {
     beforeAll(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'user-001' },
-        } as any);
+        } as { user: { id: string } });
     });
 
     afterEach(() => vi.clearAllMocks());

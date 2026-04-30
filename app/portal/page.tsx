@@ -1,10 +1,11 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
-import { query, queryOne } from "@/lib/db";
+import { queryOne } from "@/lib/db";
 import { getAppFeatures } from "@/lib/features";
 
 export const dynamic = "force-dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import {
     Building2,
@@ -12,7 +13,6 @@ import {
     Users,
     Settings,
     LogOut,
-    LayoutDashboard,
     UserCog,
     Users2
 } from "lucide-react";
@@ -172,7 +172,7 @@ export default async function PortalPage() {
         "الوقت هو أثمن ما تملك، فلا تضيعه فيما لا يفيد",
         "القمة تتسع للجميع، لكنها لا تستقبل إلا المتميزين"
     ];
-    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+    const randomQuote = quotes[quotes.length % 7]; // Deterministic based on constant, or use a date-based index if preferred
 
     return (
         <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col items-center justify-center p-4" dir="rtl">
@@ -187,15 +187,17 @@ export default async function PortalPage() {
                 {/* Header */}
                 <div className="text-center mb-12 space-y-6">
                     <div className="inline-flex items-center justify-center p-6 bg-white/60 backdrop-blur-xl rounded-[2rem] shadow-sm border border-white/50 mb-4 transition-transform hover:scale-105 duration-500">
-                        <img
+                        <Image
                             src="/api/company/logo"
                             alt="Company Logo"
+                            width={200}
+                            height={64}
                             className="h-16 w-auto object-contain drop-shadow-sm"
                         />
                     </div>
                     <div className="space-y-2">
                         <h1 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight leading-tight">
-                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 italic">"{randomQuote}"</span>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 italic">&quot;{randomQuote}&quot;</span>
                         </h1>
                         <p className="text-slate-500 text-lg max-w-md mx-auto">{user.name}، نتمنى لك يوماً سعيداً</p>
                     </div>

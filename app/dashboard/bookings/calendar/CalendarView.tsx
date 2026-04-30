@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ChevronRight, ChevronLeft, Edit, ExternalLink } from "lucide-react";
+import { ChevronRight, ChevronLeft, Edit } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 

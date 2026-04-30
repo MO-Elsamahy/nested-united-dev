@@ -4,25 +4,43 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Search, User, Users, Briefcase, ChevronRight, Loader2 } from "lucide-react";
-import { getSearchablePages, normalizeSearchText } from "@/lib/search-indexing";
+import { getSearchablePages, normalizeSearchText, SearchablePage } from "@/lib/search-indexing";
 
-const TYPE_META: Record<string, { icon: any; color: string; label: string; basePath: string }> = {
+interface SearchMeta {
+    icon: React.ElementType;
+    color: string;
+    label: string;
+    basePath: string;
+}
+
+const TYPE_META: Record<string, SearchMeta> = {
     customer: { icon: Users, color: "text-blue-500", label: "عميل", basePath: "/crm/customers" },
     employee: { icon: User, color: "text-green-500", label: "موظف", basePath: "/hr/employees" },
     deal: { icon: Briefcase, color: "text-purple-500", label: "صفقة", basePath: "/crm/deals" },
 };
 
+interface SearchResult {
+    id: string;
+    type: string;
+    name: string;
+    phone?: string;
+    label?: string;
+    subtitle?: string;
+    href?: string;
+    _type?: string;
+}
+
 export function GlobalSearch() {
     const router = useRouter();
     const { data: session } = useSession();
-    const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+    const isSuperAdmin = (session?.user as { role?: string } | undefined)?.role === "super_admin";
     
     const inputRef = useRef<HTMLInputElement>(null);
     const listRef = useRef<HTMLDivElement>(null);
 
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState("");
-    const [results, setResults] = useState<any[]>([]);
+    const [results, setResults] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [active, setActive] = useState(0);
 
@@ -94,14 +112,18 @@ export function GlobalSearch() {
         });
     }, [query, navItems, isSuperAdmin, session?.user]);
 
-    const allItems = [...navMatches.map(n => ({ ...n, _type: "nav" })), ...results];
+    type GlobalSearchItem = SearchResult | (SearchablePage & { _type: string; type?: never; id?: never; name?: never; phone?: never });
 
-    const navigate = useCallback((item: any) => {
-        if (item._type === "nav") {
+    const allItems: GlobalSearchItem[] = [...navMatches.map(n => ({ ...n, _type: "nav" as const })), ...results];
+
+    const navigate = useCallback((item: GlobalSearchItem) => {
+        if (item._type === "nav" && item.href) {
             router.push(item.href);
         } else {
-            const meta = TYPE_META[item.type];
-            router.push(`${meta.basePath}/${item.id}`);
+            const meta = item.type ? TYPE_META[item.type] : undefined;
+            if (meta) {
+                router.push(`${meta.basePath}/${item.id}`);
+            }
         }
         setOpen(false);
         setQuery("");
@@ -150,12 +172,12 @@ export function GlobalSearch() {
                     )}
 
                     {!loading && query.length >= 2 && allItems.length === 0 && (
-                        <div className="px-4 py-3 text-sm text-gray-400 text-center">لا توجد نتائج لـ "{query}"</div>
+                        <div className="px-4 py-3 text-sm text-gray-400 text-center">لا توجد نتائج لـ &quot;{query}&quot;</div>
                     )}
 
                     {allItems.map((item, i) => {
                         const isNav = item._type === "nav";
-                        const meta = !isNav ? TYPE_META[item.type] : null;
+                        const meta = !isNav && item.type ? TYPE_META[item.type] : null;
                         const Icon = isNav ? ChevronRight : meta!.icon;
                         return (
                             <button

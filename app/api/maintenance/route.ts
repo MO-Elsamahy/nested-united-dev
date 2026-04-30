@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { MaintenanceTicket } from "@/lib/types/maintenance";
 
 // GET all maintenance tickets
 export async function GET() {
   try {
     // Get tickets with unit and creator info
-    const tickets = await query(
+    const tickets = await query<MaintenanceTicket>(
       `SELECT mt.*, 
               u.unit_name, 
               creator.name as created_by_name
@@ -18,15 +19,15 @@ export async function GET() {
     );
 
     // Transform to match expected format
-    const transformed = (tickets as any[]).map((t) => ({
+    const transformed = tickets.map((t) => ({
       ...t,
-      unit: { unit_name: t.unit_name },
-      created_by_user: { name: t.created_by_name },
+      unit: { unit_name: t.unit_name || "" },
+      created_by_user: { name: t.created_by_name || "" },
     }));
 
     return NextResponse.json(transformed);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }
 
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(ticket, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }

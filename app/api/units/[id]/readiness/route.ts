@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
-import { queryOne, query, execute } from "@/lib/db";
+import { queryOne, execute } from "@/lib/db";
 
 // GET /api/units/[id]/readiness - Get readiness status for a specific unit
 export async function GET(
@@ -22,10 +22,10 @@ export async function GET(
     }
 
     return NextResponse.json(unit);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/units/[id]/readiness:", error);
     return NextResponse.json(
-      { error: error?.message || "Unexpected error fetching unit readiness" },
+      { error: error instanceof Error ? error.message : "Unexpected error fetching unit readiness" },
       { status: 500 }
     );
   }
@@ -119,10 +119,10 @@ export async function PUT(
     );
 
     return NextResponse.json(updatedUnit);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in PUT /api/units/[id]/readiness:", error);
     return NextResponse.json(
-      { error: error?.message || "Unexpected error updating unit readiness" },
+      { error: error instanceof Error ? error.message : "Unexpected error updating unit readiness" },
       { status: 500 }
     );
   }

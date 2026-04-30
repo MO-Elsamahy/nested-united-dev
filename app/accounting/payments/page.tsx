@@ -1,22 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { 
     Search, 
-    Trash2, 
-    DollarSign, 
-    Calendar, 
-    User, 
-    FileText, 
-    ArrowUpDown,
-    CheckCircle,
-    Clock,
-    XCircle,
-    ChevronDown,
-    Filter
+    Trash2
 } from "lucide-react";
+import { useCallback } from "react";
 
 interface Payment {
     id: string;
@@ -36,13 +26,9 @@ export default function PaymentsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [typeFilter, setTypeFilter] = useState("");
     const { data: session } = useSession();
-    const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+    const isSuperAdmin = (session?.user as { role?: string })?.role === "super_admin";
 
-    useEffect(() => {
-        fetchPayments();
-    }, [typeFilter]);
-
-    async function fetchPayments() {
+    const fetchPayments = useCallback(async () => {
         try {
             setLoading(true);
             const params = new URLSearchParams();
@@ -55,7 +41,11 @@ export default function PaymentsPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [typeFilter]);
+
+    useEffect(() => {
+        void fetchPayments();
+    }, [fetchPayments]);
 
     const handleDelete = async (id: string, number: string) => {
         if (!confirm(`هل أنت متأكد من حذف السند رقم ${number}؟ سيتم تحديث أرصدة الفواتير المرتبطة به.`)) return;

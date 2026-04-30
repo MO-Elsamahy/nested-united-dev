@@ -4,5 +4,5 @@
 export function isElectron(): boolean {
     if (typeof window === "undefined") return false;
     // window.electronAPI is injected by Electron's preload.ts
-    return typeof (window as any).electronAPI !== "undefined";
+    return typeof (window as unknown as Record<string, unknown>).electronAPI !== "undefined";
 }

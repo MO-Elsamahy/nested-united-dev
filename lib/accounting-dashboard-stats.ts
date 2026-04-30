@@ -58,11 +58,11 @@ export async function getAccountingDashboardStats(asOfDate?: string): Promise<Ac
 
     const sqlNoAccountDeleted = sqlWithAccountDeleted.replace(" AND a.deleted_at IS NULL", "");
 
-    let rows: any[];
+    let rows: { cash: number; bank: number; receivables: number; payables: number }[];
     try {
-        rows = await query<any>(sqlWithAccountDeleted, [as_of_date]);
+        rows = await query<{ cash: number, bank: number, receivables: number, payables: number }>(sqlWithAccountDeleted, [as_of_date]);
     } catch {
-        rows = await query<any>(sqlNoAccountDeleted, [as_of_date]);
+        rows = await query<{ cash: number, bank: number, receivables: number, payables: number }>(sqlNoAccountDeleted, [as_of_date]);
     }
 
     const r = rows?.[0] || {};

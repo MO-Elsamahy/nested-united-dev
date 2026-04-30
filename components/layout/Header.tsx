@@ -3,7 +3,6 @@
 import { Bell, LogOut, User as UserIcon, Info, Menu } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
 import { AppSwitcher } from "./AppSwitcher";
 import { Breadcrumbs } from "./Breadcrumbs";
@@ -20,9 +19,7 @@ interface HeaderProps {
 
 export function Header({ user, unreadCount: initialUnreadCount = 0, features }: HeaderProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(initialUnreadCount);
-  const [logoError, setLogoError] = useState(false);
 
   useEffect(() => {
     // Listen for unread count updates from NotificationManager
@@ -37,10 +34,6 @@ export function Header({ user, unreadCount: initialUnreadCount = 0, features }: 
     };
   }, []);
 
-  const handleSignOut = async () => {
-    setLoading(true);
-    await signOut({ callbackUrl: "/login" });
-  };
 
   const roleLabel = 
     user?.role === "super_admin" ? "مشرف أعلى" :

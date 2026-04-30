@@ -1,12 +1,13 @@
 import { query } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
-import { Globe, Plus, Bell, BellOff, ExternalLink, Monitor, Wifi, WifiOff } from "lucide-react";
+import { Globe, Plus, Bell, Monitor, Wifi, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { DeleteBrowserAccountButton } from "./DeleteBrowserAccountButton";
 import { OpenAccountButton } from "./OpenAccountButton";
 import { TestNotificationButton } from "./TestNotificationButton";
-import { getCurrentUser } from "@/lib/auth";
+
+import { BrowserAccount } from "@/lib/types/database";
 import { hasPermission } from "@/lib/server-permissions";
 import { BrowserAccountsPageClient } from "./BrowserAccountsPageClient";
 import { AuthenticateButton } from "./AuthenticateButton";
@@ -14,9 +15,9 @@ import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
 import { AirbnbIcon } from "@/components/icons/AirbnbIcon";
 import { GathernIcon } from "@/components/icons/GathernIcon";
 
-async function getBrowserAccounts() {
+async function getBrowserAccounts(): Promise<BrowserAccount[]> {
   try {
-    const accounts = await query<any>(
+    const accounts = await query<BrowserAccount>(
       "SELECT * FROM browser_accounts ORDER BY created_at DESC"
     );
     return accounts || [];

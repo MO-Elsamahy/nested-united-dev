@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { PlatformAccount } from "@/lib/types/database";
 
 export default function EditAccountPage({
   params,
@@ -17,7 +18,7 @@ export default function EditAccountPage({
   const canEdit = usePermission("edit");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [account, setAccount] = useState<any>(null);
+  const [account, setAccount] = useState<PlatformAccount | null>(null);
 
   useEffect(() => {
     if (canEdit === false) {
@@ -57,8 +58,8 @@ export default function EditAccountPage({
 
       router.push("/dashboard/accounts");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ');
     } finally {
       setLoading(false);
     }

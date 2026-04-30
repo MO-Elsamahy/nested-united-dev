@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, executeTransaction, generateUUID, queryOne } from "@/lib/db";
+import { Evaluation, Employee, EvaluationCriterion } from "@/lib/types/hr";
 
 // GET: List all evaluations (filtered by month/year/employee)
 export async function GET(request: Request) {
@@ -25,10 +26,10 @@ export async function GET(request: Request) {
             LEFT JOIN users u ON ev.evaluated_by = u.id
             WHERE 1=1
         `;
-        const params: any[] = [];
+        const params: (string | number)[] = [];
 
         if (isEmployeePortal) {
-            const currentEmployee = await queryOne<any>(
+            const currentEmployee = await queryOne<Employee>(
                 "SELECT id FROM hr_employees WHERE user_id = ?",
                 [session.user.id]
             );
@@ -54,10 +55,10 @@ export async function GET(request: Request) {
 
         sql += " ORDER BY ev.eval_year DESC, ev.eval_month DESC, ev.created_at DESC";
 
-        const evaluations = await query(sql, params);
+        const evaluations = await query<Evaluation>(sql, params);
         return NextResponse.json(evaluations);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -70,10 +71,17 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { employee_id, template_id, eval_month, eval_year, notes, scores } = body;
+        const { employee_id, template_id, eval_month, eval_year, notes, scores } = body as {
+            employee_id: string;
+            template_id: string;
+            eval_month: number;
+            eval_year: number;
+            notes?: string;
+            scores: { criterion_id: string; score: string; comment?: string }[];
+        };
 
         // Verify if evaluation already exists for this month
-        const existing = await queryOne(
+        const existing = await queryOne<{ id: string }>(
             "SELECT id FROM hr_evaluations WHERE employee_id = ? AND eval_month = ? AND eval_year = ?",
             [employee_id, eval_month, eval_year]
         );
@@ -89,10 +97,10 @@ export async function POST(request: Request) {
         let maxPossibleScore = 0;
         
         // Fetch criteria weights and max scores to calculate accurate max_score and weighted sum
-        const criteriaMap = new Map();
-        const criteriaData = await query("SELECT id, max_score, weight FROM hr_evaluation_criteria WHERE template_id = ?", [template_id]);
+        const criteriaMap = new Map<string, EvaluationCriterion>();
+        const criteriaData = await query<EvaluationCriterion>("SELECT id, max_score, weight FROM hr_evaluation_criteria WHERE template_id = ?", [template_id]);
         
-        (criteriaData as any[]).forEach(c => criteriaMap.set(c.id, c));
+        criteriaData.forEach(c => criteriaMap.set(c.id, c));
 
         for (const s of scores) {
             const cDef = criteriaMap.get(s.criterion_id);
@@ -100,7 +108,7 @@ export async function POST(request: Request) {
                 // To keep it simple, we just sum up the raw scores and max scores 
                 // Alternatively, we could compute weighted sums. We'll use simple sum of provided max_scores.
                 totalScore += parseFloat(s.score);
-                maxPossibleScore += parseFloat(cDef.max_score);
+                maxPossibleScore += cDef.max_score;
             }
         }
 
@@ -123,7 +131,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true, id: evaluationId });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

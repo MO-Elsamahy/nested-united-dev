@@ -2,12 +2,22 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, User, Trophy, FileText, Download, Loader2 } from "lucide-react";
+import { ArrowRight, Calendar, User, FileText, Download, Loader2 } from "lucide-react";
 import { useParams } from "next/navigation";
+import { Evaluation, EvaluationScore } from "@/lib/types/hr";
+
+interface EvaluationDetail extends Evaluation {
+    employee_name: string;
+    department?: string;
+    job_title?: string;
+    template_name: string;
+    evaluator_name?: string;
+    scores?: (EvaluationScore & { criterion_name: string; max_score: string })[];
+}
 
 export default function ViewEvaluationPage() {
     const params = useParams();
-    const [evaluation, setEvaluation] = useState<any>(null);
+    const [evaluation, setEvaluation] = useState<EvaluationDetail | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -44,7 +54,7 @@ export default function ViewEvaluationPage() {
         );
     }
 
-    const percentage = parseFloat(evaluation.percentage) || 0;
+    const percentage = Number(evaluation.percentage) || 0;
     
     const getScoreColor = (percentage: number) => {
         if (percentage >= 90) return "text-emerald-600 bg-emerald-50 border-emerald-200 ring-emerald-600";
@@ -114,8 +124,8 @@ export default function ViewEvaluationPage() {
             <h3 className="text-lg font-bold text-gray-900 mt-8 mb-4 px-2">تفاصيل المعايير والنقاط</h3>
             <div className="bg-white rounded-2xl shadow-sm border overflow-hidden print-card">
                 <div className="divide-y">
-                    {evaluation.scores?.map((s: any) => {
-                        const sPerc = (parseFloat(s.score) / parseFloat(s.max_score)) * 100;
+                    {evaluation.scores?.map((s) => {
+                        const sPerc = (Number(s.score) / Number(s.max_score)) * 100;
                         return (
                             <div key={s.id} className="p-5 hover:bg-gray-50 transition">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">

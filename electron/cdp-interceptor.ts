@@ -19,6 +19,22 @@ import type { WebContents } from 'electron';
 // `devtools-opened` and re-attach on `devtools-closed`.
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface ResponseReceivedParams {
+  requestId: string;
+  response: {
+    url: string;
+  };
+}
+
+interface LoadingFinishedParams {
+  requestId: string;
+}
+
+interface NetworkResponseBody {
+  body: string;
+  base64Encoded: boolean;
+}
+
 export type CdpSnapshotHandler = (url: string, json: unknown) => void;
 
 // URLs we care about. Each regex is tested against the full response URL.
@@ -58,10 +74,11 @@ export function attachCdpInterceptor(
 
   try {
     wc.debugger.attach('1.3');
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
     // Already attached (usually by DevTools) — caller can retry later.
-    if (!String(e?.message || '').includes('already attached')) {
-      console.warn(`[CDP][${label}] attach failed:`, e?.message);
+    if (!msg.includes('already attached')) {
+      console.warn(`[CDP][${label}] attach failed:`, msg);
     }
     return { detach: () => {}, isAttached: () => false };
   }
@@ -73,24 +90,26 @@ export function attachCdpInterceptor(
   const pending = new Map<string, { url: string }>();
 
   // Stable handler refs so we can remove listeners in detach().
-  const onMessage = async (_event: unknown, method: string, params: any) => {
+  const onMessage = async (_event: unknown, method: string, params: unknown) => {
     try {
       if (method === 'Network.responseReceived') {
-        const url = params?.response?.url as string | undefined;
+        const p = params as ResponseReceivedParams;
+        const url = p?.response?.url;
         if (!url) return;
         if (!matchesAny(url)) return;
-        pending.set(params.requestId, { url });
+        pending.set(p.requestId, { url });
       } else if (method === 'Network.loadingFinished') {
-        const meta = pending.get(params.requestId);
+        const p = params as LoadingFinishedParams;
+        const meta = pending.get(p.requestId);
         if (!meta) return;
-        pending.delete(params.requestId);
+        pending.delete(p.requestId);
 
         if (detached) return;
         let body: string;
         try {
           const res = await wc.debugger.sendCommand('Network.getResponseBody', {
-            requestId: params.requestId,
-          });
+            requestId: p.requestId,
+          }) as NetworkResponseBody;
           body = res.base64Encoded
             ? Buffer.from(res.body, 'base64').toString('utf8')
             : res.body;
@@ -110,21 +129,25 @@ export function attachCdpInterceptor(
         let json: unknown;
         try {
           json = JSON.parse(body);
-        } catch (err: any) {
-          console.warn(`[CDP][${label}] JSON parse failed for ${meta.url.substring(0, 80)}: ${err?.message}`);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[CDP][${label}] JSON parse failed for ${meta.url.substring(0, 80)}: ${msg}`);
           return;
         }
 
         try {
           handler(meta.url, json);
-        } catch (err: any) {
-          console.warn(`[CDP][${label}] handler threw:`, err?.message);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.warn(`[CDP][${label}] handler threw:`, msg);
         }
       } else if (method === 'Network.loadingFailed') {
-        pending.delete(params?.requestId);
+        const p = params as { requestId: string };
+        pending.delete(p?.requestId);
       }
-    } catch (err: any) {
-      console.warn(`[CDP][${label}] message handler error:`, err?.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[CDP][${label}] message handler error:`, msg);
     }
   };
 
@@ -140,8 +163,9 @@ export function attachCdpInterceptor(
   // Enable the Network domain. Don't bother turning on body caching via
   // Network.setBypassServiceWorker etc. — the defaults already let
   // getResponseBody succeed for same-origin responses.
-  wc.debugger.sendCommand('Network.enable').catch((err: any) => {
-    console.warn(`[CDP][${label}] Network.enable failed:`, err?.message);
+  wc.debugger.sendCommand('Network.enable').catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[CDP][${label}] Network.enable failed:`, msg);
   });
 
   console.log(`[CDP][${label}] attached and listening`);
@@ -151,8 +175,8 @@ export function attachCdpInterceptor(
     detach: () => {
       if (detached) return;
       detached = true;
-      try { wc.debugger.off('message', onMessage as any); } catch {}
-      try { wc.debugger.off('detach',  onDetach  as any); } catch {}
+      try { wc.debugger.off('message', onMessage as (event: unknown, ...args: unknown[]) => void); } catch {}
+      try { wc.debugger.off('detach',  onDetach  as (event: unknown, ...args: unknown[]) => void); } catch {}
       try { wc.debugger.detach(); } catch {}
       pending.clear();
       console.log(`[CDP][${label}] detached (by caller)`);

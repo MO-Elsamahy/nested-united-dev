@@ -102,8 +102,8 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
       if (!res.ok) throw new Error(result.error || "فشل تحديث الحجز");
       router.push("/dashboard/bookings");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "فشل تحديث الحجز");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "فشل تحديث الحجز");
     } finally {
       setSaving(false);
     }

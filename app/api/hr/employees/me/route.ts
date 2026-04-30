@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { queryOne } from "@/lib/db";
+import { Employee } from "@/lib/types/hr";
 
 // GET: الحصول على ملف الموظف للمستخدم الحالي
 export async function GET() {
@@ -11,7 +12,7 @@ export async function GET() {
     }
 
     try {
-        const employee = await queryOne<any>(
+        const employee = await queryOne<Employee>(
             `SELECT * FROM hr_employees WHERE user_id = ? AND status = 'active'`,
             [session.user.id]
         );
@@ -21,7 +22,7 @@ export async function GET() {
         }
 
         return NextResponse.json(employee);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

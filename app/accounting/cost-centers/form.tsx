@@ -1,17 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { X, AlertCircle } from "lucide-react";
+import { X } from "lucide-react";
+import { CostCenter } from "@/lib/types/accounting";
 
 interface CostCenterFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    costCenter?: any;
+    costCenter?: CostCenter;
 }
 
 export function CostCenterForm({ onClose, onSuccess, costCenter }: CostCenterFormProps) {
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [_error, setError] = useState("");
 
     const [formData, setFormData] = useState({
         code: costCenter?.code || "",
@@ -32,8 +33,8 @@ export function CostCenterForm({ onClose, onSuccess, costCenter }: CostCenterFor
 
             if (!res.ok) throw new Error("فشل الحفظ");
             onSuccess();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "فشل الحفظ");
         } finally {
             setLoading(false);
         }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne } from "@/lib/db";
+import { AccountingMove } from "@/lib/types/accounting";
 
 /** GET: single journal entry (header + lines with account names) */
 export async function GET(
@@ -16,7 +17,7 @@ export async function GET(
     const { id } = await params;
 
     try {
-        const move = await queryOne<any>(
+        const move = await queryOne<AccountingMove & { journal_name?: string, journal_code?: string, partner_name?: string, created_by_name?: string }>(
             `SELECT m.*, j.name AS journal_name, j.code AS journal_code,
                     p.name AS partner_name, u.name AS created_by_name
              FROM accounting_moves m
@@ -42,7 +43,7 @@ export async function GET(
         );
 
         return NextResponse.json({ move, lines });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

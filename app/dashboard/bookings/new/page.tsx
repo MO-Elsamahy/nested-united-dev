@@ -74,8 +74,8 @@ export default function NewBookingPage() {
       if (!res.ok) throw new Error(result.error || "فشل إنشاء الحجز");
       router.push("/dashboard/bookings");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "فشل إنشاء الحجز");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "فشل إنشاء الحجز");
     } finally {
       setLoading(false);
     }

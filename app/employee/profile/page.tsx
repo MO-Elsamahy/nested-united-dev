@@ -1,20 +1,39 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Mail, Phone, Calendar, Briefcase, MapPin } from "lucide-react";
+import { User, Mail, Phone, Calendar, Briefcase } from "lucide-react";
+
+interface EmployeeProfile {
+    id: string;
+    full_name: string;
+    job_title: string;
+    department: string;
+    employee_number: string;
+    phone: string | null;
+    email: string | null;
+    national_id: string | null;
+    hire_date: string | null;
+    contract_type: string;
+    annual_leave_balance: number;
+}
 
 export default function EmployeeProfilePage() {
-    const [employee, setEmployee] = useState<any>(null);
+    const [employee, setEmployee] = useState<EmployeeProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/api/hr/employees/me")
-            .then((res) => res.json())
-            .then((data) => {
+        const loadProfile = async () => {
+            try {
+                const res = await fetch("/api/hr/employees/me");
+                const data = await res.json();
                 if (!data.error) setEmployee(data);
+            } catch {
+                // Ignore error
+            } finally {
                 setLoading(false);
-            })
-            .catch(() => setLoading(false));
+            }
+        };
+        void loadProfile();
     }, []);
 
     if (loading) return <div className="p-12 text-center text-gray-500">جاري التحميل...</div>;

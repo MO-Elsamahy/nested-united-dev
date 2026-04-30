@@ -19,7 +19,7 @@ function safeRedirectUrl(path: string, req: NextRequest): URL {
 
 export async function GET(req: NextRequest) {
     try {
-        const settings: any = await query("SELECT logo_url FROM company_settings LIMIT 1");
+        const settings = await query<{ logo_url: string | null }>("SELECT logo_url FROM company_settings LIMIT 1");
         const logoUrl = settings?.[0]?.logo_url;
 
         if (!logoUrl || typeof logoUrl !== "string" || !logoUrl.startsWith("data:image")) {

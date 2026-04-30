@@ -1,14 +1,22 @@
 import { BrowserWindow } from 'electron';
 import mysql from 'mysql2/promise';
 import { v4 as uuidv4 } from 'uuid';
+import { RowDataPacket } from 'mysql2';
 import * as path from 'path';
 import * as fs from 'fs';
 import {
-  SessionHealthResult,
   browserSessions,
   checkSessionHealth,
   setDbPool,
 } from './platform-api';
+import { 
+  BrowserAccountSession, 
+  SessionHealthResult, 
+  AirbnbMessage, 
+  AirbnbThreadNode, 
+  GathernMessage, 
+  GathernChat 
+} from './types';
 
 // ─────────────────────────────────────────────
 // DB Pool
@@ -44,7 +52,7 @@ function getPool(): mysql.Pool {
     connectTimeout:   10_000,
   });
   // Share pool with platform-api so it can look up thread metadata
-  setDbPool(dbPool);
+  setDbPool(dbPool as unknown as Parameters<typeof setDbPool>[0]);
   return dbPool;
 }
 
@@ -52,7 +60,7 @@ function getPool(): mysql.Pool {
 // Date utility
 // ─────────────────────────────────────────────
 
-function safeDate(val?: any): Date {
+function safeDate(val?: string | number | Date | null): Date {
   if (!val) return new Date();
   if (val instanceof Date) return isNaN(val.getTime()) ? new Date() : val;
   if (typeof val === 'string') {
@@ -91,8 +99,8 @@ function dumpOnce(key: string, label: string, payload: unknown) {
     const file = path.join(DUMP_DIR, `${label}.json`);
     fs.writeFileSync(file, JSON.stringify(payload, null, 2), 'utf8');
     console.log(`[Polling][dump] ${label} → ${file}`);
-  } catch (err: any) {
-    console.warn(`[Polling][dump] failed to write ${label}: ${err.message}`);
+  } catch (err) {
+    console.warn(`[Polling][dump] failed to write ${label}: ${err instanceof Error ? err.message : err}`);
   }
 }
 
@@ -113,18 +121,19 @@ function decodeAirbnbGlobalId(b64: string | null | undefined): string {
 }
 
 /** Render an Airbnb StandardText block to plain text. */
-function extractStandardText(st: any): string {
+function extractStandardText(st: unknown): string {
   if (!st) return '';
   if (typeof st === 'string') return st;
-  if (Array.isArray(st.components)) {
-    return st.components.map((c: any) => c?.text || '').join(' ').trim();
+  const obj = st as Record<string, unknown>;
+  if (Array.isArray(obj.components)) {
+    return obj.components.map((c) => (c as Record<string, string>)?.text || '').join(' ').trim();
   }
-  if (typeof st.accessibilityText === 'string') return st.accessibilityText;
+  if (typeof obj.accessibilityText === 'string') return obj.accessibilityText;
   return '';
 }
 
 /** Extract human-readable text from Airbnb Message payload variants. */
-function extractAirbnbMessageText(m: any): string {
+function extractAirbnbMessageText(m: AirbnbMessage | null | undefined): string {
   if (!m || typeof m !== 'object') return '';
 
   // Common direct fields.
@@ -157,8 +166,8 @@ function extractAirbnbMessageText(m: any): string {
         return content.body.trim();
       }
       if (Array.isArray(content.subMessages)) {
-        const parts = content.subMessages
-          .map((s: any) => (typeof s?.body === 'string' ? s.body.trim() : ''))
+        const parts = (content.subMessages as Record<string, unknown>[])
+          .map((s) => (typeof s?.body === 'string' ? (s.body as string).trim() : ''))
           .filter(Boolean);
         if (parts.length > 0) return parts.join(' | ');
       }
@@ -169,14 +178,14 @@ function extractAirbnbMessageText(m: any): string {
 }
 
 /** Resolve host account id (the "me" side) for Airbnb threads. */
-function resolveAirbnbHostAccountId(account: any, threadNode: any): string {
+function resolveAirbnbHostAccountId(account: BrowserAccountSession, threadNode: AirbnbThreadNode | unknown): string {
   const fromSessionRaw = String(account?.platformUserId || '');
   const fromSession = decodeAirbnbGlobalId(fromSessionRaw) || fromSessionRaw;
   if (/^\d+$/.test(fromSession)) return fromSession;
 
-  const participantEdges: any[] =
-    threadNode?.participants?.edges ||
-    threadNode?.threadData?.participants?.edges ||
+  const participantEdges =
+    (threadNode as AirbnbThreadNode)?.participants?.edges ||
+    (threadNode as AirbnbThreadNode)?.threadData?.participants?.edges ||
     [];
 
   for (const e of participantEdges) {
@@ -190,7 +199,8 @@ function resolveAirbnbHostAccountId(account: any, threadNode: any): string {
   }
 
   // Last fallback: in many threads orderedParticipants puts guest first then host.
-  const ordered = threadNode?.orderedParticipants;
+  const threadNodeRecord = threadNode as Record<string, unknown>;
+  const ordered = threadNodeRecord?.orderedParticipants;
   if (Array.isArray(ordered) && ordered.length > 1) {
     const maybeHost = String(ordered[1]?.accountId || '');
     if (maybeHost) return maybeHost;
@@ -199,11 +209,13 @@ function resolveAirbnbHostAccountId(account: any, threadNode: any): string {
 }
 
 /** Pull the first additionalValues entry for a userThreadTag by name. */
-function threadTagValue(node: any, tagName: string): string | null {
-  const tags: any[] = Array.isArray(node?.userThreadTags) ? node.userThreadTags : [];
+function threadTagValue(node: AirbnbThreadNode | unknown, tagName: string): string | null {
+  const obj = node as Record<string, unknown>;
+  const tags = Array.isArray(obj?.userThreadTags) ? obj.userThreadTags : [];
   for (const t of tags) {
-    if (t?.userThreadTagName === tagName) {
-      const vals = Array.isArray(t.additionalValues) ? t.additionalValues : [];
+    const tag = t as Record<string, unknown>;
+    if (tag?.userThreadTagName === tagName) {
+      const vals = Array.isArray(tag.additionalValues) ? tag.additionalValues : [];
       if (vals.length > 0) return String(vals[0]);
     }
   }
@@ -211,10 +223,11 @@ function threadTagValue(node: any, tagName: string): string | null {
 }
 
 /** Dump nested object keys (one level deep per key) for diagnostics. */
-function keyPathsPreview(obj: any, maxDepth = 3): string {
+function keyPathsPreview(obj: unknown, maxDepth = 3): string {
   const out: string[] = [];
-  const walk = (node: any, prefix: string, depth: number) => {
+  const walk = (node: unknown, prefix: string, depth: number) => {
     if (depth > maxDepth || !node || typeof node !== 'object') return;
+    const objNode = node as Record<string, unknown>;
     if (Array.isArray(node)) {
       out.push(`${prefix}[${node.length}]`);
       if (node[0] && typeof node[0] === 'object' && depth < maxDepth) {
@@ -222,8 +235,8 @@ function keyPathsPreview(obj: any, maxDepth = 3): string {
       }
       return;
     }
-    for (const k of Object.keys(node)) {
-      const v = node[k];
+    for (const k of Object.keys(objNode)) {
+      const v = objNode[k];
       const nextPrefix = prefix ? `${prefix}.${k}` : k;
       if (v && typeof v === 'object') {
         if (Array.isArray(v)) out.push(`${nextPrefix}[${v.length}]`);
@@ -237,9 +250,9 @@ function keyPathsPreview(obj: any, maxDepth = 3): string {
 }
 
 /** Walk `root` breadth-first; return the first array whose items match `predicate`. */
-function findArrayOfShape(root: any, predicate: (o: any) => boolean): any[] {
+function findArrayOfShape<T = unknown>(root: unknown, predicate: (o: unknown) => boolean): T[] {
   if (!root || typeof root !== 'object') return [];
-  const queue: any[] = [root];
+  const queue: unknown[] = [root];
   const seen = new WeakSet<object>();
   let visited = 0;
   const MAX_NODES = 5000;
@@ -253,7 +266,7 @@ function findArrayOfShape(root: any, predicate: (o: any) => boolean): any[] {
       for (const item of node) if (item && typeof item === 'object') queue.push(item);
     } else {
       for (const k of Object.keys(node)) {
-        const v = (node as any)[k];
+        const v = (node as Record<string, unknown>)[k];
         if (v && typeof v === 'object') queue.push(v);
       }
     }
@@ -262,24 +275,25 @@ function findArrayOfShape(root: any, predicate: (o: any) => boolean): any[] {
 }
 
 /** Heuristic: is this object a chat message? */
-function looksLikeMessage(obj: any): boolean {
+function looksLikeMessage(obj: unknown): boolean {
   if (!obj || typeof obj !== 'object') return false;
-  const tn = obj.__typename || '';
+  const o = obj as Record<string, unknown>;
+  const tn = o.__typename || '';
   if (typeof tn === 'string' && /Message$/.test(tn)) return true;
-  const hasId = 'id' in obj || 'messageId' in obj;
+  const hasId = 'id' in o || 'messageId' in o;
   if (!hasId) return false;
   return (
-    'text'       in obj ||
-    'body'       in obj ||
-    'content'    in obj ||
-    'createdAt'  in obj ||
-    'createdAtMs' in obj ||
-    'created_at' in obj ||
-    'senderId'   in obj ||
-    'sender'     in obj ||
-    'account'    in obj ||
-    'hydratedContent' in obj ||
-    'contentPreview'  in obj
+    'text'       in o ||
+    'body'       in o ||
+    'content'    in o ||
+    'createdAt'  in o ||
+    'createdAtMs' in o ||
+    'created_at' in o ||
+    'senderId'   in o ||
+    'sender'     in o ||
+    'account'    in o ||
+    'hydratedContent' in o ||
+    'contentPreview'  in o
   );
 }
 
@@ -302,7 +316,7 @@ export class PollingService {
   public async startPollingFromDB() {
     try {
       const pool = getPool();
-      const [rows]: any = await pool.execute(
+      const [rows] = await pool.execute<RowDataPacket[]>(
         `SELECT id, platform, account_name AS accountName,
                 session_partition   AS \`partition\`,
                 auth_token          AS authToken,
@@ -313,24 +327,24 @@ export class PollingService {
       );
 
       for (const row of rows) {
-        const existing = browserSessions.get(row.id);
-        browserSessions.set(row.id, {
-          id:             row.id,
-          platform:       row.platform,
-          accountName:    row.accountName,
-          partition:      row.partition,
+        const existing = browserSessions.get(String(row.id));
+        browserSessions.set(String(row.id), {
+          id:             String(row.id),
+          platform:       String(row.platform) as 'airbnb' | 'gathern' | 'whatsapp',
+          accountName:    String(row.accountName),
+          partition:      String(row.partition),
           createdBy:      'system',
-          authToken:      row.authToken      || existing?.authToken,
-          chatAuthToken:  row.chatAuthToken  || existing?.chatAuthToken,
-          platformUserId: row.platformUserId || existing?.platformUserId,
+          authToken:      row.authToken      ? String(row.authToken)      : existing?.authToken,
+          chatAuthToken:  row.chatAuthToken  ? String(row.chatAuthToken)  : existing?.chatAuthToken,
+          platformUserId: row.platformUserId ? String(row.platformUserId) : existing?.platformUserId,
           window:         existing?.window,
         });
-        this.startHealthPolling(row.id);
+        this.startHealthPolling(String(row.id));
       }
 
       console.log(`[Polling] ▶️  Health polling started for ${rows.length} account(s)`);
-    } catch (err: any) {
-      console.error('[Polling] ❌  startPollingFromDB error:', err.message);
+    } catch (err) {
+      console.error('[Polling] ❌  startPollingFromDB error:', err instanceof Error ? err.message : err);
     }
   }
 
@@ -400,8 +414,8 @@ export class PollingService {
         });
       }
       lastHealthState.set(accountId, true);
-    } catch (err: any) {
-      console.error(`[Polling][${account?.accountName}] ❌ health check`, err.message);
+    } catch (err) {
+      console.error(`[Polling][${account?.accountName}] ❌ health check`, err instanceof Error ? err.message : err);
     }
   }
 
@@ -410,15 +424,15 @@ export class PollingService {
   // response to the matching processor. All heavy lifting lives in the
   // existing process* methods below.
 
-  public async processSnapshot(accountId: string, url: string, json: unknown): Promise<void> {
-    if (!url) return;
+  public async processSnapshot(accountId: string, _url: string, json: unknown): Promise<void> {
+    if (!_url) return;
 
-    if (url.indexOf('ViaductInboxData') !== -1) {
+    if (_url.indexOf('ViaductInboxData') !== -1) {
       return this.processAirbnbInboxSnapshot(accountId, json);
     }
-    if (url.indexOf('ViaductGetThreadAndDataQuery') !== -1) {
+    if (_url.indexOf('ViaductGetThreadAndDataQuery') !== -1) {
       // Extract threadId from the URL variables (base64 of "MessageThread:<id>").
-      const match = url.match(/globalThreadId%22%3A%22([^%]+)%22/);
+      const match = _url.match(/globalThreadId%22%3A%22([^%]+)%22/);
       let threadId: string | null = null;
       if (match) {
         try {
@@ -429,17 +443,17 @@ export class PollingService {
       return this.processAirbnbThreadSnapshot(accountId, json, threadId);
     }
     if (
-      url.indexOf('SyncProtocolSubscription') !== -1 ||
-      url.indexOf('CreateBulkMessagesMutation') !== -1 ||
-      url.indexOf('CreateInstantEventViaductMutation') !== -1
+      _url.indexOf('SyncProtocolSubscription') !== -1 ||
+      _url.indexOf('CreateBulkMessagesMutation') !== -1 ||
+      _url.indexOf('CreateInstantEventViaductMutation') !== -1
     ) {
-      return this.processAirbnbRealtimeSnapshot(accountId, json, url);
+      return this.processAirbnbRealtimeSnapshot(accountId, json, _url);
     }
     if (
-      url.indexOf('chatapi-prod.gathern.co') !== -1 ||
-      url.indexOf('/api/v2/user_chat/')       !== -1
+      _url.indexOf('chatapi-prod.gathern.co') !== -1 ||
+      _url.indexOf('/api/v2/user_chat/')       !== -1
     ) {
-      return this.processGathernChatSnapshot(accountId, json, url);
+      return this.processGathernChatSnapshot(accountId, json, _url);
     }
   }
 
@@ -453,8 +467,8 @@ export class PollingService {
     isFromMe:     number;
     guestName:    string;
     messageText:  string;
-    sentAt:       any;
-    raw:          any;
+    sentAt:       string | number | Date | null;
+    raw:          unknown;
   }): Promise<boolean> {
     if (!opts.threadId || !opts.platformMsgId) return false;
 
@@ -464,14 +478,16 @@ export class PollingService {
       // Lookup the real platform_account_id from browser_accounts
       let platformAccountId: string | null = null;
       try {
-        const [paRows]: any = await pool.execute(
+        const [paRows] = await pool.execute<RowDataPacket[]>(
           `SELECT platform_account_id FROM browser_accounts WHERE id = ? LIMIT 1`,
           [opts.accountId]
         );
-        platformAccountId = paRows?.[0]?.platform_account_id || null;
+        platformAccountId = (paRows as RowDataPacket[])?.[0]?.platform_account_id != null
+          ? String((paRows as RowDataPacket[])[0].platform_account_id)
+          : null;
       } catch { /* not critical */ }
 
-      const [result]: any = await pool.execute(
+      const [result]: [mysql.ResultSetHeader, mysql.FieldPacket[]] = await pool.execute(
         `INSERT INTO platform_messages
            (id, browser_account_id, platform_account_id, platform, thread_id,
             platform_msg_id, guest_name, message_text, is_from_me, sent_at, raw_data)
@@ -498,8 +514,8 @@ export class PollingService {
       );
 
       return result.affectedRows === 1;
-    } catch (err: any) {
-      console.error('[Polling] ❌  saveMessage error:', err.message);
+    } catch (err) {
+      console.error('[Polling] ❌  saveMessage error:', err instanceof Error ? err.message : err);
       return false;
     }
   }
@@ -571,18 +587,20 @@ export class PollingService {
   // ── Process Airbnb realtime snapshots (subscription/mutations) ───────────
   // These events often carry new message nodes earlier than a full thread
   // refetch; consuming them reduces perceived inbox delay.
-  private async processAirbnbRealtimeSnapshot(accountId: string, data: any, url: string) {
+  private async processAirbnbRealtimeSnapshot(accountId: string, data: unknown, _url: string) {
     const account = browserSessions.get(accountId);
     if (!account) return;
 
-    const hostAccountId = resolveAirbnbHostAccountId(account, data?.data?.threadData || data?.data || data);
+    const dataUnk = data as Record<string, unknown>;
+    const dataData = dataUnk?.data as Record<string, unknown> | undefined;
+    const hostAccountId = resolveAirbnbHostAccountId(account, dataData?.threadData ?? dataData ?? data);
     if (hostAccountId && account.platformUserId !== hostAccountId) {
       account.platformUserId = hostAccountId;
     }
 
-    const msgs = findArrayOfShape(
+    const msgs = findArrayOfShape<AirbnbMessage>(
       data,
-      (m: any) => looksLikeMessage(m) && (!!m?.threadId || !!m?.account?.accountId || !!m?.senderId)
+      (m: unknown) => looksLikeMessage(m) && (!!(m as AirbnbMessage)?.threadId || !!(m as AirbnbMessage)?.account?.accountId || !!(m as AirbnbMessage)?.senderId)
     );
     if (!Array.isArray(msgs) || msgs.length === 0) return;
 
@@ -638,7 +656,7 @@ export class PollingService {
     }
 
     if (newCount > 0) {
-      console.log(`[CDP][${account.accountName}] ⚡ Airbnb realtime (${newCount}) from ${url.split('?')[0]}`);
+      console.log(`[CDP][${account.accountName}] ⚡ Airbnb realtime (${newCount}) from ${_url.split('?')[0]}`);
       this.emitNewMessages(accountId, 'airbnb', account.accountName, newCount);
     }
   }
@@ -658,26 +676,35 @@ export class PollingService {
   // Legacy paths (data.presentation.inbox.threads…) are still checked as a
   // fallback so older Airbnb variants don't silently break.
 
-  private async processAirbnbInboxSnapshot(accountId: string, data: any) {
+  private async processAirbnbInboxSnapshot(accountId: string, data: unknown) {
     const account = browserSessions.get(accountId);
     if (!account) return;
 
-    const inboxItems =
-      data?.data?.node?.messagingInbox?.inboxItems
-      ?? data?.data?.viewer?.messagingInbox?.inboxItems
-      ?? null;
-    const edges: any[] = inboxItems?.edges ?? [];
-    let threads: any[] = edges.map((e: any) => e?.node).filter(Boolean);
+    const dataObj = data as Record<string, unknown>;
+
+    const dataFieldRecord = dataObj?.data as Record<string, unknown> | undefined;
+    const nodeRecord = dataFieldRecord?.node as Record<string, unknown> | undefined;
+    const viewerRecord = dataFieldRecord?.viewer as Record<string, unknown> | undefined;
+    const nodeInbox = nodeRecord?.messagingInbox as Record<string, unknown> | undefined;
+    const viewerInbox = viewerRecord?.messagingInbox as Record<string, unknown> | undefined;
+    const inboxItems = nodeInbox?.inboxItems ?? viewerInbox?.inboxItems ?? null;
+    const inboxItemsRecord = inboxItems as Record<string, unknown> | null;
+    const edges: unknown[] = (inboxItemsRecord?.edges as unknown[]) ?? [];
+    let threads: AirbnbThreadNode[] = edges.map((e) => (e as Record<string, AirbnbThreadNode>)?.node).filter(Boolean);
 
     // Legacy fallback — keep it for belt-and-braces.
     if (threads.length === 0 && !inboxItems) {
-      const legacyInbox    = data?.data?.presentation?.inbox;
-      const legacyThreads  = legacyInbox?.threads;
+      const legacyInbox    = (dataObj?.data as Record<string, unknown>)?.presentation as Record<string, unknown> | undefined;
+      const legacyInboxInner = legacyInbox?.inbox as Record<string, unknown> | undefined;
+      const legacyThreads  = legacyInboxInner?.threads as Record<string, unknown> | unknown[] | undefined;
+      const legacyThreadsRecord = legacyThreads as Record<string, unknown> | undefined;
+      const dataRecord = dataObj?.data as Record<string, unknown> | undefined;
+      const presentationThreads = (dataRecord?.presentation as Record<string, unknown> | undefined)?.threads;
       threads =
-        (Array.isArray(legacyThreads?.threads) && legacyThreads.threads) ||
-        (Array.isArray(legacyThreads?.nodes)   && legacyThreads.nodes)   ||
-        (Array.isArray(legacyThreads)          && legacyThreads)         ||
-        (Array.isArray(data?.data?.presentation?.threads) && data.data.presentation.threads) ||
+        (Array.isArray(legacyThreadsRecord?.threads) && legacyThreadsRecord.threads as AirbnbThreadNode[]) ||
+        (Array.isArray(legacyThreadsRecord?.nodes)   && legacyThreadsRecord.nodes as AirbnbThreadNode[])   ||
+        (Array.isArray(legacyThreads)                && legacyThreads as AirbnbThreadNode[])               ||
+        (Array.isArray(presentationThreads)          && presentationThreads as AirbnbThreadNode[])         ||
         [];
     }
 
@@ -689,12 +716,13 @@ export class PollingService {
     }
 
     if (threads.length === 0) {
+      const dataUnknown = data as Record<string, unknown>;
       console.warn(`[CDP][${account.accountName}] ⚠️  Inbox snapshot had 0 threads. Diagnostic:`);
-      console.warn(`  top-level keys:     ${Object.keys(data || {}).join(',')}`);
-      console.warn(`  data.data keys:     ${Object.keys(data?.data || {}).join(',')}`);
-      console.warn(`  nested structure:   ${keyPathsPreview(data?.data, 3).substring(0, 500)}`);
-      if (data?.errors) {
-        console.warn(`  errors:             ${JSON.stringify(data.errors).substring(0, 300)}`);
+      console.warn(`  top-level keys:     ${Object.keys(dataUnknown || {}).join(',')}`);
+      console.warn(`  data.data keys:     ${Object.keys((dataUnknown?.data as Record<string, unknown>) || {}).join(',')}`);
+      console.warn(`  nested structure:   ${keyPathsPreview(dataUnknown?.data, 3).substring(0, 500)}`);
+      if (dataUnknown?.errors) {
+        console.warn(`  errors:             ${JSON.stringify(dataUnknown.errors).substring(0, 300)}`);
       }
       try {
         console.warn(`  sample:             ${JSON.stringify(data).substring(0, 1200)}`);
@@ -822,11 +850,12 @@ export class PollingService {
   // The messages array may live under various keys inside threadData
   // (inboxMessages / messages / messagesForMessageThreadConnection…),
   // so we try direct paths first then fall back to BFS shape-matching.
-  private async processAirbnbThreadSnapshot(accountId: string, data: any, threadId: string | null) {
+  private async processAirbnbThreadSnapshot(accountId: string, data: unknown, threadId: string | null) {
     const account = browserSessions.get(accountId);
     if (!account) return;
 
-    const threadData = data?.data?.threadData ?? data?.data ?? null;
+    const dataObj = data as Record<string, unknown>;
+    const threadData = (dataObj?.data as Record<string, unknown>)?.threadData ?? dataObj?.data ?? null;
 
     // One-shot diagnostic: dump the very first thread detail payload we see
     // for this account so we can inspect the actual messages envelope.
@@ -838,53 +867,57 @@ export class PollingService {
 
     // Try known shapes; prefer the full history segment over preview-only
     // inbox connection nodes.
+    const threadDataRecord = threadData as Record<string, unknown> | null;
     const candidates = [
-      threadData?.messageData?.messages,          // current Airbnb full list
-      threadData?.messageData,                    // fallback wrapper
-      threadData?.messagesForMessageThreadConnection,
-      threadData?.messagesForThread,
-      threadData?.allMessages,
-      threadData?.messagesConnection,
-      threadData?.inboxMessages,
-      threadData?.messages,                       // often preview-only edge
-      threadData?.messageList,
-    ];
+      (threadDataRecord?.messageData as Record<string, unknown> | undefined)?.messages,  // current Airbnb full list
+      threadDataRecord?.messageData,                    // fallback wrapper
+      threadDataRecord?.messagesForMessageThreadConnection,
+      threadDataRecord?.messagesForThread,
+      threadDataRecord?.allMessages,
+      threadDataRecord?.messagesConnection,
+      threadDataRecord?.inboxMessages,
+      threadDataRecord?.messages,                       // often preview-only edge
+      threadDataRecord?.messageList,
+    ] as unknown[];
 
-    let msgs: any[] = [];
+    let msgs: AirbnbMessage[] = [];
     for (const c of candidates) {
       if (!c) continue;
       if (Array.isArray(c)) {
-        if (c.length > 0) { msgs = c; break; }
+        if (c.length > 0) { msgs = c as AirbnbMessage[]; break; }
         continue;
       }
-      if (Array.isArray(c.edges)) {
-        const arr = c.edges.map((e: any) => e?.node).filter(Boolean);
+      const cRecord = c as Record<string, unknown>;
+      if (Array.isArray(cRecord.edges)) {
+        const arr = (cRecord.edges as unknown[]).map((e) => (e as Record<string, AirbnbMessage>)?.node).filter(Boolean);
         if (arr.length > 0) { msgs = arr; break; }
       }
-      if (Array.isArray(c.nodes)) {
-        if (c.nodes.length > 0) { msgs = c.nodes; break; }
+      if (Array.isArray(cRecord.nodes)) {
+        if ((cRecord.nodes as unknown[]).length > 0) { msgs = cRecord.nodes as AirbnbMessage[]; break; }
       }
-      if (Array.isArray(c.messages)) {
-        if (c.messages.length > 0) { msgs = c.messages; break; }
+      if (Array.isArray(cRecord.messages)) {
+        if ((cRecord.messages as unknown[]).length > 0) { msgs = cRecord.messages as AirbnbMessage[]; break; }
       }
-      if (Array.isArray(c.items)) {
-        if (c.items.length > 0) { msgs = c.items; break; }
+      if (Array.isArray(cRecord.items)) {
+        if ((cRecord.items as unknown[]).length > 0) { msgs = cRecord.items as AirbnbMessage[]; break; }
       }
     }
 
     // Fallback: BFS for any array of message-shaped objects.
     if (msgs.length === 0) {
-      msgs = findArrayOfShape(threadData, looksLikeMessage);
+      msgs = findArrayOfShape<AirbnbMessage>(threadData, looksLikeMessage);
     }
 
     if (msgs.length === 0) {
+      const threadDataObj = threadData as Record<string, unknown> | null;
+      const dataUnknown = data as Record<string, unknown>;
       console.warn(`[CDP][${account.accountName}] ⚠️  Thread snapshot had 0 messages. Diagnostic:`);
       console.warn(`  threadIdFromUrl:    ${threadId || '(none)'}`);
-      console.warn(`  data.data keys:     ${Object.keys(data?.data || {}).join(',')}`);
-      console.warn(`  threadData keys:    ${Object.keys(threadData || {}).join(',')}`);
+      console.warn(`  data.data keys:     ${Object.keys((dataUnknown?.data as Record<string, unknown>) || {}).join(',')}`);
+      console.warn(`  threadData keys:    ${Object.keys(threadDataObj || {}).join(',')}`);
       console.warn(`  nested structure:   ${keyPathsPreview(threadData, 3).substring(0, 500)}`);
-      if (data?.errors) {
-        console.warn(`  errors:             ${JSON.stringify(data.errors).substring(0, 300)}`);
+      if (dataUnknown?.errors) {
+        console.warn(`  errors:             ${JSON.stringify(dataUnknown.errors).substring(0, 300)}`);
       }
       try {
         console.warn(`  sample:             ${JSON.stringify(data).substring(0, 2400)}`);
@@ -892,7 +925,8 @@ export class PollingService {
       return;
     }
 
-    const resolvedThreadId = threadId || decodeAirbnbGlobalId(threadData?.id) || '';
+    const resolvedThreadDataRecord = threadData as Record<string, unknown> | null;
+    const resolvedThreadId = threadId || decodeAirbnbGlobalId(resolvedThreadDataRecord?.id as string | undefined) || '';
     if (!resolvedThreadId) {
       console.warn(`[CDP][${account.accountName}] Thread snapshot missing threadId`);
       return;
@@ -949,11 +983,12 @@ export class PollingService {
   // (thread history). The shape is distinguished by which top-level key is
   // present in the response.
 
-  private async processGathernChatSnapshot(accountId: string, data: any, url: string) {
+  private async processGathernChatSnapshot(accountId: string, data: unknown, _url: string) {
     const account = browserSessions.get(accountId);
     if (!account) return;
 
-    const chats: any[] = data?.contact_list || data?.data?.chats || [];
+    const dataObj = data as Record<string, unknown>;
+    const chats: GathernChat[] = (dataObj?.contact_list as GathernChat[]) || (dataObj?.data as Record<string, unknown>)?.chats || [];
     if (chats.length > 0) {
       const myUid: string | null =
         account.platformUserId ||
@@ -988,9 +1023,9 @@ export class PollingService {
         if (isNew) newCount++;
 
         await this.upsertThreadMeta(accountId, threadId, 'gathern', {
-          unit_id:        c.unit_id    || c.chalet_id  || null,
-          chalet_id:      c.chalet_id  || c.unit_id    || null,
-          reservation_id: c.reservation_id || null,
+          unit_id:        c.unit_id    != null ? String(c.unit_id)    : (c.chalet_id  != null ? String(c.chalet_id)  : null),
+          chalet_id:      c.chalet_id  != null ? String(c.chalet_id)  : (c.unit_id    != null ? String(c.unit_id)    : null),
+          reservation_id: c.reservation_id != null ? String(c.reservation_id) : null,
           guest_name:     c.name       || c.name_verified || null,
         });
       }
@@ -999,7 +1034,7 @@ export class PollingService {
       return;
     }
 
-    const msgs: any[] = data?.messages || data?.data?.messages || [];
+    const msgs: GathernMessage[] = (dataObj?.messages as GathernMessage[]) || ((dataObj?.data as Record<string, unknown>)?.messages as GathernMessage[]) || [];
     if (msgs.length > 0) {
       const myUid: string | null =
         account.platformUserId ||

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
+import { AccountingPayment } from "@/lib/types/accounting";
 
 // GET /api/accounting/payments - List all receipts and payments
 export async function GET(req: NextRequest) {
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
             WHERE p.deleted_at IS NULL
         `;
 
-        const params: any[] = [];
+        const params: (string | number)[] = [];
 
         if (type) {
             sql += " AND p.payment_type = ?";
@@ -53,13 +54,13 @@ export async function GET(req: NextRequest) {
 
         sql += ` GROUP BY p.id ORDER BY p.payment_date DESC, p.created_at DESC LIMIT 100`;
 
-        const payments = await query(sql, params);
+        const payments = await query<AccountingPayment>(sql, params);
 
         return NextResponse.json(payments);
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error fetching payments:", error);
         return NextResponse.json(
-            { error: "Failed to fetch payments", details: error.message },
+            { error: "Failed to fetch payments", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

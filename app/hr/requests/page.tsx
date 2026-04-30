@@ -1,42 +1,53 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useState, useEffect, useCallback } from "react";
 import {
     CheckCircle,
     XCircle,
-    AlertCircle,
     FileText,
     Calendar,
-    Users,
-    Filter,
     Loader2,
     Trash2
 } from "lucide-react";
 
+interface HRRequest {
+    id: string;
+    employee_id: string;
+    full_name: string;
+    job_title?: string;
+    department?: string;
+    request_type: string;
+    start_date: string;
+    end_date?: string;
+    days_count: number;
+    reason?: string;
+    status: "pending" | "approved" | "rejected";
+    created_at: string;
+}
+
 export default function HRRequestsPage() {
-    const [requests, setRequests] = useState<any[]>([]);
+    const [requests, setRequests] = useState<HRRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("pending");
     const [processingId, setProcessingId] = useState<string | null>(null);
 
-    const fetchRequests = async () => {
+    const fetchRequests = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/hr/requests?status=${statusFilter}`);
             const data = await res.json();
             setRequests(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [statusFilter]);
 
     useEffect(() => {
         fetchRequests();
-    }, [statusFilter]);
+    }, [fetchRequests]);
 
     const handleAction = async (id: string, action: "approved" | "rejected") => {
         if (!confirm(action === "approved" ? "هل أنت متأكد من قبول الطلب؟" : "هل أنت متأكد من رفض الطلب؟")) return;
@@ -57,8 +68,8 @@ export default function HRRequestsPage() {
             } else {
                 alert("حدث خطأ");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessingId(null);
         }
@@ -78,8 +89,8 @@ export default function HRRequestsPage() {
             } else {
                 alert("حدث خطأ أثناء الحذف");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessingId(null);
         }
@@ -132,7 +143,7 @@ export default function HRRequestsPage() {
                         <p className="mt-2 text-gray-500">جاري التحميل...</p>
                     </div>
                 ) : requests.length > 0 ? (
-                    requests.map((req: any) => (
+                    requests.map((req) => (
                         <div key={req.id} className="bg-white rounded-xl shadow-sm border p-6 flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
 
                             {/* Info */}

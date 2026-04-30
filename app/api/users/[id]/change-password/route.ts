@@ -35,10 +35,10 @@ export async function POST(
     );
 
     return NextResponse.json({ success: true, message: "تم تغيير كلمة المرور بنجاح" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in change password:", error);
     return NextResponse.json(
-      { error: error.message || "حدث خطأ أثناء تغيير كلمة المرور" },
+      { error: error instanceof Error ? error.message : "حدث خطأ أثناء تغيير كلمة المرور" },
       { status: 500 }
     );
   }

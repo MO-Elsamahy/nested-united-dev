@@ -31,36 +31,36 @@ export async function GET(request: Request) {
 
     try {
         // ── KPIs ──
-        const totalCustomers = await queryOne<any>(
+        const totalCustomers = await queryOne<{ count: number; active: number }>(
             "SELECT COUNT(*) as count, SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) as active FROM customers"
         );
 
-        const openDeals = await queryOne<any>(
+        const openDeals = await queryOne<{ count: number; total_value: number }>(
             `SELECT COUNT(*) as count, COALESCE(SUM(value), 0) as total_value FROM crm_deals d WHERE status = 'open' ${dateFilter}`
         );
 
-        const avgDealValue = await queryOne<any>(
+        const avgDealValue = await queryOne<{ avg_val: number }>(
             `SELECT COALESCE(AVG(value), 0) as avg_val FROM crm_deals d WHERE value > 0 ${dateFilter}`
         );
 
-        const wonDeals = await queryOne<any>(
+        const wonDeals = await queryOne<{ count: number; total_value: number }>(
             `SELECT COUNT(*) as count, COALESCE(SUM(value), 0) as total_value FROM crm_deals d WHERE stage IN ('won','paid','completed') ${dateFilter}`
         );
 
-        const lostDeals = await queryOne<any>(
+        const lostDeals = await queryOne<{ count: number }>(
             `SELECT COUNT(*) as count FROM crm_deals d WHERE stage = 'lost' ${dateFilter}`
         );
 
-        const totalDeals = await queryOne<any>(
+        const totalDeals = await queryOne<{ count: number }>(
             `SELECT COUNT(*) as count FROM crm_deals d WHERE 1=1 ${dateFilter}`
         );
 
-        const closedDeals = await queryOne<any>(
+        const closedDeals = await queryOne<{ count: number }>(
             `SELECT COUNT(*) as count FROM crm_deals d WHERE status = 'closed' ${dateFilter}`
         );
 
         // ── Pipeline ──
-        const dealsByStage = await query<any>(
+        const dealsByStage = await query<{ stage: string; count: number; total_value: number }>(
             `SELECT stage, COUNT(*) as count, COALESCE(SUM(value), 0) as total_value 
              FROM crm_deals d WHERE status = 'open' ${dateFilter}
              GROUP BY stage 
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
         );
 
         // ── Stage Performance / Funnel (replaces flawed bottleneck logic) ──
-        const stagePerformance = await query<any>(
+        const stagePerformance = await query<{ current_stage: string; active_deals: number; lost_deals: number }>(
             `SELECT 
                 d.stage as current_stage,
                 COUNT(d.id) as active_deals,
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
              GROUP BY d.stage`
         );
         
-        const historicalStages = await query<any>(
+        const historicalStages = await query<{ to_stage: string; deals_reached: number }>(
             `SELECT 
                 SUBSTRING_INDEX(SUBSTRING_INDEX(a.description, 'إلى ', -1), ' ', 1) as to_stage,
                 COUNT(DISTINCT a.deal_id) as deals_reached
@@ -88,7 +88,16 @@ export async function GET(request: Request) {
         );
 
         // ── Employee Performance (tracks actual distinct deals worked on, solves duplicate sum bloat / shifts) ──
-        const employeePerf = await query<any>(
+        const employeePerf = await query<{ 
+            name: string; 
+            user_id: string; 
+            activity_count: number; 
+            deals_worked_on: number; 
+            won_count: number; 
+            lost_count: number; 
+            deal_value: number; 
+            won_value: number 
+        }>(
             `SELECT 
                 u.name,
                 u.id as user_id,
@@ -112,7 +121,7 @@ export async function GET(request: Request) {
         );
 
         // ── Top Customers ──
-        const topCustomers = await query<any>(
+        const topCustomers = await query<{ customer_name: string; deal_count: number; total_value: number }>(
             `SELECT c.full_name as customer_name, COUNT(d.id) as deal_count, COALESCE(SUM(d.value), 0) as total_value
              FROM customers c 
              LEFT JOIN crm_deals d ON c.id = d.customer_id ${dateFilter}
@@ -121,7 +130,7 @@ export async function GET(request: Request) {
         );
 
         // ── Recent Deals ──
-        const recentDeals = await query<any>(
+        const recentDeals = await query<{ id: string; title: string; customer_name: string; stage: string; value: number; created_at: string }>(
             `SELECT d.id, d.title, c.full_name as customer_name, d.stage, d.value, d.created_at
              FROM crm_deals d LEFT JOIN customers c ON d.customer_id = c.id
              WHERE 1=1 ${dateFilter}
@@ -129,19 +138,19 @@ export async function GET(request: Request) {
         );
 
         // ── Monthly Activity ──
-        const monthlyActivity = await query<any>(
+        const monthlyActivity = await query<{ month: string; count: number }>(
             `SELECT DATE_FORMAT(performed_at, '%Y-%m') as month, COUNT(*) as count
              FROM crm_activities WHERE performed_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
              GROUP BY month ORDER BY month`
         );
 
-        const monthlyDeals = await query<any>(
+        const monthlyDeals = await query<{ month: string; count: number }>(
             `SELECT DATE_FORMAT(created_at, '%Y-%m') as month, COUNT(*) as count
              FROM crm_deals WHERE created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
              GROUP BY month ORDER BY month`
         );
 
-        const weeklyActivity = await queryOne<any>(
+        const weeklyActivity = await queryOne<{ count: number }>(
             "SELECT COUNT(*) as count FROM crm_activities WHERE performed_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
         );
 
@@ -151,8 +160,9 @@ export async function GET(request: Request) {
             employeePerf, topCustomers, recentDeals,
             monthlyActivity, monthlyDeals, weeklyActivity,
         });
-    } catch (error: any) {
-        console.error("Reports API Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error("Reports API Error:", errorMessage);
+        return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
 }

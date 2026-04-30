@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
     Plus, Archive, RotateCcw, TrendingUp, DollarSign,
-    Target, GripVertical, User,
-    Clock, CheckCircle2, Handshake,
+    Target, User,
+    Clock, Handshake,
     Phone, BadgeCheck, FileText, MessagesSquare, CreditCard,
-    PackageCheck, Loader2, XCircle, AlertTriangle, Eye
+    PackageCheck, Loader2, XCircle, Eye
 } from "lucide-react";
 import type { CrmDeal } from "@/lib/types/crm";
 
@@ -23,11 +23,7 @@ const STAGES = [
     { id: 'lost', label: 'خسارة', icon: XCircle, color: '#ef4444', light: '#fef2f2', text: '#b91c1c' },
 ];
 
-const PRIORITY_STYLES: Record<string, { dot: string; label: string }> = {
-    high: { dot: 'bg-red-500', label: 'عاجل' },
-    medium: { dot: 'bg-amber-400', label: 'متوسط' },
-    low: { dot: 'bg-green-400', label: 'منخفض' },
-};
+
 
 function formatCurrency(v: number | string | null | undefined): string {
     const n = Number(v);
@@ -46,9 +42,11 @@ export default function DealsPage() {
         setLoading(true);
         try {
             const res = await fetch(`/api/crm/deals?status=${statusFilter}`);
-            const data = await res.json();
-            setDeals(res.ok && Array.isArray(data) ? (data as CrmDeal[]) : []);
-        } catch (e) { console.error(e); }
+            const data = await res.json() as CrmDeal[] | { error: string };
+            setDeals(res.ok && Array.isArray(data) ? data : []);
+        } catch (e: unknown) {
+            console.error(e instanceof Error ? e.message : String(e));
+        }
         finally { setLoading(false); }
     }, [statusFilter]);
 
@@ -248,7 +246,6 @@ export default function DealsPage() {
                                         gap: '6px', overflowY: 'auto',
                                     }}>
                                         {stageDeals.map(deal => {
-                                            const prio = PRIORITY_STYLES[deal.priority || 'medium'];
                                             const val = formatCurrency(deal.value);
                                             const isDragging = draggingId === deal.id;
 

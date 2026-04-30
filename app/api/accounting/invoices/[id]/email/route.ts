@@ -3,8 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
 import nodemailer from "nodemailer";
+import { AccountingInvoice, CompanySettings } from "@/lib/types/accounting";
 
-interface RouteParams {
+interface _RouteParams {
     params: { id: string };
 }
 
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         const { to, subject, message } = body;
 
         // Get invoice
-        const invoices: any = await query(
+        const invoices = await query<AccountingInvoice & { partner_name: string, partner_email: string }>(
             `SELECT i.*, p.name as partner_name, p.email as partner_email
              FROM accounting_invoices i
              LEFT JOIN accounting_partners p ON i.partner_id = p.id
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         const invoice = invoices[0];
 
         // Get company settings for SMTP
-        const companySettings: any = await query("SELECT * FROM company_settings LIMIT 1");
+        const companySettings = await query<CompanySettings>("SELECT * FROM company_settings LIMIT 1");
         if (!companySettings || companySettings.length === 0) {
             return NextResponse.json(
                 { error: "Company settings not found. Please configure SMTP settings first." },
@@ -81,9 +82,9 @@ Dear ${invoice.partner_name},
 
 Please find attached invoice ${invoice.invoice_number}.
 
-Invoice Date: ${new Date(invoice.invoice_date).toLocaleDateString()}
-Due Date: ${new Date(invoice.due_date).toLocaleDateString()}
-Total Amount: SAR ${parseFloat(invoice.total_amount).toLocaleString()}
+Invoice Date: ${invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString() : "-"}
+Due Date: ${invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : "-"}
+Total Amount: SAR ${Number(invoice.total_amount).toLocaleString()}
 
 ${company.invoice_footer || "Thank you for your business!"}
 
@@ -116,10 +117,10 @@ ${company.company_name}
             message: "Email sent successfully",
             recipient: recipientEmail,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error sending email:", error);
         return NextResponse.json(
-            { error: "Failed to send email", details: error.message },
+            { error: "Failed to send email", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

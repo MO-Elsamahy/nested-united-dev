@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, Save, AlertCircle } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
+import { AccountingPartner } from "@/lib/types/accounting";
 
 interface PartnerFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    partner?: any;
+    partner?: AccountingPartner;
 }
 
 export function PartnerForm({ onClose, onSuccess, partner }: PartnerFormProps) {
@@ -40,8 +41,8 @@ export function PartnerForm({ onClose, onSuccess, partner }: PartnerFormProps) {
             }
 
             onSuccess();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
         } finally {
             setLoading(false);
         }
@@ -76,7 +77,7 @@ export function PartnerForm({ onClose, onSuccess, partner }: PartnerFormProps) {
                             <label className="block text-sm font-medium text-gray-700 mb-1">النوع *</label>
                             <select
                                 value={formData.type}
-                                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, type: e.target.value as AccountingPartner["type"] })}
                                 className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
                             >
                                 <option value="customer">عميل</option>

@@ -26,7 +26,7 @@ export async function GET() {
     const unlinkedAccounts = platformAccounts.filter((pa) => !linkedIds.has(pa.id));
 
     return NextResponse.json(unlinkedAccounts);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
   }
 }

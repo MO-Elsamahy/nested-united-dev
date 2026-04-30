@@ -23,13 +23,17 @@ export default function CustomersPage() {
     const [loadError, setLoadError] = useState<string | null>(null);
 
     useEffect(() => {
-        fetch("/api/crm/tags")
-            .then((r) => r.json())
-            .then((data) => {
-                if (Array.isArray(data)) setTags(data as CrmTag[]);
+        const loadTags = async () => {
+            try {
+                const res = await fetch("/api/crm/tags");
+                const data = await res.json();
+                if (Array.isArray(data)) setTags(data);
                 else setTags([]);
-            })
-            .catch(() => setTags([]));
+            } catch {
+                setTags([]);
+            }
+        };
+        void loadTags();
     }, []);
 
     const fetchCustomers = useCallback(async () => {
@@ -44,18 +48,18 @@ export default function CustomersPage() {
             if (tagFilter) params.append("tag_id", tagFilter);
 
             const res = await fetch(`/api/crm/customers?${params}`);
-            const data = await res.json();
+            const data = await res.json() as CRMCustomer[] | { error: string };
             if (!res.ok) {
                 setCustomers([]);
                 setLoadError(
-                    typeof data?.error === "string" ? data.error : "تعذّر تحميل قائمة العملاء"
+                    data && typeof data === "object" && "error" in data && typeof data.error === "string" ? data.error : "تعذّر تحميل قائمة العملاء"
                 );
                 return;
             }
             setCustomers(Array.isArray(data) ? data : []);
-        } catch {
+        } catch (error: unknown) {
             setCustomers([]);
-            setLoadError("تعذّر تحميل قائمة العملاء");
+            setLoadError(error instanceof Error ? error.message : "تعذّر تحميل قائمة العملاء");
         } finally {
             setLoading(false);
         }

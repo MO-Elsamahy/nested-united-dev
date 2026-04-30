@@ -2,11 +2,35 @@
 
 import { useState, useEffect } from "react";
 import { Upload, Save, Building2 } from "lucide-react";
+import Image from "next/image";
+
+interface CompanySettings {
+    company_name: string;
+    company_name_en: string;
+    email: string;
+    phone: string;
+    mobile: string;
+    website: string;
+    address: string;
+    city: string;
+    country: string;
+    postal_code: string;
+    tax_number: string;
+    commercial_registration: string;
+    default_payment_terms: string;
+    invoice_footer: string;
+    bank_name: string;
+    bank_account: string;
+    iban: string;
+    logo_url: string;
+    invoice_type_label: string;
+    invoice_terms: string;
+}
 
 export default function CompanySettingsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [settings, setSettings] = useState<any>({
+    const [settings, setSettings] = useState<CompanySettings>({
         company_name: "",
         company_name_en: "",
         email: "",
@@ -29,10 +53,6 @@ export default function CompanySettingsPage() {
         invoice_terms: "",
     });
 
-    useEffect(() => {
-        fetchSettings();
-    }, []);
-
     async function fetchSettings() {
         try {
             const res = await fetch("/api/accounting/company-settings");
@@ -40,10 +60,16 @@ export default function CompanySettingsPage() {
                 const data = await res.json();
                 setSettings(data);
             }
+        } catch (error: unknown) {
+            console.error("Fetch settings error:", error);
         } finally {
             setLoading(false);
         }
     }
+
+    useEffect(() => {
+        fetchSettings();
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -62,6 +88,8 @@ export default function CompanySettingsPage() {
                 const error = await res.json();
                 alert(`خطأ: ${error.error}`);
             }
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "حدث خطأ أثناء الحفظ");
         } finally {
             setSaving(false);
         }
@@ -96,7 +124,7 @@ export default function CompanySettingsPage() {
                 <div className="flex items-center gap-6">
                     <div className="w-32 h-32 border-2 border-dashed rounded-lg flex items-center justify-center overflow-hidden">
                         {settings.logo_url ? (
-                            <img src={settings.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+                            <Image src={settings.logo_url} alt="Logo" width={128} height={128} unoptimized className="max-w-full max-h-full object-contain" />
                         ) : (
                             <Building2 className="w-12 h-12 text-gray-300" />
                         )}

@@ -15,7 +15,7 @@ export async function GET(request: Request) {
             user_found: users.length > 0,
             user: users[0] || null
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' });
     }
 }

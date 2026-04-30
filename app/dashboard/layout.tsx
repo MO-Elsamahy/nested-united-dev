@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { queryOne, query } from "@/lib/db";
+import { queryOne } from "@/lib/db";
 import { getAppFeatures } from "@/lib/features";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";

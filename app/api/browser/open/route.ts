@@ -36,11 +36,11 @@ export async function POST(req: Request) {
             status: "connected"
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[API] Error opening browser:", error);
         return NextResponse.json({
             success: false,
-            error: error.message || "فشل في فتح المتصفح"
+            error: error instanceof Error ? error.message : "فشل في فتح المتصفح"
         }, { status: 500 });
     }
 }

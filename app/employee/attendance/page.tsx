@@ -5,11 +5,21 @@ import { redirect } from "next/navigation";
 import { query, queryOne } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
-import { Calendar, Clock, CheckCircle, XCircle, AlertTriangle, ArrowRight } from "lucide-react";
+import { Calendar, Clock, CheckCircle, XCircle, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
+interface AttendanceRecord {
+    id: string;
+    date: string;
+    status: "present" | "absent" | "late" | "leave";
+    check_in: string | null;
+    check_out: string | null;
+    late_minutes: number;
+    overtime_minutes: number;
+}
+
 async function getEmployeeHistory(userId: string) {
-    const employee = await queryOne<any>(
+    const employee = await queryOne<{ id: string }>(
         "SELECT id FROM hr_employees WHERE user_id = ?",
         [userId]
     );
@@ -18,7 +28,7 @@ async function getEmployeeHistory(userId: string) {
 
     // Get attendance for the last 30 days
     // We can improved this to be by month later
-    const history = await query<any>(`
+    const history = await query<AttendanceRecord>(`
         SELECT * FROM hr_attendance 
         WHERE employee_id = ? 
         ORDER BY date DESC 
@@ -59,7 +69,7 @@ export default async function AttendanceHistoryPage() {
         });
     };
 
-    const getStatusBadge = (record: any) => {
+    const getStatusBadge = (record: AttendanceRecord) => {
         if (record.status === "absent") {
             return <span className="text-red-600 flex items-center gap-1 text-sm"><XCircle className="w-4 h-4" /> غائب</span>;
         }
@@ -98,7 +108,7 @@ export default async function AttendanceHistoryPage() {
                         </thead>
                         <tbody className="divide-y">
                             {history.length > 0 ? (
-                                history.map((record: any) => (
+                                history.map((record: AttendanceRecord) => (
                                     <tr key={record.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 font-medium text-gray-900">
                                             {formatDate(record.date)}

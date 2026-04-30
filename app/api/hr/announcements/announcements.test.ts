@@ -10,8 +10,8 @@ const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'ann-uuid-123');
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
-    execute: (...args: any[]) => mockExecute(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
+    execute: (...args: unknown[]) => mockExecute(...args),
     generateUUID: () => mockGenerateUUID(),
 }));
 
@@ -25,7 +25,7 @@ describe('Announcements API', () => {
     beforeEach(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'admin-001' },
-        } as any);
+        } as { user: { id: string } });
     });
 
     afterEach(() => {

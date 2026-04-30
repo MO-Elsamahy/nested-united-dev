@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, queryOne, execute } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
+import { AccountingInvoice, AccountingInvoiceLine, AccountingPaymentAllocation, AccountingMoveLine } from "@/lib/types/accounting";
 
 // GET /api/accounting/invoices/[id] - Get invoice details
 export async function GET(
-    req: NextRequest,
+    _req: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
     try {
@@ -17,7 +18,7 @@ export async function GET(
         const { id: invoiceId } = await context.params;
 
         // Get invoice with partner details
-        const invoices: any = await query(
+        const invoices = await query<AccountingInvoice>(
             `SELECT i.*, p.name as partner_name, p.email as partner_email,
                     p.phone as partner_phone, p.address, p.tax_id as partner_vat
              FROM accounting_invoices i
@@ -33,15 +34,15 @@ export async function GET(
         const invoice = invoices[0];
 
         // Get invoice lines
-        const lines = await query(
+        const lines = await query<AccountingInvoiceLine>(
             `SELECT * FROM accounting_invoice_lines WHERE invoice_id = ?`,
             [invoiceId]
         );
 
         // Get payment allocations (graceful fallback if table doesn't exist yet)
-        let payments: any = [];
+        let payments: AccountingPaymentAllocation[] = [];
         try {
-            payments = await query(
+            payments = await query<AccountingPaymentAllocation>(
                 `SELECT pa.*, p.payment_number, p.payment_date, p.payment_method
              FROM accounting_payment_allocations pa
              LEFT JOIN accounting_payments p ON pa.payment_id = p.id
@@ -49,7 +50,7 @@ export async function GET(
              ORDER BY p.payment_date DESC`,
                 [invoiceId]
             );
-        } catch (_) {
+        } catch (_error) {
             // payments tables not yet created — return empty
         }
 
@@ -58,10 +59,10 @@ export async function GET(
             lines,
             payments,
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error fetching invoice:", error);
         return NextResponse.json(
-            { error: "Failed to fetch invoice", details: error.message },
+            { error: "Failed to fetch invoice", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }
@@ -82,7 +83,7 @@ export async function PUT(
         const body = await req.json();
 
         // Check if invoice exists
-        const existing: any = await query(
+        const existing = await query<AccountingInvoice>(
             "SELECT * FROM accounting_invoices WHERE id = ? AND deleted_at IS NULL",
             [invoiceId]
         );
@@ -117,7 +118,7 @@ export async function PUT(
 
             // 1. Create Reverse Journal Entry if move exists
             if (invoice.accounting_move_id) {
-                const moveLines: any = await query("SELECT * FROM accounting_move_lines WHERE move_id = ?", [invoice.accounting_move_id]);
+                const moveLines = await query<AccountingMoveLine>("SELECT * FROM accounting_move_lines WHERE move_id = ?", [invoice.accounting_move_id]);
                 const newMoveId = crypto.randomUUID();
                 
                 // Create Header
@@ -126,7 +127,7 @@ export async function PUT(
                      VALUES (?, ?, CURDATE(), ?, ?, 'posted', ?, ?, ?)`,
                     [
                         newMoveId,
-                        invoice.journal_id || (await queryOne<any>("SELECT journal_id FROM accounting_moves WHERE id = ?", [invoice.accounting_move_id]))?.journal_id,
+                        invoice.journal_id || (await queryOne<AccountingInvoice>("SELECT journal_id FROM accounting_moves WHERE id = ?", [invoice.accounting_move_id]))?.journal_id,
                         `REV-${invoice.invoice_number}`,
                         `إلغاء الفاتورة رقم ${invoice.invoice_number}`,
                         invoice.partner_id,
@@ -269,7 +270,7 @@ export async function PUT(
         );
 
         // Fetch updated invoice
-        const updated: any = await query(
+        const updated = await query<AccountingInvoice>(
             `SELECT i.*, p.name as partner_name
              FROM accounting_invoices i
              LEFT JOIN accounting_partners p ON i.partner_id = p.id
@@ -278,10 +279,10 @@ export async function PUT(
         );
 
         return NextResponse.json(updated[0]);
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error updating invoice:", error);
         return NextResponse.json(
-            { error: "Failed to update invoice", details: error.message },
+            { error: "Failed to update invoice", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }
@@ -289,7 +290,7 @@ export async function PUT(
 
 // DELETE /api/accounting/invoices/[id] - Soft delete invoice
 export async function DELETE(
-    req: NextRequest,
+    _req: NextRequest,
     context: { params: Promise<{ id: string }> }
 ) {
     try {
@@ -301,7 +302,7 @@ export async function DELETE(
         const { id: invoiceId } = await context.params;
 
         // Check if invoice exists
-        const existing: any = await query(
+        const existing = await query<AccountingInvoice>(
             "SELECT * FROM accounting_invoices WHERE id = ? AND deleted_at IS NULL",
             [invoiceId]
         );
@@ -327,10 +328,10 @@ export async function DELETE(
         );
 
         return NextResponse.json({ message: "Invoice deleted successfully" });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error deleting invoice:", error);
         return NextResponse.json(
-            { error: "Failed to delete invoice", details: error.message },
+            { error: "Failed to delete invoice", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { queryOne, execute } from "@/lib/db";
+import { MaintenanceTicket } from "@/lib/types/maintenance";
 
 // GET single maintenance ticket
 export async function GET(
@@ -11,7 +12,7 @@ export async function GET(
   const { id } = await params;
 
   try {
-    const ticket = await queryOne(
+    const ticket = await queryOne<MaintenanceTicket>(
       `SELECT mt.*, u.unit_name, creator.name as created_by_name
        FROM maintenance_tickets mt
        LEFT JOIN units u ON mt.unit_id = u.id
@@ -27,13 +28,13 @@ export async function GET(
     // Transform to match expected format
     const transformed = {
       ...ticket,
-      unit: { unit_name: (ticket as any).unit_name },
-      created_by_user: { name: (ticket as any).created_by_name },
+      unit: { unit_name: ticket.unit_name || "" },
+      created_by_user: { name: ticket.created_by_name || "" },
     };
 
     return NextResponse.json(transformed);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -54,7 +55,7 @@ export async function PUT(
 
   // Build update query dynamically
   const updates: string[] = [];
-  const values: any[] = [];
+  const values: (string | number | boolean | null)[] = [];
 
   if (title !== undefined) {
     updates.push("title = ?");
@@ -92,14 +93,14 @@ export async function PUT(
       values
     );
 
-    const updatedTicket = await queryOne(
+    const updatedTicket = await queryOne<MaintenanceTicket>(
       "SELECT * FROM maintenance_tickets WHERE id = ?",
       [id]
     );
 
     return NextResponse.json(updatedTicket);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -118,7 +119,7 @@ export async function DELETE(
   try {
     await execute("DELETE FROM maintenance_tickets WHERE id = ?", [id]);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

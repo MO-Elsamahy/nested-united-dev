@@ -53,8 +53,8 @@ export function EditUserButton({ userId, userName, userEmail, userRole }: EditUs
       setIsOpen(false);
       router.refresh();
       alert("تم تحديث المستخدم بنجاح");
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {
       setLoading(false);
     }

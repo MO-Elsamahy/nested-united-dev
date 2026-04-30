@@ -1,13 +1,32 @@
 "use client";
 
 import { useState } from "react";
-import { FileBarChart, Download, Calendar } from "lucide-react";
+import { FileBarChart, Calendar } from "lucide-react";
+
+interface IncomeStatementAccount {
+    id: string;
+    code: string;
+    name: string;
+    amount: number;
+}
+
+interface IncomeStatementSection {
+    accounts: IncomeStatementAccount[];
+    total: number;
+}
+
+interface IncomeStatementData {
+    period: { from: string; to: string };
+    revenue: IncomeStatementSection;
+    expenses: IncomeStatementSection;
+    net_income: number;
+}
 
 export default function IncomeStatementPage() {
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
     const [loading, setLoading] = useState(false);
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<IncomeStatementData | null>(null);
     const [error, setError] = useState("");
 
     const handleGenerate = async () => {
@@ -23,16 +42,16 @@ export default function IncomeStatementPage() {
             const response = await fetch(
                 `/api/accounting/reports/income-statement?from_date=${fromDate}&to_date=${toDate}`
             );
-            const result = await response.json();
+            const result = await response.json() as IncomeStatementData | { error: string };
 
             if (!response.ok) {
-                setError(result.error || "Failed to generate report");
+                setError(typeof result === "object" && "error" in result ? result.error : "Failed to generate report");
                 setData(null);
             } else {
-                setData(result);
+                setData(result as IncomeStatementData);
             }
-        } catch (err: any) {
-            setError("An error occurred while generating the report");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "An error occurred while generating the report");
         } finally {
             setLoading(false);
         }
@@ -109,7 +128,7 @@ export default function IncomeStatementPage() {
                         </h3>
                         {data.revenue.accounts.length > 0 ? (
                             <div className="space-y-2">
-                                {data.revenue.accounts.map((acc: any) => (
+                                {data.revenue.accounts.map((acc: IncomeStatementAccount) => (
                                     <div key={acc.id} className="flex justify-between items-center py-2">
                                         <span className="text-gray-700">
                                             {acc.code} - {acc.name}
@@ -138,7 +157,7 @@ export default function IncomeStatementPage() {
                         </h3>
                         {data.expenses.accounts.length > 0 ? (
                             <div className="space-y-2">
-                                {data.expenses.accounts.map((acc: any) => (
+                                {data.expenses.accounts.map((acc: IncomeStatementAccount) => (
                                     <div key={acc.id} className="flex justify-between items-center py-2">
                                         <span className="text-gray-700">
                                             {acc.code} - {acc.name}

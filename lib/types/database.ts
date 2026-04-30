@@ -89,7 +89,7 @@ export interface Reservation {
   start_date: string;
   end_date: string;
   summary: string | null;
-  raw_event: Record<string, any> | null;
+  raw_event: Record<string, unknown> | null;
   last_synced_at: string;
   created_at: string;
 }
@@ -134,7 +134,7 @@ export interface Notification {
   maintenance_ticket_id: string | null;
   title: string;
   body: string;
-  data: Record<string, any> | null;
+  data: Record<string, unknown> | null;
   audience: NotificationAudience;
   recipient_user_id: string | null;
   is_read: boolean;
@@ -148,7 +148,7 @@ export interface SyncLog {
   message: string | null;
   units_processed: number;
   errors_count: number;
-  details: Record<string, any> | null;
+  details: Record<string, unknown> | null;
 }
 
 // Extended types with relations

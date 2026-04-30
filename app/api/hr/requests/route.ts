@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, execute, generateUUID, queryOne } from "@/lib/db";
+import { HRRequest, Employee } from "@/lib/types/hr";
 
 // GET: List requests (Employee sees own, Admin/HR sees all or filtered)
 export async function GET(request: Request) {
@@ -15,16 +16,14 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get("status");
 
-        // Check role
-        const userRole = session.user.role || "employee"; // Assuming role exists in session
-        // Or better, check if user is linked to an employee record to decide context
+        // Check if user is linked to an employee record to decide context
 
         let sql = `
       SELECT r.*, e.full_name, e.department, e.job_title 
       FROM hr_requests r
       JOIN hr_employees e ON r.employee_id = e.id
     `;
-        const params: any[] = [];
+        const params: (string | number)[] = [];
 
         // If "employee" portal context (we can infer this if they ask for their own requests specifically, 
         // or we can allow "employee" role to ONLY see their own).
@@ -32,13 +31,12 @@ export async function GET(request: Request) {
         // For safety: If not admin/hr, enforce employee_id filter.
 
         // For now, let's look up the employee record for the current user
-        const currentEmployee = await queryOne<any>(
+        const currentEmployee = await queryOne<Employee>(
             "SELECT id FROM hr_employees WHERE user_id = ?",
             [session.user.id]
         );
 
         // If user is NOT admin and IS an employee, strictly show own requests
-        const isAdmin = userRole === "admin" || userRole === "hr_manager"; // Adjust roles as per your system
 
         // Actually, looking at previous files, we didn't strictly implement roles in session yet, 
         // relying mostly on "hr_employees" existence for employee portal.
@@ -65,10 +63,10 @@ export async function GET(request: Request) {
 
         sql += " ORDER BY r.created_at DESC";
 
-        const requests = await query(sql, params);
+        const requests = await query<HRRequest>(sql, params);
         return NextResponse.json(requests);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -89,7 +87,7 @@ export async function POST(request: Request) {
         }
 
         // Get Employee ID
-        const employee = await queryOne<any>(
+        const employee = await queryOne<Employee>(
             "SELECT id FROM hr_employees WHERE user_id = ?",
             [session.user.id]
         );
@@ -113,7 +111,7 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { Unit } from "@/lib/types/database";
 
 export default function NewMaintenancePage() {
   const router = useRouter();
@@ -12,7 +13,7 @@ export default function NewMaintenancePage() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [units, setUnits] = useState<any[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>(unitIdFromUrl || "");
 
   useEffect(() => {
@@ -56,8 +57,8 @@ export default function NewMaintenancePage() {
 
       router.push("/dashboard/maintenance");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'حدث خطأ');
     } finally {
       setLoading(false);
     }

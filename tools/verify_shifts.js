@@ -1,8 +1,8 @@
 
-const fetch = require('node-fetch'); // Needs node-fetch, or we can use native fetch in Node 18+
+// const fetch = require('node-fetch'); // Needs node-fetch, or we can use native fetch in Node 18+
 
 async function testShiftsFlow() {
-    const baseUrl = 'http://localhost:3000'; // Assuming running locally, user might need to run this.
+    // const baseUrl = 'http://localhost:3000'; // Assuming running locally, user might need to run this.
     // Actually, I can't assume localhost:3000 is accessible to me if I'm the agent. 
     // But wait, "run_command" runs on USER's machine. So if their server is running, I can hit it?
     // The user didn't say the server is running. I might need to rely on unit-test style or just checking DB.

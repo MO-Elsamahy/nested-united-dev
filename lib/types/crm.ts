@@ -25,6 +25,7 @@ export interface CrmTag {
     name: string;
     color: string | null;
     text_color: string | null;
+    created_at?: string;
 }
 
 export interface CrmActivity {
@@ -46,6 +47,12 @@ export interface CrmDeal {
     priority?: string | null;
     expected_close_date?: string | null;
     customer_name?: string | null;
+    customer_phone?: string | null;
+    customer_email?: string | null;
+    assigned_to_name?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    notes?: string | null;
 }
 
 export interface CustomerDetailResponse {
@@ -61,11 +68,4 @@ export function activityTitleForType(type: string): string {
     if (type === "call") return "اتصال هاتفي";
     if (type === "meeting") return "اجتماع";
     return "نشاط";
-}
-
-export interface CRMTag {
-    id: string;
-    name: string;
-    color: string;
-    text_color: string;
 }

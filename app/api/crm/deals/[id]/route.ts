@@ -15,7 +15,7 @@ export async function GET(
         const { id } = await params;
 
         // Get deal with customer info
-        const deal = await queryOne<any>(
+        const deal = await queryOne<Record<string, unknown>>(
             `SELECT d.*, c.full_name as customer_name, c.phone as customer_phone, c.email as customer_email
              FROM crm_deals d
              LEFT JOIN customers c ON d.customer_id = c.id
@@ -37,7 +37,7 @@ export async function GET(
         }
 
         // Get activities for this deal (with user names)
-        const activities = await query<any>(
+        const activities = await query<Record<string, unknown>>(
             `SELECT a.*, u.name as performed_by_name
              FROM crm_activities a
              LEFT JOIN users u ON a.performed_by = u.id
@@ -47,8 +47,8 @@ export async function GET(
         );
 
         return NextResponse.json({ deal, activities });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
     }
 }
 
@@ -71,7 +71,7 @@ export async function DELETE(
         await execute("DELETE FROM crm_deals WHERE id = ?", [id]);
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
     }
 }

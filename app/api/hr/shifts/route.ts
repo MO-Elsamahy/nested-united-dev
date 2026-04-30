@@ -2,19 +2,20 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, execute, generateUUID } from "@/lib/db";
+import { Shift } from "@/lib/types/hr";
 
 // GET: List all shifts
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
     try {
-        const shifts = await query("SELECT * FROM hr_shifts ORDER BY created_at DESC");
+        const shifts = await query<Shift>("SELECT * FROM hr_shifts ORDER BY created_at DESC");
         return NextResponse.json(shifts);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

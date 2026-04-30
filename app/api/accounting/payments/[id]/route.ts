@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, execute, executeTransaction } from "@/lib/db";
+import { query, executeTransaction } from "@/lib/db";
+import { AccountingPayment, AccountingPaymentAllocation } from "@/lib/types/accounting";
 
 // DELETE /api/accounting/payments/[id] - Soft delete a payment and update invoice balances
 export async function DELETE(
@@ -17,7 +18,7 @@ export async function DELETE(
         const { id: paymentId } = await context.params;
 
         // Check if payment exists
-        const payments: any = await query(
+        const payments = await query<AccountingPayment>(
             "SELECT * FROM accounting_payments WHERE id = ? AND deleted_at IS NULL",
             [paymentId]
         );
@@ -38,7 +39,7 @@ export async function DELETE(
         }
 
         // Get all allocations to this payment
-        const allocations: any = await query(
+        const allocations = await query<AccountingPaymentAllocation>(
             "SELECT * FROM accounting_payment_allocations WHERE payment_id = ?",
             [paymentId]
         );
@@ -77,16 +78,16 @@ export async function DELETE(
                 [session.user.id, paymentId, JSON.stringify({ 
                     payment_number: payment.payment_number, 
                     amount: payment.amount,
-                    affected_invoices: allocations.map((a: any) => a.invoice_id)
+                    affected_invoices: allocations.map((a: AccountingPaymentAllocation) => a.invoice_id)
                 })]
             );
         });
 
         return NextResponse.json({ message: "Payment deleted successfully" });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error deleting payment:", error);
         return NextResponse.json(
-            { error: "Failed to delete payment", details: error.message },
+            { error: "Failed to delete payment", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, FolderOpen, FileText, Folder, Trash2, Edit } from "lucide-react";
+import { Plus, Search, FolderOpen, FileText, Folder, Trash2 } from "lucide-react";
 import { AccountForm } from "./form";
 
 interface Account {

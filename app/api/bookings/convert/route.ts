@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, execute, queryOne } from "@/lib/db";
+import { execute, queryOne } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 
 // POST: Convert iCal reservation to manual booking
@@ -19,7 +19,12 @@ export async function POST(request: Request) {
         }
 
         // Get the reservation
-        const reservation = await queryOne<any>(
+        const reservation = await queryOne<{ 
+            unit_id: string; 
+            summary: string | null; 
+            start_date: string; 
+            end_date: string; 
+        }>(
             "SELECT * FROM reservations WHERE id = ?",
             [reservation_id]
         );
@@ -49,8 +54,8 @@ export async function POST(request: Request) {
         await execute("DELETE FROM reservations WHERE id = ?", [reservation_id]);
 
         return NextResponse.json({ success: true, booking_id: bookingId });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error converting reservation:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

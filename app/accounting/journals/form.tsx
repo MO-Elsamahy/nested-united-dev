@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, Save, AlertCircle } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
+import { AccountingJournal } from "@/lib/types/accounting";
 
 interface JournalFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    journal?: any;
+    journal?: AccountingJournal;
 }
 
 export function JournalForm({ onClose, onSuccess, journal }: JournalFormProps) {
@@ -40,8 +41,8 @@ export function JournalForm({ onClose, onSuccess, journal }: JournalFormProps) {
             }
 
             onSuccess();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "فشل الحفظ");
         } finally {
             setLoading(false);
         }
@@ -89,7 +90,7 @@ export function JournalForm({ onClose, onSuccess, journal }: JournalFormProps) {
                         <label className="block text-sm font-medium text-gray-700 mb-1">النوع *</label>
                         <select
                             value={formData.type}
-                            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                            onChange={(e) => setFormData({ ...formData, type: e.target.value as AccountingJournal["type"] })}
                             className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="sale">مبيعات</option>

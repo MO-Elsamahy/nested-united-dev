@@ -35,7 +35,9 @@ export async function GET() {
                 if (role === "super_admin") {
                     matrix[role][sys] = true;
                 } else {
-                    const perm = rows.find((r: any) => r.role === role && r.system_id === sys);
+                    const perm = (rows as { role: string; system_id: string; can_access: number | boolean }[]).find(
+                        (r) => r.role === role && r.system_id === sys
+                    );
                     matrix[role][sys] = perm ? Boolean(perm.can_access) : false;
                 }
             }
@@ -46,8 +48,8 @@ export async function GET() {
             systems: [...SYSTEMS],
             roles: [...ROLES],
         });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal Server Error' }, { status: 500 });
     }
 }
 
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal Server Error' }, { status: 500 });
     }
 }

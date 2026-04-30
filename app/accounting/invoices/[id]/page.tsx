@@ -4,33 +4,29 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { ArrowRight, Edit, Trash2, Check, Download, Mail, DollarSign, FileText, X } from "lucide-react";
+import { ArrowRight, Edit, Trash2, Check, Download, Mail, FileText, X } from "lucide-react";
+import Image from "next/image";
+import { AccountingInvoice, CompanySettings } from "@/lib/types/accounting";
+import { useCallback } from "react";
 
 export default function InvoiceDetailPage() {
     const params = useParams();
     const router = useRouter();
-    const [invoice, setInvoice] = useState<any>(null);
-    const [company, setCompany] = useState<any>(null);
+    const [invoice, setInvoice] = useState<AccountingInvoice | null>(null);
+    const [company, setCompany] = useState<CompanySettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [showPdfDropdown, setShowPdfDropdown] = useState(false);
     const { data: session } = useSession();
-    const isSuperAdmin = (session?.user as any)?.role === "super_admin";
+    const isSuperAdmin = (session?.user as { role?: string })?.role === "super_admin";
 
-    useEffect(() => {
-        if (params.id) {
-            fetchInvoice();
-            fetchCompany();
-        }
-    }, [params.id]);
-
-    async function fetchCompany() {
+    const fetchCompany = useCallback(async () => {
         try {
             const res = await fetch("/api/accounting/company-settings");
             if (res.ok) setCompany(await res.json());
         } catch (_) {}
-    }
+    }, []);
 
-    async function fetchInvoice() {
+    const fetchInvoice = useCallback(async () => {
         try {
             const res = await fetch(`/api/accounting/invoices/${params.id}`);
             if (res.ok) {
@@ -41,7 +37,14 @@ export default function InvoiceDetailPage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [params.id, router]);
+
+    useEffect(() => {
+        if (params.id) {
+            void fetchInvoice();
+            void fetchCompany();
+        }
+    }, [params.id, fetchInvoice, fetchCompany]);
 
     const handleConfirm = async () => {
         if (!confirm("هل أنت متأكد من تأكيد الفاتورة؟ لن يمكن التعديل بعد التأكيد.")) return;
@@ -109,9 +112,6 @@ export default function InvoiceDetailPage() {
         }
     };
 
-    const downloadPDF = () => {
-        window.open(`/api/accounting/invoices/${params.id}/pdf`, "_blank");
-    };
 
     if (loading) {
         return <div className="p-8 text-center">جاري التحميل...</div>;
@@ -250,9 +250,11 @@ export default function InvoiceDetailPage() {
                     {/* Company Info - Right Side */}
                     <div className="flex items-center gap-3">
                         {company?.logo_url ? (
-                            <img
+                            <Image
                                 src={company.logo_url}
                                 alt={company.company_name}
+                                width={64}
+                                height={64}
                                 className="h-16 w-auto object-contain"
                             />
                         ) : (
@@ -295,7 +297,7 @@ export default function InvoiceDetailPage() {
                             <div>
                                 <span className="text-sm text-gray-500">تاريخ الاستحقاق:</span>
                                 <span className="font-medium mr-2">
-                                    {new Date(invoice.due_date).toLocaleDateString("ar-SA")}
+                                    {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("ar-SA") : "—"}
                                 </span>
                             </div>
                             {invoice.reference && (
@@ -320,14 +322,14 @@ export default function InvoiceDetailPage() {
                         </tr>
                     </thead>
                     <tbody className="divide-y">
-                        {invoice.lines?.map((line: any, idx: number) => (
+                        {invoice.lines?.map((line, idx: number) => (
                             <tr key={idx}>
                                 <td className="px-4 py-3">{line.description}</td>
-                                <td className="px-4 py-3">{parseFloat(line.quantity).toLocaleString("ar-SA")}</td>
-                                <td className="px-4 py-3">{parseFloat(line.unit_price).toLocaleString("ar-SA")} ر.س</td>
-                                <td className="px-4 py-3">{parseFloat(line.tax_rate)}%</td>
+                                <td className="px-4 py-3">{line.quantity.toLocaleString("ar-SA")}</td>
+                                <td className="px-4 py-3">{line.unit_price.toLocaleString("ar-SA")} ر.س</td>
+                                <td className="px-4 py-3">{line.tax_rate}%</td>
                                 <td className="px-4 py-3 font-medium">
-                                    {parseFloat(line.line_total_with_tax).toLocaleString("ar-SA")} ر.س
+                                    {line.line_total_with_tax.toLocaleString("ar-SA")} ر.س
                                 </td>
                             </tr>
                         ))}
@@ -339,31 +341,31 @@ export default function InvoiceDetailPage() {
                     <div className="w-80 space-y-3">
                         <div className="flex justify-between text-gray-600">
                             <span>المجموع الفرعي:</span>
-                            <span>{parseFloat(invoice.subtotal).toLocaleString("ar-SA")} ر.س</span>
+                            <span>{invoice.subtotal.toLocaleString("ar-SA")} ر.س</span>
                         </div>
-                        {parseFloat(invoice.discount_amount) > 0 && (
+                        {invoice.discount_amount > 0 && (
                             <div className="flex justify-between text-red-600">
                                 <span>الخصم:</span>
-                                <span>-{parseFloat(invoice.discount_amount).toLocaleString("ar-SA")} ر.س</span>
+                                <span>-{invoice.discount_amount.toLocaleString("ar-SA")} ر.س</span>
                             </div>
                         )}
                         <div className="flex justify-between text-green-600">
                             <span>الضريبة:</span>
-                            <span>+{parseFloat(invoice.tax_amount).toLocaleString("ar-SA")} ر.س</span>
+                            <span>+{invoice.tax_amount.toLocaleString("ar-SA")} ر.س</span>
                         </div>
                         <div className="flex justify-between text-xl font-bold pt-3 border-t">
                             <span>الإجمالي:</span>
-                            <span>{parseFloat(invoice.total_amount).toLocaleString("ar-SA")} ر.س</span>
+                            <span>{invoice.total_amount.toLocaleString("ar-SA")} ر.س</span>
                         </div>
                         {invoice.state !== "draft" && (
                             <>
                                 <div className="flex justify-between text-blue-600">
                                     <span>المدفوع:</span>
-                                    <span>-{parseFloat(invoice.amount_paid).toLocaleString("ar-SA")} ر.س</span>
+                                    <span>-{invoice.amount_paid.toLocaleString("ar-SA")} ر.س</span>
                                 </div>
                                 <div className="flex justify-between text-lg font-bold text-red-600">
                                     <span>المتبقي:</span>
-                                    <span>{parseFloat(invoice.amount_due).toLocaleString("ar-SA")} ر.س</span>
+                                    <span>{invoice.amount_due.toLocaleString("ar-SA")} ر.س</span>
                                 </div>
                             </>
                         )}
@@ -418,13 +420,13 @@ export default function InvoiceDetailPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y">
-                            {invoice.payments.map((payment: any) => (
+                            {invoice.payments.map((payment) => (
                                 <tr key={payment.id}>
                                     <td className="px-4 py-2 font-medium">{payment.payment_number}</td>
                                     <td className="px-4 py-2">
-                                        {new Date(payment.payment_date).toLocaleDateString("ar-SA")}
+                                        {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString("ar-SA") : "—"}
                                     </td>
-                                    <td className="px-4 py-2">{parseFloat(payment.amount).toLocaleString("ar-SA")} ر.س</td>
+                                    <td className="px-4 py-2">{payment.amount.toLocaleString("ar-SA")} ر.س</td>
                                     <td className="px-4 py-2">{payment.payment_method}</td>
                                     <td className="px-4 py-2 text-left">
                                         {isSuperAdmin && (

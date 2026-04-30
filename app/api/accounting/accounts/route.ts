@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query, execute, generateUUID } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { AccountingAccount } from "@/lib/types/accounting";
 
 // GET: List all accounts
 export async function GET(request: Request) {
@@ -14,7 +15,7 @@ export async function GET(request: Request) {
     const type = searchParams.get("type");
 
     let sql = "SELECT * FROM accounting_accounts WHERE deleted_at IS NULL";
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (type) {
         sql += " AND type = ?";
@@ -24,10 +25,10 @@ export async function GET(request: Request) {
     sql += " ORDER BY code ASC";
 
     try {
-        const accounts = await query(sql, params);
+        const accounts = await query<AccountingAccount>(sql, params);
         return NextResponse.json(accounts);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -55,8 +56,8 @@ export async function DELETE(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id }, { status: 201 });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

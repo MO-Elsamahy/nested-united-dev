@@ -6,16 +6,19 @@ import { MergeUnitsPageClient } from "../MergeUnitsPageClient";
 
 async function getUnitsForMerge() {
   try {
-    const units = await query<any>(
+    const units = await query<Record<string, unknown>>(
       "SELECT id, unit_name, unit_code, readiness_group_id FROM units WHERE status = 'active' ORDER BY unit_name"
     );
 
-    return (units || []).map((u: any) => ({
-      ...u,
+    return (units || []).map((u) => ({
+      id: u.id as string,
+      unit_name: u.unit_name as string,
+      unit_code: u.unit_code as string | null,
+      readiness_group_id: u.readiness_group_id as string | null,
       platform_account: null,
     }));
-  } catch (error: any) {
-    console.error("[Merge Units] Error fetching units:", error.message);
+  } catch (error: unknown) {
+    console.error("[Merge Units] Error fetching units:", error instanceof Error ? error.message : 'Unknown error');
     return [];
   }
 }

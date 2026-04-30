@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   try {
     // Build WHERE clause
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (fromDate) {
       conditions.push("ual.created_at >= ?");
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     );
 
     // Transform to match expected format
-    const transformedLogs = (logs as any[]).map((log) => ({
+    const transformedLogs = (logs as Record<string, unknown>[]).map((log) => ({
       ...log,
       user: log.user_id ? { id: log.user_id, name: log.user_name, email: log.user_email } : null,
     }));
@@ -91,8 +91,8 @@ export async function GET(request: NextRequest) {
       limit,
       totalPages: Math.ceil(total / limit),
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
     );
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

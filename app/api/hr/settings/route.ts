@@ -5,17 +5,17 @@ import { query, execute, queryOne, generateUUID } from "@/lib/db";
 import { hrSettingsRowsToMap } from "@/lib/hr-settings";
 
 // GET: كل الإعدادات (أحدث قيمة لكل مفتاح عند وجود صفوف مكررة)
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
     try {
-        const rows = await query<any>(`SELECT * FROM hr_settings ORDER BY updated_at DESC`);
+        const rows = await query<{ id: string, setting_key: string, setting_value: string, updated_at: string }>(`SELECT * FROM hr_settings ORDER BY updated_at DESC`);
         return NextResponse.json(hrSettingsRowsToMap(rows));
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -54,8 +54,8 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Update settings error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { Employee } from "@/lib/types/hr";
 
 // GET: قائمة الموظفين
 export async function GET(request: Request) {
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
       LEFT JOIN users u ON e.user_id = u.id
       WHERE 1=1
     `;
-        const params: any[] = [];
+        const params: (string | number)[] = [];
 
         if (status) {
             sql += " AND e.status = ?";
@@ -39,10 +40,10 @@ export async function GET(request: Request) {
 
         sql += " ORDER BY e.full_name ASC";
 
-        const employees = await query(sql, params);
+        const employees = await query<Employee & { user_name?: string; user_email?: string }>(sql, params);
         return NextResponse.json(employees);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -75,6 +76,7 @@ export async function POST(request: Request) {
             bank_name,
             iban,
             exclude_from_payroll,
+            salary_currency,
         } = body;
 
         if (!full_name) {
@@ -83,7 +85,7 @@ export async function POST(request: Request) {
 
         // Check if employee number is unique
         if (employee_number) {
-            const existing = await queryOne(
+            const existing = await queryOne<{ id: string }>(
                 "SELECT id FROM hr_employees WHERE employee_number = ?",
                 [employee_number]
             );
@@ -99,8 +101,8 @@ export async function POST(request: Request) {
         department, job_title, hire_date, contract_type,
         basic_salary, housing_allowance, transport_allowance, other_allowances,
         annual_leave_balance, sick_leave_balance, bank_name, iban, shift_id,
-        exclude_from_payroll
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        exclude_from_payroll, salary_currency
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 user_id || null,
@@ -123,12 +125,13 @@ export async function POST(request: Request) {
                 iban || null,
                 body.shift_id || null,
                 exclude_from_payroll ? 1 : 0,
+                salary_currency || "SAR",
             ]
         );
 
         return NextResponse.json({ success: true, id }, { status: 201 });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Create employee error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

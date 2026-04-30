@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
-    TrendingUp, Users, Activity, BarChart3, DollarSign,
+    TrendingUp, Users, BarChart3, DollarSign,
     Target, Handshake, XCircle, Archive, Clock, Zap,
-    AlertTriangle, Crown, User, Calendar, ArrowUpRight,
-    Flame, ShieldAlert, Award, Loader2, RefreshCw,
-    ChevronDown, ChevronUp, Trophy, Percent, ChevronLeft
+    Crown, Calendar,
+    Flame, Award, Loader2, RefreshCw,
+    ChevronLeft
 } from "lucide-react";
 
 /* ────── Stage Config ────── */
@@ -39,24 +39,66 @@ function fmtDate(d: string): string {
     try { return new Date(d).toLocaleDateString("ar-SA", { month: "short", day: "numeric" }); }
     catch { return d; }
 }
+
 function fmtMonth(m: string): string {
-    const months = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-    try { return months[parseInt(m.split('-')[1]) - 1] || m; } catch { return m; }
+    try {
+        const [year, month] = m.split("-");
+        return new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString("ar-SA", { month: "short" });
+    } catch { return m; }
+}
+interface StagePerformance {
+    current_stage: string;
+    active_deals: number;
+    lost_deals: number;
+}
+
+interface HistoricalStage {
+    to_stage: string;
+    deals_reached: number;
+}
+
+interface CRMReportData {
+    totalCustomers?: { count: number; active: number };
+    openDeals?: { count: number; total_value: number };
+    wonDeals?: { count: number; total_value: number };
+    lostDeals?: { count: number; total_value: number };
+    totalDeals?: { count: number };
+    avgDealValue?: { avg_val: number };
+    weeklyActivity?: { count: number };
+    dealsByStage?: Array<{ stage: string; count: number; total_value: number }>;
+    monthlyActivity?: Array<{ month: string; count: number }>;
+    monthlyDeals?: Array<{ month: string; count: number }>;
+    employeePerf?: Array<{
+        name: string;
+        activity_count: number;
+        deals_worked_on: number;
+        won_count: number;
+        lost_count: number;
+        won_value: number;
+    }>;
+    topCustomers?: Array<{ customer_name: string; deal_count: number; total_value: number }>;
+    recentDeals?: Array<{ id: string; title: string; customer_name: string; stage: string; value: number; created_at: string }>;
+    stagePerformance?: StagePerformance[];
+    historicalStages?: HistoricalStage[];
+    closedDeals?: { count: number };
 }
 
 export default function CRMReportsPage() {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<CRMReportData | null>(null);
     const [loading, setLoading] = useState(true);
     const [period, setPeriod] = useState('all');
-    const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/crm/reports?period=${period}`);
-            const json = await res.json();
-            if (res.ok) setData(json);
-        } catch (e) { console.error(e); }
+            if (res.ok) {
+                const json = await res.json() as CRMReportData;
+                setData(json);
+            }
+        } catch (e: unknown) {
+            console.error(e instanceof Error ? e.message : String(e));
+        }
         finally { setLoading(false); }
     }, [period]);
 
@@ -65,13 +107,13 @@ export default function CRMReportsPage() {
 
 
     // Build Funnel Data from actual database aggregations
-    const funnelSteps = Object.keys(STAGE_MAP).filter(s => s !== 'lost').map((sId, index, array) => {
+    const funnelSteps = Object.keys(STAGE_MAP).filter(s => s !== 'lost').map((sId) => {
         // active deals currently sitting here
-        const activeDeals = data?.stagePerformance?.find((st: any) => st.current_stage === sId)?.active_deals || 0;
+        const activeDeals = data?.stagePerformance?.find((st) => st.current_stage === sId)?.active_deals || 0;
         // deals that were lost WHILE in this stage
-        const lostDeals = data?.stagePerformance?.find((st: any) => st.current_stage === sId)?.lost_deals || 0;
+        const lostDeals = data?.stagePerformance?.find((st) => st.current_stage === sId)?.lost_deals || 0;
         // deals that historically reached this stage at any point
-        const historicalReaches = data?.historicalStages?.find((st: any) => st.to_stage === STAGE_MAP[sId].label)?.deals_reached || 0;
+        const historicalReaches = data?.historicalStages?.find((st) => st.to_stage === STAGE_MAP[sId].label)?.deals_reached || 0;
 
         return {
             id: sId,
@@ -93,10 +135,9 @@ export default function CRMReportsPage() {
     const wonPct = (data?.totalDeals?.count || 0) > 0 ? Math.round((wonCount / (data?.totalDeals?.count || 1)) * 100) : 0;
     const lostPct = (data?.totalDeals?.count || 0) > 0 ? Math.round((lostCount / (data?.totalDeals?.count || 1)) * 100) : 0;
     const openPct = Math.max(0, 100 - wonPct - lostPct);
-    const maxPipeline = data?.dealsByStage?.length ? Math.max(...data.dealsByStage.map((s: any) => s.count)) : 1;
-    const maxMonthlyAct = data?.monthlyActivity?.length ? Math.max(...data.monthlyActivity.map((m: any) => m.count)) : 1;
+    const maxPipeline = (data?.dealsByStage?.length || 0) > 0 ? Math.max(...data!.dealsByStage!.map((s) => s.count)) : 1;
+    const maxMonthlyAct = (data?.monthlyActivity?.length || 0) > 0 ? Math.max(...data!.monthlyActivity!.map((m) => m.count)) : 1;
 
-    const toggle = (s: string) => setExpandedSection(prev => prev === s ? null : s);
 
     if (loading && !data) {
         return (
@@ -198,11 +239,11 @@ export default function CRMReportsPage() {
                         <span style={{ fontSize: '10px', color: '#94a3b8', background: '#f8fafc', padding: '3px 8px', borderRadius: '5px' }}>{data.openDeals?.count || 0} صفقة</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {data.dealsByStage?.length > 0 ? data.dealsByStage.map((item: any) => {
+                        {data.dealsByStage && data.dealsByStage.length > 0 ? data.dealsByStage.map((item) => {
                             const cfg = STAGE_MAP[item.stage] || { label: item.stage, color: '#94a3b8' };
                             const pct = Math.max(Math.round((item.count / maxPipeline) * 100), 6);
                             return (
-                                <div key={item.stage} style={{ cursor: 'pointer' }} onClick={() => toggle(`stage-${item.stage}`)}>
+                                <div key={item.stage}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
                                             <div style={{ width: '8px', height: '8px', borderRadius: '2px', background: cfg.color }} />
@@ -331,7 +372,7 @@ export default function CRMReportsPage() {
                     <Award size={16} color="#8b5cf6" />
                     <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>أداء الموظفين</h3>
                 </div>
-                {data.employeePerf?.length > 0 ? (
+                {(data.employeePerf?.length || 0) > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {/* Header Row */}
                         <div style={{
@@ -348,12 +389,12 @@ export default function CRMReportsPage() {
                             <span style={{ textAlign: 'center' }}>معدل النجاح</span>
                         </div>
 
-                        {data.employeePerf.map((emp: any, idx: number) => {
+                        {data.employeePerf!.map((emp, idx) => {
                             const empWinRate = (Number(emp.won_count) + Number(emp.lost_count)) > 0
                                 ? Math.round((Number(emp.won_count) / (Number(emp.won_count) + Number(emp.lost_count))) * 100)
                                 : 0;
                             const isTop = idx === 0 && Number(emp.won_count) > 0;
-                            const maxAct = data.employeePerf[0].activity_count || 1;
+                            const maxAct = (data.employeePerf && data.employeePerf.length > 0) ? data.employeePerf[0].activity_count || 1 : 1;
                             const barPct = Math.round((emp.activity_count / maxAct) * 100);
 
                             return (
@@ -447,7 +488,7 @@ export default function CRMReportsPage() {
                         <Crown size={16} color="#f59e0b" />
                         <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>أفضل العملاء</h3>
                     </div>
-                    {data.topCustomers?.length > 0 ? data.topCustomers.map((c: any, idx: number) => (
+                    {data.topCustomers && data.topCustomers.length > 0 ? data.topCustomers.map((c, idx) => (
                         <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid #f8fafc' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                 <div style={{
@@ -472,7 +513,7 @@ export default function CRMReportsPage() {
                         <Clock size={16} color="#64748b" />
                         <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>آخر الصفقات</h3>
                     </div>
-                    {data.recentDeals?.length > 0 ? data.recentDeals.map((deal: any, idx: number) => {
+                    {data.recentDeals && data.recentDeals.length > 0 ? data.recentDeals.map((deal, idx) => {
                         const cfg = STAGE_MAP[deal.stage] || { label: deal.stage, color: '#94a3b8' };
                         return (
                             <Link key={idx} href={`/crm/deals/${deal.id}`} style={{
@@ -502,12 +543,12 @@ export default function CRMReportsPage() {
                     </div>
                     <span style={{ fontSize: '10px', color: '#94a3b8' }}>آخر 6 أشهر</span>
                 </div>
-                {data.monthlyActivity?.length > 0 ? (
+                {data.monthlyActivity && data.monthlyActivity.length > 0 ? (
                     <div>
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '10px', height: '140px', padding: '0 6px', borderBottom: '2px solid #f1f5f9' }}>
-                            {data.monthlyActivity.map((m: any, idx: number) => {
+                            {data.monthlyActivity.map((m, idx) => {
                                 const h = Math.max(Math.round((m.count / maxMonthlyAct) * 120), 8);
-                                const dealMonth = data.monthlyDeals?.find((d: any) => d.month === m.month);
+                                const dealMonth = data.monthlyDeals?.find((d) => d.month === m.month);
                                 return (
                                     <div key={idx} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: '3px', height: '100%' }}>
                                         <span style={{ fontSize: '10px', fontWeight: 700, color: '#475569' }}>{m.count}</span>
@@ -521,7 +562,7 @@ export default function CRMReportsPage() {
                             })}
                         </div>
                         <div style={{ display: 'flex', gap: '10px', padding: '6px 6px 0' }}>
-                            {data.monthlyActivity.map((m: any, idx: number) => (
+                            {data.monthlyActivity.map((m, idx) => (
                                 <div key={idx} style={{ flex: 1, textAlign: 'center', fontSize: '10px', color: '#94a3b8' }}>{fmtMonth(m.month)}</div>
                             ))}
                         </div>
@@ -546,7 +587,7 @@ export default function CRMReportsPage() {
                         <div>
                             <p style={{ margin: 0, fontSize: '12px', opacity: 0.8 }}>صفقات ناجحة</p>
                             <p style={{ margin: '4px 0 0', fontSize: '28px', fontWeight: 800 }}>{wonCount}</p>
-                            {Number(data.wonDeals?.total_value) > 0 && <p style={{ margin: '4px 0 0', fontSize: '11px', opacity: 0.7 }}>{fmt(Number(data.wonDeals.total_value))} ر.س</p>}
+                            {Number(data.wonDeals?.total_value) > 0 && <p style={{ margin: '4px 0 0', fontSize: '11px', opacity: 0.7 }}>{fmt(Number(data.wonDeals?.total_value))} ر.س</p>}
                         </div>
                         <Handshake size={30} style={{ opacity: 0.2 }} />
                     </div>

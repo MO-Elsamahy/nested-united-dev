@@ -30,8 +30,8 @@ export default function NewPayrollPage() {
             } else {
                 alert(data.error || "حدث خطأ");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setLoading(false);
         }

@@ -24,6 +24,12 @@ interface RoleInfo {
     icon: LucideIcon;
 }
 
+interface RolePermissionsData {
+    systems: string[];
+    roles: string[];
+    permissions: Record<string, Record<string, boolean>>;
+}
+
 const systemLabels: Record<string, SystemInfo> = {
     rentals: { label: "إدارة التأجير", icon: Building2 },
     accounting: { label: "النظام المالي", icon: Calculator },
@@ -57,19 +63,19 @@ function RoleIcon({ role }: { role: string }) {
 }
 
 export default function RolePermissionsPage() {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<RolePermissionsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
-
-    useEffect(() => {
-        fetchPermissions();
-    }, []);
 
     async function fetchPermissions() {
         const res = await fetch("/api/settings/role-permissions");
         if (res.ok) setData(await res.json());
         setLoading(false);
     }
+
+    useEffect(() => {
+        fetchPermissions();
+    }, []);
 
     async function togglePermission(role: string, system: string, currentValue: boolean) {
         if (role === "super_admin") return;
@@ -93,16 +99,19 @@ export default function RolePermissionsPage() {
                 return;
             }
 
-            setData((prev: any) => ({
-                ...prev,
-                permissions: {
-                    ...prev.permissions,
-                    [role]: {
-                        ...prev.permissions[role],
-                        [system]: next,
+            setData((prev) => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    permissions: {
+                        ...prev.permissions,
+                        [role]: {
+                            ...prev.permissions[role],
+                            [system]: next,
+                        },
                     },
-                },
-            }));
+                };
+            });
         } catch {
             alert("خطأ في الاتصال أثناء حفظ الصلاحية");
             await fetchPermissions();

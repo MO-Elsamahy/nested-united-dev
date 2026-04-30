@@ -5,7 +5,6 @@
  */
 
 import mysql from 'mysql2/promise';
-import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { readFileSync, existsSync } from 'fs';
@@ -118,22 +117,22 @@ const accountingSettings = [
     {
         key: 'salary_expense_account_id',
         desc: 'حساب مصروف رواتب',
-        query: `SELECT id FROM accounting_chart_of_accounts
-                WHERE account_type LIKE '%expense%'
+        query: `SELECT id FROM accounting_accounts
+                WHERE type LIKE '%expense%'
                   AND (name LIKE '%رات%' OR name LIKE '%salary%' OR name LIKE '%Salary%')
                 ORDER BY created_at ASC LIMIT 1`,
-        fallback: `SELECT id FROM accounting_chart_of_accounts
-                   WHERE account_type LIKE '%expense%'
+        fallback: `SELECT id FROM accounting_accounts
+                   WHERE type LIKE '%expense%'
                    ORDER BY created_at ASC LIMIT 1`,
     },
     {
         key: 'salary_payable_account_id',
         desc: 'حساب رواتب مستحقة الدفع',
-        query: `SELECT id FROM accounting_chart_of_accounts
+        query: `SELECT id FROM accounting_accounts
                 WHERE (name LIKE '%مستحقة%' OR name LIKE '%payable%' OR name LIKE '%Payable%')
                 ORDER BY created_at ASC LIMIT 1`,
-        fallback: `SELECT id FROM accounting_chart_of_accounts
-                   WHERE account_type LIKE '%liabil%'
+        fallback: `SELECT id FROM accounting_accounts
+                   WHERE type LIKE '%liabil%'
                    ORDER BY created_at ASC LIMIT 1`,
     },
     {

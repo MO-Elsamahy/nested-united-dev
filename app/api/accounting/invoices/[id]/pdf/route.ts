@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
+import { AccountingInvoice, AccountingInvoiceLine, CompanySettings } from "@/lib/types/accounting";
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Font, Image, pdf } from "@react-pdf/renderer";
 import path from "path";
@@ -16,14 +17,29 @@ Font.register({
     ],
 });
 
-interface RouteParams {
+interface _RouteParams {
     params: { id: string };
 }
 
 // Theme Definitions
 type PDFTheme = 'default' | 'eye-friendly' | 'dark';
 
-const themes: Record<PDFTheme, any> = {
+interface PDFThemeStyles {
+    bg: string;
+    text: string;
+    secondaryText: string;
+    border: string;
+    brandParams: string;
+    accent: string;
+    accentText: string;
+    tableHeaderBg: string;
+    tableRowBg: string;
+    altRowBg: string;
+    success: string;
+    danger: string;
+}
+
+const themes: Record<PDFTheme, PDFThemeStyles> = {
     default: {
         bg: "#FFFFFF",
         text: "#1F2937",
@@ -272,13 +288,13 @@ const createStyles = (themeName: PDFTheme = 'default') => {
     });
 };
 
-function generateInvoicePDF(invoice: any, company: any, logoPath: string | null, theme: PDFTheme = 'default') {
+function generateInvoicePDF(invoice: AccountingInvoice, company: CompanySettings, logoPath: string | null, theme: PDFTheme = 'default') {
     const styles = createStyles(theme);
 
     // Keep numbers in English/LTR for clarity if preferred, or use localized digits.
     // Usually business in SA uses Western Arabic numerals (0-9).
     const formatCurrency = (amount: number) => `${Number(amount).toFixed(2)} ر.س`;
-    const formatDate = (date: string) => new Date(date).toLocaleDateString("en-US"); // Keep standardized date format
+    const formatDate = (date?: string | null) => date ? new Date(date).toLocaleDateString("en-US") : "-";
 
     const getStatusText = (state: string) => {
         switch (state) {
@@ -373,7 +389,7 @@ function generateInvoicePDF(invoice: any, company: any, logoPath: string | null,
                     React.createElement(Text, { style: { ...styles.colTax, ...styles.headerText } }, "الضريبة"),
                     React.createElement(Text, { style: { ...styles.colTotal, ...styles.headerText } }, "المجموع")
                 ),
-                ...(invoice.lines || []).map((line: any, idx: number) =>
+                ...(invoice.lines || []).map((line: AccountingInvoiceLine, idx: number) =>
                     React.createElement(
                         View,
                         { key: idx, style: styles.tableRow },
@@ -483,7 +499,7 @@ export async function GET(req: NextRequest, params: { params: Promise<{ id: stri
         const theme = (searchParams.get("theme") || "default") as PDFTheme;
 
         // Get invoice with details
-        const invoices: any = await query(
+        const invoices = await query<AccountingInvoice>(
             `SELECT i.*, p.name as partner_name, p.email as partner_email, p.phone as partner_phone
              FROM accounting_invoices i
              LEFT JOIN accounting_partners p ON i.partner_id = p.id
@@ -498,14 +514,14 @@ export async function GET(req: NextRequest, params: { params: Promise<{ id: stri
         const invoiceData = invoices[0];
 
         // Get invoice lines
-        const lines = await query(
+        const lines = await query<AccountingInvoiceLine>(
             "SELECT * FROM accounting_invoice_lines WHERE invoice_id = ? ORDER BY created_at",
             [invoiceId]
         );
 
         // Get company settings
-        const companySettings: any = await query("SELECT * FROM company_settings LIMIT 1");
-        const company = companySettings.length > 0 ? companySettings[0] : {};
+        const companySettings = await query<CompanySettings>("SELECT * FROM company_settings LIMIT 1");
+        const company = companySettings.length > 0 ? companySettings[0] : {} as CompanySettings;
 
         // Resolve logo path
         let logoPath = null;
@@ -534,10 +550,10 @@ export async function GET(req: NextRequest, params: { params: Promise<{ id: stri
                 "Content-Disposition": `attachment; filename="invoice-${invoiceData.invoice_number}.pdf"`,
             },
         });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Error generating PDF:", error);
         return NextResponse.json(
-            { error: "Failed to generate PDF", details: error.message },
+            { error: "Failed to generate PDF", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

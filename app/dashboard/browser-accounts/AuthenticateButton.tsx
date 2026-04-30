@@ -12,7 +12,7 @@ interface AuthenticateButtonProps {
 
 export function AuthenticateButton({
     accountId,
-    accountName,
+    accountName: _accountName,
     platform,
     partition,
 }: AuthenticateButtonProps) {
@@ -38,9 +38,9 @@ export function AuthenticateButton({
             if (!result.success) {
                 throw new Error(result.error || "فشل في فتح نافذة التوثيق");
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error("Auth error:", err);
-            setError(err.message || "حدث خطأ غير متوقع");
+            setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
             setTimeout(() => setError(null), 5000);
         } finally {
             setLoading(false);

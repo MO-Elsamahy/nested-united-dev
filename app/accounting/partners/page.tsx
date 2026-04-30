@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Users, Phone, Trash2, Edit } from "lucide-react";
+import { Plus, Search, Users, Phone, Trash2 } from "lucide-react";
 import { PartnerForm } from "./form";
 
 interface Partner {
@@ -14,7 +14,7 @@ interface Partner {
 
 export default function PartnersPage() {
     const [partners, setPartners] = useState<Partner[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [_loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [showForm, setShowForm] = useState(false);
 

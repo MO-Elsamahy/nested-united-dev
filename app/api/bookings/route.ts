@@ -15,8 +15,38 @@ interface BookingRow {
   amount: number | null;
   currency: string | null;
   notes: string | null;
-  unit_name?: string;
-  unit_code?: string;
+  unit_name: string;
+  unit_code: string;
+  unit_id_ref?: string;
+}
+
+interface ReservationRow {
+  id: string;
+  unit_id: string;
+  unit_id_ref?: string;
+  unit_name: string;
+  unit_code: string;
+  summary: string | null;
+  start_date: string;
+  end_date: string;
+  platform: string | null;
+  unit_platform_account_id?: string | null;
+}
+
+interface UnifiedBooking {
+  id: string;
+  type?: string;
+  guest_name: string;
+  phone?: string | null;
+  checkin_date: string;
+  checkout_date: string;
+  unit: { id: string; unit_name: string; unit_code: string };
+  platform_account_id?: string | null;
+  platform?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  notes?: string | null;
+  unit_platform_account_id?: string | null;
 }
 
 // GET /api/bookings - list bookings with optional filters
@@ -39,7 +69,7 @@ export async function GET(request: NextRequest) {
       const firstDay = new Date(Number(year), Number(month) - 1, 1).toISOString().split("T")[0];
       const lastDay = new Date(Number(year), Number(month), 0).toISOString().split("T")[0];
 
-      const bookings = await query<any>(
+      const bookings = await query<BookingRow>(
         `SELECT b.*, u.id as unit_id_ref, u.unit_name, u.unit_code 
          FROM bookings b 
          LEFT JOIN units u ON b.unit_id = u.id 
@@ -48,7 +78,7 @@ export async function GET(request: NextRequest) {
         [lastDay, firstDay]
       );
 
-      const reservations = await query<any>(
+      const reservations = await query<ReservationRow>(
         `SELECT r.*, u.id as unit_id_ref, u.unit_name, u.unit_code 
          FROM reservations r 
          LEFT JOIN units u ON r.unit_id = u.id 
@@ -57,24 +87,24 @@ export async function GET(request: NextRequest) {
         [lastDay, firstDay]
       );
 
-      const allBookings = [
-        ...(bookings || []).map((b: any) => ({
+      const allBookings: UnifiedBooking[] = [
+        ...(bookings || []).map((b) => ({
           id: b.id,
           type: "manual",
           guest_name: b.guest_name || "غير محدد",
           checkin_date: typeof b.checkin_date === 'string' ? b.checkin_date : new Date(b.checkin_date).toISOString().split('T')[0],
           checkout_date: typeof b.checkout_date === 'string' ? b.checkout_date : new Date(b.checkout_date).toISOString().split('T')[0],
-          unit: { id: b.unit_id_ref, unit_name: b.unit_name, unit_code: b.unit_code },
-          platform_account: null,
+          unit: { id: b.unit_id_ref || b.unit_id, unit_name: b.unit_name, unit_code: b.unit_code },
+          platform_account_id: b.platform_account_id,
         })),
-        ...(reservations || []).map((r: any) => ({
+        ...(reservations || []).map((r) => ({
           id: r.id,
           type: "ical",
           guest_name: r.summary || "حجز من iCal",
           checkin_date: typeof r.start_date === 'string' ? r.start_date : new Date(r.start_date).toISOString().split('T')[0],
           checkout_date: typeof r.end_date === 'string' ? r.end_date : new Date(r.end_date).toISOString().split('T')[0],
-          unit: { id: r.unit_id_ref, unit_name: r.unit_name, unit_code: r.unit_code },
-          platform_account: null,
+          unit: { id: r.unit_id_ref || r.unit_id, unit_name: r.unit_name, unit_code: r.unit_code },
+          platform_account_id: r.unit_platform_account_id ?? null,
         })),
       ];
 
@@ -83,7 +113,7 @@ export async function GET(request: NextRequest) {
 
     // Build WHERE clause for bookings
     const conditions: string[] = [];
-    const params: any[] = [];
+    const params: string[] = [];
 
     if (platformAccountIds.length > 0) {
       conditions.push(`b.platform_account_id IN (${platformAccountIds.map(() => "?").join(",")})`);
@@ -115,13 +145,22 @@ export async function GET(request: NextRequest) {
     );
 
     // Transform bookings
-    const bookings = bookingsRows.map((b) => ({
-      ...b,
+    const bookings: UnifiedBooking[] = bookingsRows.map((b) => ({
+      id: b.id,
+      guest_name: b.guest_name,
+      phone: b.phone,
+      checkin_date: b.checkin_date,
+      checkout_date: b.checkout_date,
       unit: { id: b.unit_id, unit_name: b.unit_name, unit_code: b.unit_code },
+      platform: b.platform,
+      platform_account_id: b.platform_account_id,
+      amount: b.amount,
+      currency: b.currency,
+      notes: b.notes,
     }));
 
     // Get reservations (iCal)
-    const reservationsRows = await query(
+    const reservationsRows = await query<ReservationRow>(
       `SELECT r.*, u.id as unit_id, u.unit_name, u.unit_code, u.platform_account_id as unit_platform_account_id
        FROM reservations r
        LEFT JOIN units u ON r.unit_id = u.id
@@ -129,7 +168,8 @@ export async function GET(request: NextRequest) {
     );
 
     // Transform reservations to look like bookings
-    const reservations = (reservationsRows as any[]).map((r) => ({
+    const reservations: UnifiedBooking[] = reservationsRows.map((r) => ({
+      id: r.id,
       guest_name: r.summary || "حجز iCal",
       phone: null,
       checkin_date: r.start_date,
@@ -146,16 +186,16 @@ export async function GET(request: NextRequest) {
 
     // Filter by platform_account_id for reservations if needed
     if (platformAccountIds.length > 0) {
-      rows = rows.filter((item: any) => {
-        const itemAccountId = item.platform_account_id || item.unit?.platform_account_id;
+      rows = rows.filter((item) => {
+        const itemAccountId = item.platform_account_id || item.unit_platform_account_id;
         return itemAccountId && platformAccountIds.includes(itemAccountId);
       });
     }
 
     rows.sort(
-      (a: any, b: any) =>
-        new Date(b.checkin_date || b.start_date).getTime() -
-        new Date(a.checkin_date || a.start_date).getTime()
+      (a, b) =>
+        new Date(b.checkin_date).getTime() -
+        new Date(a.checkin_date).getTime()
     );
 
     if (!exportCsv) {
@@ -179,7 +219,7 @@ export async function GET(request: NextRequest) {
 
     const csvLines = [
       header.join(","),
-      ...rows.map((b: any) =>
+      ...rows.map((b) =>
         [
           b.guest_name ?? "",
           b.phone ?? "",
@@ -205,8 +245,9 @@ export async function GET(request: NextRequest) {
         "Content-Disposition": "attachment; filename=bookings.csv",
       },
     });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
@@ -275,7 +316,8 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(booking, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

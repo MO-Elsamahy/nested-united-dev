@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 
 interface PermissionGuardProps {
@@ -13,11 +13,7 @@ export function PermissionGuard({ children, action, fallback = null }: Permissio
   const pathname = usePathname();
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    checkPermission();
-  }, [pathname, action]);
-
-  const checkPermission = async () => {
+  const checkPermission = useCallback(async () => {
     try {
       // Check session first
       const sessionResponse = await fetch("/api/auth/session");
@@ -43,7 +39,11 @@ export function PermissionGuard({ children, action, fallback = null }: Permissio
       console.error("Error checking permission:", error);
       setHasPermission(false);
     }
-  };
+  }, [pathname, action]);
+
+  useEffect(() => {
+    checkPermission();
+  }, [checkPermission]);
 
   if (hasPermission === null) {
     return null; // Loading state

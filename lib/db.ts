@@ -1,4 +1,4 @@
-import mysql from 'mysql2/promise';
+import mysql, { type ExecuteValues } from 'mysql2/promise';
 
 // Create a connection pool
 const pool = mysql.createPool({
@@ -16,29 +16,30 @@ const pool = mysql.createPool({
 });
 
 // Helper to sanitize parameters (converts undefined to null for MySQL)
-const sanitizeParams = (params?: any[]) => {
+const sanitizeParams = (params?: unknown[]): ExecuteValues => {
     if (!params) return [];
-    return params.map(p => p === undefined ? null : p);
+    return params.map(p => p === undefined ? null : p) as ExecuteValues;
 };
 
 // Helper function to execute queries
-export async function query<T = any>(
+export async function query<T = unknown>(
     sql: string,
-    params?: any[]
+    params?: unknown[]
 ): Promise<T[]> {
     try {
         const [rows] = await pool.execute(sql, sanitizeParams(params));
         return rows as T[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Database Query Error:", error);
-        throw new Error(`DB Error: ${error?.message || 'Unknown error'}`);
+        const msg = error instanceof Error ? error.message : String(error);
+        throw new Error(`DB Error: ${msg}`);
     }
 }
 
 // Helper function to execute a single query and return first result
-export async function queryOne<T = any>(
+export async function queryOne<T = unknown>(
     sql: string,
-    params?: any[]
+    params?: unknown[]
 ): Promise<T | null> {
     const rows = await query<T>(sql, params || []);
     return rows[0] || null;
@@ -47,14 +48,15 @@ export async function queryOne<T = any>(
 // Helper function for INSERT/UPDATE/DELETE
 export async function execute(
     sql: string,
-    params?: any[]
+    params?: unknown[]
 ): Promise<mysql.ResultSetHeader> {
     try {
         const [result] = await pool.execute(sql, sanitizeParams(params));
         return result as mysql.ResultSetHeader;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Database Execute Error:", error);
-        throw new Error(`DB Error: ${error?.message || 'Unknown error'}`);
+        const msg = error instanceof Error ? error.message : String(error);
+        throw new Error(`DB Error: ${msg}`);
     }
 }
 
@@ -75,7 +77,7 @@ export async function executeTransaction(callback: (connection: mysql.PoolConnec
         await connection.beginTransaction();
         await callback(connection);
         await connection.commit();
-    } catch (error) {
+    } catch (error: unknown) {
         await connection.rollback();
         throw error;
     } finally {

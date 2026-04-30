@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Save, Clock, Loader2, ArrowRight, Pencil, X } from "lucide-react";
 import Link from "next/link";
 
@@ -15,7 +15,6 @@ interface Shift {
 
 export default function ShiftsPage() {
     const [shifts, setShifts] = useState<Shift[]>([]);
-    const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,21 +26,20 @@ export default function ShiftsPage() {
         days_off: "",
     });
 
-    useEffect(() => {
-        fetchShifts();
-    }, []);
-
-    const fetchShifts = async () => {
+    const fetchShifts = useCallback(async () => {
         try {
             const res = await fetch("/api/hr/shifts");
             const data = await res.json();
             if (Array.isArray(data)) setShifts(data);
-        } catch (e) {
-            console.error(e);
+        } catch (error: unknown) {
+            console.error(error);
         } finally {
-            setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchShifts();
+    }, [fetchShifts]);
 
     const handleDeleteShift = async (id: string) => {
         if (!confirm("هل أنت متأكد من حذف هذه الوردية؟")) return;
@@ -49,8 +47,8 @@ export default function ShiftsPage() {
             const res = await fetch(`/api/hr/shifts/${id}`, { method: "DELETE" });
             if (res.ok) fetchShifts();
             else alert("فشل الحذف");
-        } catch (e) {
-            alert("Error deleting shift");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "Error deleting shift");
         }
     };
 
@@ -90,8 +88,8 @@ export default function ShiftsPage() {
             } else {
                 alert("حدث خطأ أثناء الحفظ");
             }
-        } catch (e) {
-            alert("Error saving shift");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "Error saving shift");
         } finally {
             setIsSubmitting(false);
         }

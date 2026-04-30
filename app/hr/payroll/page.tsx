@@ -5,8 +5,20 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Calendar, CheckCircle, Clock, Pencil, Trash2, Loader2 } from "lucide-react";
 
+interface PayrollRun {
+    id: string;
+    period_year: number;
+    period_month: number;
+    total_employees: number;
+    total_amount: number;
+    status: string;
+    currency: string;
+    created_by_name: string;
+    created_at: string;
+}
+
 export default function PayrollListPage() {
-    const [runs, setRuns] = useState<any[]>([]);
+    const [runs, setRuns] = useState<PayrollRun[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
@@ -91,7 +103,7 @@ export default function PayrollListPage() {
                             {loading ? (
                                 <tr><td colSpan={6} className="text-center py-8">جاري التحميل...</td></tr>
                             ) : runs.length > 0 ? (
-                                runs.map((run: any) => (
+                                runs.map((run) => (
                                     <tr key={run.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2 font-bold text-gray-900">
@@ -101,7 +113,7 @@ export default function PayrollListPage() {
                                         </td>
                                         <td className="px-6 py-4 text-center">{run.total_employees}</td>
                                         <td className="px-6 py-4 text-center font-mono font-bold text-green-700">
-                                            {Number(run.total_amount).toLocaleString('en-US')} SAR
+                                            {Number(run.total_amount).toLocaleString('en-US')} {run.currency || "SAR"}
                                         </td>
                                         <td className="px-6 py-4 text-center">
                                             {getStatusBadge(run.status)}

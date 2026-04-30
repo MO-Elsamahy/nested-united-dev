@@ -9,7 +9,6 @@ import {
     Receipt,
     User,
     LogOut,
-    Bell,
     MessageSquare,
     Trophy,
 } from "lucide-react";

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { usePermission } from "@/lib/hooks/usePermission";
+import { PlatformAccount } from "@/lib/types/database";
 
 export default function NewUnitPage() {
   const router = useRouter();
@@ -18,7 +19,7 @@ export default function NewUnitPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<PlatformAccount[]>([]);
   const [calendars, setCalendars] = useState<Array<{ platform: string; ical_url: string; is_primary: boolean; platform_account_id: string | null }>>([]);
 
   useEffect(() => {
@@ -58,8 +59,8 @@ export default function NewUnitPage() {
 
       router.push("/dashboard/units");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {
       setLoading(false);
     }

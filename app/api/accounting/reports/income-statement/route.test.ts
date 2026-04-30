@@ -3,7 +3,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 const mockQuery = vi.fn();
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
 }));
 
 vi.mock('next-auth', () => ({
@@ -21,7 +21,7 @@ describe('Income Statement Report', () => {
     beforeAll(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'user-123' },
-        } as any);
+        } as { user: { id: string } });
     });
 
     it('should generate income statement with revenue and expenses', async () => {

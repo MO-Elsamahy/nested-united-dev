@@ -58,7 +58,7 @@ export async function POST(
       [user.id, id]
     );
 
-    if ((result as any).affectedRows === 0) {
+    if (result.affectedRows === 0) {
       return NextResponse.json({ error: "تم قبول هذه التذكرة بالفعل من قبل عامل آخر" }, { status: 400 });
     }
 
@@ -99,7 +99,7 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }

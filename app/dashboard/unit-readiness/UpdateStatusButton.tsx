@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Edit } from "lucide-react";
 
+import { Unit } from "@/lib/types/pms";
+
 const STATUS_OPTIONS = [
   { value: "checkout_today", label: "خروج اليوم", icon: "📤" },
   { value: "checkin_today", label: "دخول اليوم", icon: "📥" },
@@ -15,11 +17,11 @@ const STATUS_OPTIONS = [
   { value: "booked", label: "إشغال", icon: "📅" },
 ];
 
-export function UpdateStatusButton({ unit, currentStatus }: { unit: any; currentStatus: string }) {
+export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; currentStatus: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const formatDateForInput = (dateObj: any) => {
+  const formatDateForInput = (dateObj: string | number | Date | null | undefined) => {
     if (!dateObj) return "";
     const d = new Date(dateObj);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

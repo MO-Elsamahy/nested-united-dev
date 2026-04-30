@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { query, execute, generateUUID, queryOne } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { AccountingMove } from "@/lib/types/accounting";
 
 // GET: List journal entries (moves) with filtering
 export async function GET(request: Request) {
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
     LEFT JOIN users u ON m.created_by = u.id
     WHERE m.deleted_at IS NULL
   `;
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     if (journalId) {
         sql += " AND m.journal_id = ?";
@@ -51,10 +52,10 @@ export async function GET(request: Request) {
     sql += " ORDER BY m.date DESC, m.created_at DESC LIMIT 100";
 
     try {
-        const moves = await query(sql, params);
+        const moves = await query<AccountingMove>(sql, params);
         return NextResponse.json(moves);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -78,8 +79,8 @@ export async function POST(request: Request) {
         }
 
         // Validate Balance (Debit == Credit)
-        const totalDebit = lines.reduce((sum: number, line: any) => sum + (Number(line.debit) || 0), 0);
-        const totalCredit = lines.reduce((sum: number, line: any) => sum + (Number(line.credit) || 0), 0);
+        const totalDebit = lines.reduce((sum: number, line: { debit: number | string, credit: number | string }) => sum + (Number(line.debit) || 0), 0);
+        const totalCredit = lines.reduce((sum: number, line: { debit: number | string, credit: number | string }) => sum + (Number(line.credit) || 0), 0);
 
         // Allow slight float precision difference
         if (Math.abs(totalDebit - totalCredit) > 0.01) {
@@ -127,9 +128,9 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id: moveId }, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error("Move creation error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -148,7 +149,7 @@ export async function DELETE(request: Request) {
         if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
         // Check if exists
-        const move = await queryOne("SELECT * FROM accounting_moves WHERE id = ?", [id]);
+        const move = await queryOne<AccountingMove>("SELECT * FROM accounting_moves WHERE id = ?", [id]);
         if (!move) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
         // Soft Delete
@@ -162,7 +163,7 @@ export async function DELETE(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Clock, LogIn, LogOut, CheckCircle } from "lucide-react";
 
@@ -20,7 +20,7 @@ export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButt
     const [punchMsg, setPunchMsg] = useState<string | null>(null);
 
     // Update time every second
-    useState(() => {
+    useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     });
@@ -53,7 +53,7 @@ export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButt
             } else {
                 alert(data.error || "حدث خطأ");
             }
-        } catch (error) {
+        } catch (_error) {
             alert("حدث خطأ في الاتصال");
         } finally {
             setLoading(false);

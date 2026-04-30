@@ -1,19 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { FileBarChart, Calendar, CheckCircle, XCircle } from "lucide-react";
 
-export default function BalanceSheetPage() {
-    const [asOfDate, setAsOfDate] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [data, setData] = useState<any>(null);
-    const [error, setError] = useState("");
+interface BalanceSheetAccount {
+    id: string;
+    code: string;
+    name: string;
+    balance: number;
+}
 
-    // Set default date to today
-    useEffect(() => {
-        const today = new Date().toISOString().split('T')[0];
-        setAsOfDate(today);
-    }, []);
+interface BalanceSheetData {
+    as_of_date: string;
+    assets: {
+        accounts: BalanceSheetAccount[];
+        total: number;
+    };
+    liabilities: {
+        accounts: BalanceSheetAccount[];
+        total: number;
+    };
+    equity: {
+        accounts: BalanceSheetAccount[];
+        retained_earnings: number;
+        total: number;
+    };
+    balance_check: {
+        is_balanced: boolean;
+        difference: number;
+    };
+}
+
+export default function BalanceSheetPage() {
+    // Set default date to today using a state initializer
+    const [asOfDate, setAsOfDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [loading, setLoading] = useState(false);
+    const [data, setData] = useState<BalanceSheetData | null>(null);
+    const [error, setError] = useState("");
 
     const handleGenerate = async () => {
         if (!asOfDate) {
@@ -36,8 +59,8 @@ export default function BalanceSheetPage() {
             } else {
                 setData(result);
             }
-        } catch (err: any) {
-            setError("An error occurred while generating the report");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "An error occurred while generating the report");
         } finally {
             setLoading(false);
         }
@@ -104,7 +127,7 @@ export default function BalanceSheetPage() {
                             </h3>
                             {data.assets.accounts.length > 0 ? (
                                 <div className="space-y-2">
-                                    {data.assets.accounts.map((acc: any) => (
+                                    {data.assets.accounts.map((acc) => (
                                         <div key={acc.id} className="flex justify-between items-center py-2">
                                             <span className="text-gray-700 text-sm">
                                                 {acc.code} - {acc.name}
@@ -135,7 +158,7 @@ export default function BalanceSheetPage() {
                                 </h3>
                                 {data.liabilities.accounts.length > 0 ? (
                                     <div className="space-y-2">
-                                        {data.liabilities.accounts.map((acc: any) => (
+                                        {data.liabilities.accounts.map((acc) => (
                                             <div key={acc.id} className="flex justify-between items-center py-2">
                                                 <span className="text-gray-700 text-sm">
                                                     {acc.code} - {acc.name}
@@ -163,7 +186,7 @@ export default function BalanceSheetPage() {
                                     حقوق الملكية (Equity)
                                 </h3>
                                 <div className="space-y-2">
-                                    {data.equity.accounts.map((acc: any) => (
+                                    {data.equity.accounts.map((acc) => (
                                         <div key={acc.id} className="flex justify-between items-center py-2">
                                             <span className="text-gray-700 text-sm">
                                                 {acc.code} - {acc.name}

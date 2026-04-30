@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Loader2, Plus, Trash2, Tag, Layers } from "lucide-react";
 
 interface Stage {
@@ -11,7 +11,7 @@ interface Stage {
     stage_order: number;
 }
 
-interface CRMTag {
+interface CrmTag {
     id: string;
     name: string;
     color: string;
@@ -21,18 +21,14 @@ interface CRMTag {
 export default function CRMSettingsPage() {
     const [loading, setLoading] = useState(true);
     const [stages, setStages] = useState<Stage[]>([]);
-    const [tags, setTags] = useState<CRMTag[]>([]);
+    const [tags, setTags] = useState<CrmTag[]>([]);
     const [activeTab, setActiveTab] = useState<'stages' | 'tags'>('stages');
 
     // New Stage Form
     const [newStage, setNewStage] = useState({ label: '', stage_key: '', color: 'bg-gray-100' });
     const [newTag, setNewTag] = useState({ name: '', color: 'bg-blue-100', text_color: 'text-blue-700' });
 
-    useEffect(() => {
-        fetchData();
-    }, []);
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [stagesRes, tagsRes] = await Promise.all([
@@ -43,13 +39,16 @@ export default function CRMSettingsPage() {
             const tagsData = await tagsRes.json();
             setStages(Array.isArray(stagesData) ? stagesData : []);
             setTags(Array.isArray(tagsData) ? tagsData : []);
-        } catch (e) {
-            console.error(e);
+        } catch (error: unknown) {
+            console.error(error);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
     const handleAddStage = async () => {
         if (!newStage.label || !newStage.stage_key) {
             alert("يرجى إدخال الاسم والمعرف");
@@ -69,8 +68,8 @@ export default function CRMSettingsPage() {
             } else {
                 alert('فشل إضافة المرحلة');
             }
-        } catch (e) {
-            alert('حدث خطأ');
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : 'حدث خطأ');
         }
     };
 
@@ -80,8 +79,8 @@ export default function CRMSettingsPage() {
         try {
             await fetch(`/api/crm/stages?id=${id}`, { method: 'DELETE' });
             fetchData();
-        } catch (e) {
-            alert('حدث خطأ');
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : 'حدث خطأ');
         }
     };
 
@@ -104,8 +103,8 @@ export default function CRMSettingsPage() {
             } else {
                 alert('فشل إضافة التصنيف');
             }
-        } catch (e) {
-            alert('حدث خطأ');
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : 'حدث خطأ');
         }
     };
 
@@ -115,8 +114,8 @@ export default function CRMSettingsPage() {
         try {
             await fetch(`/api/crm/tags?id=${id}`, { method: 'DELETE' });
             fetchData();
-        } catch (e) {
-            alert('حدث خطأ');
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : 'حدث خطأ');
         }
     };
 

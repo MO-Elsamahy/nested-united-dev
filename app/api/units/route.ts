@@ -3,31 +3,19 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
+import { Unit, UnitCalendar } from "@/lib/types/pms";
 
-interface UnitCalendar {
-  id: string;
-  platform: string;
-  ical_url: string;
-  is_primary: boolean | number;
-  platform_account_id: string | null;
-}
-
-interface PlatformAccount {
-  id: string;
-  account_name: string;
-  platform: string;
-}
 
 // GET all units
 export async function GET() {
   try {
     // Get all units
-    const units = await query(
+    const units = await query<Unit>(
       "SELECT * FROM units ORDER BY created_at DESC"
     );
 
     // Get calendars for each unit
-    for (const unit of units as any[]) {
+    for (const unit of units) {
       const calendars = await query<UnitCalendar>(
         `SELECT uc.id, uc.platform, uc.ical_url, uc.is_primary, uc.platform_account_id
          FROM unit_calendars uc
@@ -38,13 +26,13 @@ export async function GET() {
       // Get platform accounts for calendars
       for (const cal of calendars) {
         if (cal.platform_account_id) {
-          const account = await queryOne<PlatformAccount>(
+          const account = await queryOne<{ id: string; account_name: string; platform: string }>(
             "SELECT id, account_name, platform FROM platform_accounts WHERE id = ?",
             [cal.platform_account_id]
           );
-          (cal as any).platform_account = account;
+          cal.platform_account = account;
         } else {
-          (cal as any).platform_account = null;
+          cal.platform_account = null;
         }
         // Convert MySQL boolean
         cal.is_primary = cal.is_primary === 1 || cal.is_primary === true;
@@ -54,8 +42,8 @@ export async function GET() {
     }
 
     return NextResponse.json(units);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }
 
@@ -124,9 +112,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(unit, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
     // Rollback on error
     await execute("DELETE FROM units WHERE id = ?", [unitId]).catch(() => { });
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
   }
 }

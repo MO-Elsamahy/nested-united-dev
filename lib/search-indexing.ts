@@ -4,8 +4,7 @@ import {
     HR_NAV, 
     CRM_NAV, 
     SETTINGS_NAV,
-    NavSection,
-    NavItem
+    NavSection
 } from "./navigation-config";
 
 export interface SearchablePage {

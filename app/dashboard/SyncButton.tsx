@@ -4,10 +4,19 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
+interface SyncResult {
+  success: boolean;
+  status?: "success" | "partial" | "error";
+  message?: string;
+  duration?: string;
+  error?: string;
+  errors?: string[];
+}
+
 export function SyncButton() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<SyncResult | null>(null);
 
   const handleSync = async () => {
     setLoading(true);
@@ -18,7 +27,7 @@ export function SyncButton() {
       const data = await response.json();
       setResult(data);
       router.refresh();
-    } catch (error) {
+    } catch (_error) {
       setResult({ success: false, error: "حدث خطأ في الاتصال" });
     } finally {
       setLoading(false);

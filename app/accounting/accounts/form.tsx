@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { X, Save, AlertCircle } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
+import { AccountingAccount } from "@/lib/types/accounting";
 
 interface AccountFormProps {
     onClose: () => void;
     onSuccess: () => void;
-    account?: any; // If passed, it's edit mode
+    account?: AccountingAccount; // If passed, it's edit mode
 }
 
 export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
@@ -42,8 +43,8 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
             }
 
             onSuccess();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "فشل الحفظ");
         } finally {
             setLoading(false);
         }

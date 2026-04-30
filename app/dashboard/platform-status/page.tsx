@@ -2,7 +2,7 @@ import { query } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { redirect } from 'next/navigation';
-import StatusClient from './StatusClient';
+import StatusClient, { AccountStatus } from './StatusClient';
 
 export const metadata = {
     title: 'Platform Status | NestedUnited',
@@ -16,7 +16,7 @@ export default async function PlatformStatusPage() {
     }
 
     // Fetch account health data
-    const accounts = await query(`
+    const accounts = await query<AccountStatus>(`
     SELECT 
       ba.id, 
       ba.account_name, 

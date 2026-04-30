@@ -1,5 +1,5 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
+
 import { query } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { checkUserPermission } from "@/lib/permissions";
@@ -26,10 +26,13 @@ interface MaintenanceTicket {
   created_by_name: string | null;
   assigned_worker_name: string | null;
   assigned_worker_id: string | null;
+  unit?: { unit_name: string | null };
+  created_by_user?: { id: string; name: string | null };
+  assigned_worker?: { id: string; name: string | null } | null;
 }
 
 async function getTickets(): Promise<MaintenanceTicket[]> {
-  const tickets = await query<any>(
+  const tickets = await query<Record<string, unknown>>(
     `SELECT mt.*, 
             u.unit_name,
             creator.name as created_by_name,
@@ -43,10 +46,10 @@ async function getTickets(): Promise<MaintenanceTicket[]> {
   );
 
   return tickets.map((t) => ({
-    ...t,
-    unit: { unit_name: t.unit_name },
-    created_by_user: { id: t.created_by, name: t.created_by_name },
-    assigned_worker: t.assigned_worker_id ? { id: t.assigned_worker_id, name: t.assigned_worker_name } : null,
+    ...(t as unknown as MaintenanceTicket),
+    unit: { unit_name: t.unit_name as string | null },
+    created_by_user: { id: t.created_by as string, name: t.created_by_name as string | null },
+    assigned_worker: t.assigned_worker_id ? { id: t.assigned_worker_id as string, name: t.assigned_worker_name as string | null } : null,
   }));
 }
 
@@ -167,7 +170,7 @@ export default async function MaintenancePage() {
       {/* Tickets List */}
       {filteredTickets.length > 0 ? (
         <div className="bg-white rounded-lg shadow divide-y">
-          {filteredTickets.map((ticket: any) => (
+          {filteredTickets.map((ticket: MaintenanceTicket) => (
             <div key={ticket.id} className="p-4 hover:bg-gray-50">
               <div className="flex justify-between items-start">
                 <div className="flex-1">

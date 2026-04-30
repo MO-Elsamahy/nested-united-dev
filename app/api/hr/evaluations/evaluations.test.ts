@@ -19,10 +19,10 @@ const mockExecuteTransaction = vi.fn(async (callback) => {
 });
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
-    queryOne: (...args: any[]) => mockQueryOne(...args),
-    execute: (...args: any[]) => mockExecute(...args),
-    executeTransaction: (callback: any) => mockExecuteTransaction(callback),
+    query: (...args: unknown[]) => mockQuery(...args),
+    queryOne: (...args: unknown[]) => mockQueryOne(...args),
+    execute: (...args: unknown[]) => mockExecute(...args),
+    executeTransaction: (callback: (connection: { execute: typeof mockExecute }) => Promise<unknown>) => mockExecuteTransaction(callback),
     generateUUID: () => mockGenerateUUID(),
 }));
 
@@ -36,7 +36,7 @@ describe('Evaluations API', () => {
     beforeEach(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'admin-001' },
-        } as any);
+        } as { user: { id: string } });
     });
 
     afterEach(() => {

@@ -3,20 +3,14 @@
 import { useState, useEffect } from "react";
 import { Plus, Book, ArrowRight, Wallet, Building2, ShoppingCart, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { AccountingJournal } from "@/lib/types/accounting";
 import { JournalForm } from "./form";
 
-interface Journal {
-    id: string;
-    name: string;
-    code: string;
-    type: string;
-}
-
 export default function JournalsPage() {
-    const [journals, setJournals] = useState<Journal[]>([]);
+    const [journals, setJournals] = useState<AccountingJournal[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
-    const [editingJournal, setEditingJournal] = useState<Journal | null>(null);
+    const [editingJournal, setEditingJournal] = useState<AccountingJournal | null>(null);
 
     useEffect(() => {
         fetchJournals();
@@ -27,7 +21,7 @@ export default function JournalsPage() {
             setLoading(true);
             const res = await fetch("/api/accounting/journals");
             if (res.ok) setJournals(await res.json());
-        } catch (error) {
+        } catch (_error) {
         } finally {
             setLoading(false);
         }
@@ -42,7 +36,7 @@ export default function JournalsPage() {
             } else {
                 alert("فشل الحذف. قد لا تملك الصلاحيات الكافية.");
             }
-        } catch (error) {
+        } catch (_error) {
             alert("حدث خطأ في الاتصال");
         }
     };
@@ -136,7 +130,7 @@ export default function JournalsPage() {
 
             {showForm && (
                 <JournalForm
-                    journal={editingJournal}
+                    journal={editingJournal || undefined}
                     onClose={() => { setShowForm(false); setEditingJournal(null); }}
                     onSuccess={() => { setShowForm(false); setEditingJournal(null); fetchJournals(); }}
                 />

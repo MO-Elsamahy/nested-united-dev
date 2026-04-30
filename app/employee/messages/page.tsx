@@ -4,8 +4,18 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { MessageSquare, AlertTriangle, FileWarning, Eye, EyeOff, Loader2, ArrowRight } from "lucide-react";
 
+interface Message {
+    id: string;
+    title: string;
+    content: string;
+    message_type: "notice" | "warning" | "violation";
+    is_read: number;
+    created_at: string;
+    sender_name?: string;
+}
+
 export default function EmployeeMessagesPage() {
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchMessages = async () => {
@@ -22,10 +32,10 @@ export default function EmployeeMessagesPage() {
     };
 
     useEffect(() => {
-        fetchMessages();
+        void fetchMessages();
     }, []);
 
-    const markAsRead = async (id: string, currentlyRead: boolean) => {
+    const markAsRead = async (id: string, currentlyRead: boolean | number) => {
         if (currentlyRead) return;
 
         try {
@@ -37,7 +47,7 @@ export default function EmployeeMessagesPage() {
             if (res.ok) {
                 setMessages(prev => prev.map(m => m.id === id ? { ...m, is_read: 1 } : m));
             }
-        } catch (error) {
+        } catch (_error) {
             console.error("Failed to mark as read");
         }
     };

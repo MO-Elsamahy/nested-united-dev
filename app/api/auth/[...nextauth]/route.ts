@@ -1,7 +1,27 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { NextAuthOptions, DefaultSession, DefaultUser } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { queryOne } from "@/lib/db";
+
+declare module "next-auth" {
+    interface Session extends DefaultSession {
+        user: {
+            id: string;
+            role: string;
+        } & DefaultSession["user"]
+    }
+
+    interface User extends DefaultUser {
+        role: string;
+    }
+}
+
+declare module "next-auth/jwt" {
+    interface JWT {
+        id: string;
+        role: string;
+    }
+}
 
 interface DBUser {
     id: string;
@@ -79,14 +99,14 @@ export const authOptions: NextAuthOptions = {
         async jwt({ token, user }) {
             if (user) {
                 token.id = user.id;
-                token.role = (user as any).role;
+                token.role = user.role;
             }
             return token;
         },
         async session({ session, token }) {
             if (session.user) {
-                (session.user as any).id = token.id;
-                (session.user as any).role = token.role;
+                session.user.id = token.id as string;
+                session.user.role = token.role as string;
             }
             return session;
         },

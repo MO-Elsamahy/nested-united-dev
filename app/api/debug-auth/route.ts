@@ -6,7 +6,9 @@ import bcrypt from "bcryptjs";
 export async function GET() {
     try {
         // Get first user
-        const user = await queryOne<any>("SELECT id, email, password_hash, is_active FROM users LIMIT 1");
+        const user = await queryOne<{ id: string; email: string; password_hash: string; is_active: boolean }>(
+            "SELECT id, email, password_hash, is_active FROM users LIMIT 1"
+        );
 
         if (!user) {
             return NextResponse.json({ error: "No users found" }, { status: 404 });
@@ -37,7 +39,7 @@ export async function GET() {
             },
             expectedHash: expectedHash,
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
     }
 }

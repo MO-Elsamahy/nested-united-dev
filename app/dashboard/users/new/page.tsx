@@ -52,8 +52,8 @@ export default function NewUserPage() {
 
       router.push("/dashboard/users");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {
       setLoading(false);
     }

@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     WHERE m.state = 'posted'
   `;
 
-    const params: any[] = [];
+    const params: (string | number | boolean | null)[] = [];
 
     if (from) {
         sql += " AND m.date >= ?";
@@ -44,20 +44,13 @@ export async function GET(request: Request) {
   `;
 
     try {
-        const rows = await query(sql, params);
+        const rows = await query<{ total_debit: number; total_credit: number; type: string }>(sql, params);
 
         // Process rows to calculate net balance
-        const report = rows.map((row: any) => {
+        const report = rows.map((row) => {
             const debit = Number(row.total_debit) || 0;
             const credit = Number(row.total_credit) || 0;
-            let balance = debit - credit;
-
-            // Flip sign for naturally credit accounts (Liabilities, Income, Equity)
-            if (['liability_payable', 'liability_current', 'liability_long_term', 'equity', 'income'].includes(row.type)) {
-                // Usually displayed as Credit - Debit for these types, 
-                // BUT in standard Trial Balance visuals, we often keep Dr/Cr columns.
-                // Let's keep Dr/Cr columns and a Net Balance.
-            }
+            const balance = debit - credit;
 
             return {
                 ...row,
@@ -68,7 +61,7 @@ export async function GET(request: Request) {
         });
 
         return NextResponse.json(report);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

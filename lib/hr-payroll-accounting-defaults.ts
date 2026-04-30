@@ -7,8 +7,8 @@ export type PayrollAccountingIds = {
 };
 
 function unknownColumnError(err: unknown): boolean {
-    const msg = String((err as any)?.message || err || "");
-    const errno = (err as any)?.errno;
+    const msg = err instanceof Error ? err.message : String(err || "");
+    const errno = typeof err === "object" && err !== null ? (err as Record<string, unknown>).errno : undefined;
     return errno === 1054 || msg.includes("Unknown column") || msg.includes("deleted_at");
 }
 

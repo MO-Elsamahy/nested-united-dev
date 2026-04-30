@@ -9,9 +9,6 @@ import {
     Users,
     Clock,
     FileText,
-    AlertCircle,
-    CheckCircle,
-    XCircle,
     TrendingUp,
     Calendar,
     Megaphone,
@@ -40,7 +37,7 @@ async function getHRStats() {
     const activeEmployeesCount = employeeStats?.active || 0;
 
     // 2. سجلات الحضور الموجودة اليوم
-    const todaysRecords = await query<any>(
+    const todaysRecords = await query<{ status: string }>(
         `SELECT status FROM hr_attendance WHERE date = ?`,
         [today]
     );
@@ -63,7 +60,7 @@ async function getHRStats() {
 
     // حساب الحضور والتأخير من السجلات الفعلية
     if (todaysRecords) {
-        todaysRecords.forEach((rec: any) => {
+        todaysRecords.forEach((rec) => {
             if (rec.status === 'present') present++;
             if (rec.status === 'late') {
                 late++;
@@ -93,7 +90,7 @@ async function getHRStats() {
     );
 
     // أحدث الإعلانات
-    const announcements = await query<any>(
+    const announcements = await query<{ id: string, title: string, content: string, priority: string, is_pinned: boolean | number }>(
         `SELECT * FROM hr_announcements 
      WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > NOW())
      ORDER BY is_pinned DESC, published_at DESC LIMIT 3`
@@ -239,7 +236,7 @@ export default async function HRDashboardPage() {
 
                     {stats.announcements.length > 0 ? (
                         <div className="space-y-4">
-                            {stats.announcements.map((ann: any) => (
+                            {stats.announcements.map((ann) => (
                                 <div
                                     key={ann.id}
                                     className={`p-4 rounded-xl border-r-4 ${ann.priority === "urgent"

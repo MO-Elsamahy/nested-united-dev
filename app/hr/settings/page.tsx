@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Save, Loader2, Settings, DollarSign, Clock, FileText } from "lucide-react";
+import { Save, Loader2, DollarSign, Clock, FileText } from "lucide-react";
 
 export default function HRSettingsPage() {
     const [loading, setLoading] = useState(true);
@@ -28,8 +28,8 @@ export default function HRSettingsPage() {
         salary_payable_account_id: "",
     });
 
-    const [accounts, setAccounts] = useState<any[]>([]);
-    const [journals, setJournals] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<{ id: string, code: string, name: string }[]>([]);
+    const [journals, setJournals] = useState<{ id: string, code: string, name: string }[]>([]);
 
     useEffect(() => {
         Promise.all([
@@ -64,8 +64,8 @@ export default function HRSettingsPage() {
             } else {
                 alert(data?.error || "حدث خطأ أثناء الحفظ");
             }
-        } catch (error) {
-            alert("خطأ في الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "خطأ في الاتصال");
         } finally {
             setSaving(false);
         }

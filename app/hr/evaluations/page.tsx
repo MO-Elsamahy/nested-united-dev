@@ -1,17 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Plus, Search, Trophy, Settings, Loader2, Calendar, FileText, Download } from "lucide-react";
+import { Plus, Search, Trophy, Settings, Loader2, Calendar, FileText, } from "lucide-react";
+
+interface EvaluationListItem {
+    id: string;
+    employee_id: string;
+    employee_name: string;
+    job_title?: string;
+    department?: string;
+    eval_month: number;
+    eval_year: number;
+    template_name: string;
+    total_score: number;
+    max_possible_score: number;
+    percentage: string;
+    created_at: string;
+}
 
 export default function EvaluationsDashboard() {
-    const [evaluations, setEvaluations] = useState<any[]>([]);
+    const [evaluations, setEvaluations] = useState<EvaluationListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterMonth, setFilterMonth] = useState("");
     const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
     const [searchTerm, setSearchTerm] = useState("");
 
-    const fetchEvaluations = async () => {
+    const fetchEvaluations = useCallback(async () => {
         setLoading(true);
         try {
             const query = new URLSearchParams();
@@ -21,16 +36,16 @@ export default function EvaluationsDashboard() {
             const res = await fetch(`/api/hr/evaluations?${query.toString()}`);
             const data = await res.json();
             setEvaluations(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [filterMonth, filterYear]);
 
     useEffect(() => {
         fetchEvaluations();
-    }, [filterMonth, filterYear]);
+    }, [fetchEvaluations]);
 
     const filteredEvaluations = evaluations.filter(ev => 
         ev.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||

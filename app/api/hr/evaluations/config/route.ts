@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, execute, generateUUID, queryOne } from "@/lib/db";
+import { execute, generateUUID, queryOne } from "@/lib/db";
+import { EmployeeEvalConfig } from "@/lib/types/hr";
 
 // GET: Get template assigned to employee
 export async function GET(request: Request) {
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ error: "معرف الموظف مطلوب" }, { status: 400 });
         }
 
-        const config = await queryOne<any>(
+        const config = await queryOne<EmployeeEvalConfig>(
             `SELECT c.*, t.name as template_name
              FROM hr_employee_eval_config c
              JOIN hr_evaluation_templates t ON c.template_id = t.id
@@ -27,8 +28,8 @@ export async function GET(request: Request) {
         );
 
         return NextResponse.json(config || { error: "لم يتم تعيين قالب لهذا الموظف" });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
         }
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

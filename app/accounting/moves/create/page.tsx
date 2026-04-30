@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, ArrowRight, Save, AlertCircle, Paperclip, UploadCloud } from "lucide-react";
+import { Plus, Trash2, ArrowRight, AlertCircle, Paperclip, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -31,10 +31,10 @@ export default function CreateEntry() {
         { id: "2", account_id: "", partner_id: "", cost_center_id: "", name: "", debit: 0, credit: 0 },
     ]);
 
-    const [accounts, setAccounts] = useState<any[]>([]);
-    const [journals, setJournals] = useState<any[]>([]);
-    const [costCenters, setCostCenters] = useState<any[]>([]); // New Data
-    const [partners, setPartners] = useState<any[]>([]); // New Data
+    const [accounts, setAccounts] = useState<Array<{ id: string; name: string; code: string }>>([]);
+    const [journals, setJournals] = useState<Array<{ id: string; name: string }>>([]);
+    const [costCenters, setCostCenters] = useState<Array<{ id: string; name: string }>>([]);
+    const [partners, setPartners] = useState<Array<{ id: string; name: string }>>([]);
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -64,12 +64,12 @@ export default function CreateEntry() {
     const addLine = () => setLines([...lines, { id: Date.now().toString(), account_id: "", partner_id: "", cost_center_id: "", name: narration, debit: 0, credit: 0 }]);
     const removeLine = (id: string) => lines.length > 2 && setLines(lines.filter(l => l.id !== id));
 
-    const updateLine = (id: string, field: keyof JournalLine, val: any) => {
+    const updateLine = (id: string, field: keyof JournalLine, val: string | number) => {
         setLines(lines.map(l => {
             if (l.id !== id) return l;
-            if (field === "debit" && Number(val) > 0) return { ...l, [field]: val, credit: 0 };
-            if (field === "credit" && Number(val) > 0) return { ...l, [field]: val, debit: 0 };
-            return { ...l, [field]: val };
+            if (field === "debit" && Number(val) > 0) return { ...l, [field]: Number(val), credit: 0 };
+            if (field === "credit" && Number(val) > 0) return { ...l, [field]: Number(val), debit: 0 };
+            return { ...l, [field]: val } as JournalLine;
         }));
     };
 
@@ -96,7 +96,7 @@ export default function CreateEntry() {
                         // Creating a fallback/mock if local env doesn't support writing to public/uploads easily
                         // attachmentUrl = "/uploads/mock.pdf"; 
                     }
-                } catch (err) {
+                } catch (err: unknown) {
                     console.error("Upload Error", err);
                 }
             }
@@ -111,14 +111,15 @@ export default function CreateEntry() {
                     ref,
                     narration,
                     attachment_url: attachmentUrl,
-                    lines: lines.map(({ id, ...rest }) => rest)
+                    lines: lines.map(({ id: _id, ...rest }) => rest)
                 })
             });
 
             if (!res.ok) throw new Error("فشل الحفظ. تأكد من البيانات.");
             router.push(`/accounting/journals/${journalId}`);
-        } catch (e: any) {
-            setError(e.message || "حدث خطأ غير متوقع");
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "حدث خطأ غير متوقع";
+            setError(msg);
             setLoading(false);
         }
     };

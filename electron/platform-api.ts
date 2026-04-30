@@ -1,29 +1,13 @@
 import { session, net, BrowserWindow, app } from 'electron';
+import { BrowserAccountSession, SessionHealthResult } from './types';
 import * as path from 'path';
 import * as fs from 'fs';
 
 // ─────────────────────────────────────────────
-// Types
+// Session state
 // ─────────────────────────────────────────────
 
-export interface BrowserAccountSession {
-  id: string;
-  platform: 'airbnb' | 'gathern' | 'whatsapp';
-  accountName: string;
-  partition: string;
-  createdBy: string;
-  authToken?: string;
-  chatAuthToken?: string;
-  platformUserId?: string;
-  window?: BrowserWindow;
-}
-
 export const browserSessions: Map<string, BrowserAccountSession> = new Map();
-
-export interface SessionHealthResult {
-  healthy: boolean;
-  reason: string;
-}
 
 // ─────────────────────────────────────────────
 // Session persistence (file-based)
@@ -60,13 +44,13 @@ export function saveSessions() {
 // Cookie helpers
 // ─────────────────────────────────────────────
 
-const AIRBNB_COOKIE_DOMAINS   = ['.airbnb.com', 'www.airbnb.com', 'airbnb.com'];
-const GATHERN_COOKIE_DOMAINS  = ['.gathern.co', 'gathern.co', 'business.gathern.co', 'api.gathern.co', 'chatapi-prod.gathern.co'];
+const AIRBNB_COOKIE_DOMAINS = ['.airbnb.com', 'www.airbnb.com', 'airbnb.com'];
+const GATHERN_COOKIE_DOMAINS = ['.gathern.co', 'gathern.co', 'business.gathern.co', 'api.gathern.co', 'chatapi-prod.gathern.co'];
 
 export async function getCookiesForAccount(account: BrowserAccountSession): Promise<string> {
   const partitionName = account.partition.startsWith('persist:') ? account.partition : `persist:${account.partition}`;
   const ses = session.fromPartition(partitionName);
-  let cookies: Electron.Cookie[] = [];
+  const cookies: Electron.Cookie[] = [];
 
   const domains = account.platform === 'airbnb' ? AIRBNB_COOKIE_DOMAINS : GATHERN_COOKIE_DOMAINS;
   for (const domain of domains) {
@@ -98,44 +82,44 @@ const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
  *   - Cookies in the page context are always fresh
  *   - Some requests are blocked outside the page origin (CORS / ERR_BLOCKED_BY_CLIENT)
  */
-async function apiCall(
+async function apiCall<T = unknown>(
   url: string,
   cookieStr: string,
   extraHeaders: Record<string, string> = {},
   options: {
-    method?:      string;
-    body?:        string;
-    partition?:   string;
-    account?:     BrowserAccountSession;
+    method?: string;
+    body?: string;
+    partition?: string;
+    account?: BrowserAccountSession;
   } = {}
-): Promise<any> {
+): Promise<T> {
   const { method = 'GET', body, partition, account } = options;
 
   const headers: Record<string, string> = {
-    'Cookie':          cookieStr,
-    'User-Agent':      UA,
-    'Accept':          'application/json, text/plain, */*',
+    'Cookie': cookieStr,
+    'User-Agent': UA,
+    'Accept': 'application/json, text/plain, */*',
     'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8',
-    'sec-fetch-dest':  'empty',
-    'sec-fetch-mode':  'cors',
-    'sec-fetch-site':  'same-site',
+    'sec-fetch-dest': 'empty',
+    'sec-fetch-mode': 'cors',
+    'sec-fetch-site': 'same-site',
     ...extraHeaders,
   };
 
   // ── Try webview bridge first if window is open ────────────────────────────
   if (account?.window && !account.window.isDestroyed()) {
     try {
-      const result = await dispatchFetchViaBridge(account, url, { method, headers, body });
+      const result = await dispatchFetchViaBridge<T>(account, url, { method, headers, body });
       return result;
-    } catch (bridgeErr: any) {
-      console.warn(`[Platform API] Bridge failed (${bridgeErr.message}), falling back to net.fetch`);
+    } catch (bridgeErr) {
+      console.warn(`[Platform API] Bridge failed (${bridgeErr instanceof Error ? bridgeErr.message : bridgeErr}), falling back to net.fetch`);
     }
   }
 
   // ── Fallback: main-process net.fetch ──────────────────────────────────────
   const currentSession = partition ? session.fromPartition(partition) : null;
 
-  const fetchOptions: any = { method, headers, body };
+  const fetchOptions: RequestInit = { method, headers, body };
   const response = await (currentSession
     ? currentSession.fetch(url, fetchOptions)
     : net.fetch(url, fetchOptions));
@@ -144,17 +128,17 @@ async function apiCall(
     const err = await response.text().catch(() => '');
     throw new Error(`HTTP ${response.status}: ${err.substring(0, 120)}`);
   }
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
 // ─────────────────────────────────────────────
 // Webview fetch bridge (page-context execution)
 // ─────────────────────────────────────────────
 
-const pendingBridgeRequests = new Map<string, { resolve: (v: any) => void; reject: (e: any) => void }>();
+const pendingBridgeRequests = new Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
 
 /** Called from main.ts when `exec-fetch-response` IPC arrives */
-export function resolveBridgeResponse(response: { requestId: string; success: boolean; data?: any; error?: string }) {
+export function resolveBridgeResponse(response: { requestId: string; success: boolean; data?: unknown; error?: string }) {
   const pending = pendingBridgeRequests.get(response.requestId);
   if (!pending) return;
   pendingBridgeRequests.delete(response.requestId);
@@ -165,7 +149,7 @@ export function resolveBridgeResponse(response: { requestId: string; success: bo
   }
 }
 
-async function dispatchFetchViaBridge(account: BrowserAccountSession, url: string, options: any): Promise<any> {
+async function dispatchFetchViaBridge<T = unknown>(account: BrowserAccountSession, url: string, options: { method?: string; body?: string; headers?: Record<string, string> }): Promise<T> {
   if (!account.window || account.window.isDestroyed()) {
     throw new Error('Window not available for bridge');
   }
@@ -177,8 +161,8 @@ async function dispatchFetchViaBridge(account: BrowserAccountSession, url: strin
   // headers from the live session — injecting our own headers causes the
   // Airbnb GraphQL server to return a ValidationError.
   const bridgeOptions = {
-    method:  options.method || 'GET',
-    body:    options.body   || undefined,
+    method: options.method || 'GET',
+    body: options.body || undefined,
     // No headers — let the browser use the page's own headers
   };
 
@@ -189,8 +173,8 @@ async function dispatchFetchViaBridge(account: BrowserAccountSession, url: strin
     }, 15_000);
 
     pendingBridgeRequests.set(requestId, {
-      resolve: (v) => { clearTimeout(timeout); resolve(v); },
-      reject:  (e) => { clearTimeout(timeout); reject(e); },
+      resolve: (v) => { clearTimeout(timeout); resolve(v as T); },
+      reject: (e) => { clearTimeout(timeout); reject(e); },
     });
 
     account.window!.webContents.send('exec-fetch', { url, options: bridgeOptions, requestId });
@@ -211,7 +195,7 @@ async function navigateWindowToAirbnbThread(win: BrowserWindow, threadId: string
     const finish = () => {
       if (done) return;
       done = true;
-      try { win.webContents.removeListener('did-finish-load', onLoad); } catch {}
+      try { win.webContents.removeListener('did-finish-load', onLoad); } catch { }
       resolve();
     };
     const onLoad = () => finish();
@@ -398,7 +382,7 @@ async function sendAirbnbMessageViaComposer(
     })();
   `;
 
-  const result: any = await account.window.webContents.executeJavaScript(script, true);
+  const result = await account.window.webContents.executeJavaScript(script, true) as { ok: boolean; via?: string; error?: string; debug?: Record<string, unknown> };
   if (!result?.ok) {
     const dbg = result?.debug ? ` | debug=${JSON.stringify(result.debug)}` : '';
     throw new Error((result?.error || 'Failed to send via Airbnb composer') + dbg);
@@ -427,8 +411,8 @@ export async function checkSessionHealth(account: BrowserAccountSession): Promis
       return { healthy: true, reason: 'ok' };
     }
     return { healthy: true, reason: 'ok' };
-  } catch (e: any) {
-    return { healthy: false, reason: `exception: ${e.message}` };
+  } catch (e) {
+    return { healthy: false, reason: `exception: ${e instanceof Error ? e.message : e}` };
   }
 }
 
@@ -443,12 +427,12 @@ const AIRBNB_API_KEY = 'd306zoyjsyarp7ifhu67rjxn52tv0t20';
 // Minimal common headers for the net.fetch fallback path when sending a
 // message from outside the page context.
 const AIRBNB_COMMON_HEADERS = {
-  'Origin':                           'https://www.airbnb.com',
-  'Referer':                          'https://www.airbnb.com/hosting/inbox',
-  'x-airbnb-api-key':                 AIRBNB_API_KEY,
-  'x-airbnb-graphql-platform':        'web',
+  'Origin': 'https://www.airbnb.com',
+  'Referer': 'https://www.airbnb.com/hosting/inbox',
+  'x-airbnb-api-key': AIRBNB_API_KEY,
+  'x-airbnb-graphql-platform': 'web',
   'x-airbnb-graphql-platform-client': 'minimalist-niobe',
-  'Accept':                           'application/json',
+  'Accept': 'application/json',
 };
 
 // Message reads are captured via CDP (see electron/cdp-interceptor.ts).
@@ -460,18 +444,27 @@ const AIRBNB_COMMON_HEADERS = {
 //   then falls back to last raw_data in memory
 // ─────────────────────────────────────────────
 
+interface GathernThreadMeta {
+  unit_id: string | null;
+  chalet_id: string | null;
+}
+
+interface DbPool {
+  execute: (sql: string, params: unknown[]) => Promise<[unknown[], unknown]>;
+}
+
 async function getGathernThreadMeta(
   accountId: string,
   threadId: string,
-  pool: any
-): Promise<{ unit_id: string | null; chalet_id: string | null }> {
+  pool: DbPool
+): Promise<GathernThreadMeta> {
   try {
-    const [rows]: any = await pool.execute(
+    const [rows] = await pool.execute(
       `SELECT unit_id, chalet_id FROM platform_thread_metadata
        WHERE browser_account_id = ? AND thread_id = ?
        LIMIT 1`,
       [accountId, threadId]
-    );
+    ) as [GathernThreadMeta[], unknown];
     if (rows?.length && (rows[0].unit_id || rows[0].chalet_id)) {
       return { unit_id: rows[0].unit_id, chalet_id: rows[0].chalet_id || rows[0].unit_id };
     }
@@ -482,8 +475,8 @@ async function getGathernThreadMeta(
 }
 
 // Exported so polling-service can pass the pool
-export let _dbPool: any = null;
-export function setDbPool(pool: any) { _dbPool = pool; }
+export let _dbPool: DbPool | null = null;
+export function setDbPool(pool: DbPool) { _dbPool = pool; }
 
 // ─────────────────────────────────────────────
 // GATHERN — Send message
@@ -498,8 +491,10 @@ export async function sendGathernMessage(
   if (!chatToken) throw new Error('Chat token not found — please open Gathern window first');
 
   // Get unit_id from thread metadata
-  const meta = await getGathernThreadMeta(account.id, threadId, _dbPool);
-  const unitId   = meta.unit_id   ? Number(meta.unit_id)   : null;
+  const meta = _dbPool
+    ? await getGathernThreadMeta(account.id, threadId, _dbPool)
+    : { unit_id: null, chalet_id: null };
+  const unitId = meta.unit_id ? Number(meta.unit_id) : null;
   const chaletId = meta.chalet_id ? Number(meta.chalet_id) : null;
 
   if (!unitId) {
@@ -510,22 +505,22 @@ export async function sendGathernMessage(
 
   const url = 'https://chatapi-prod.gathern.co/v1/business/message/send';
   const payload = {
-    chat_uid:  threadId,
+    chat_uid: threadId,
     message,
-    type:      'text',
+    type: 'text',
     chat_type: 2,
-    unit_id:   unitId,
+    unit_id: unitId,
     chalet_id: chaletId || unitId,
-    unitId:    unitId,
+    unitId: unitId,
   };
 
   const fetchOptions = {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${chatToken}`,
-      'Content-Type':  'application/json',
-      'Origin':        'https://business.gathern.co',
-      'Referer':       `https://business.gathern.co/app/chat/${threadId}`,
+      'Content-Type': 'application/json',
+      'Origin': 'https://business.gathern.co',
+      'Referer': `https://business.gathern.co/app/chat/${threadId}`,
       'sec-fetch-dest': 'empty',
       'sec-fetch-mode': 'cors',
       'sec-fetch-site': 'same-site',
@@ -534,14 +529,14 @@ export async function sendGathernMessage(
   };
 
   // Prefer bridge (page-context) for Gathern because the API validates referrer
-  let res: any;
+  let res: unknown;
   if (account.window && !account.window.isDestroyed()) {
     res = await dispatchFetchViaBridge(account, url, fetchOptions);
   } else {
     const cookies = await getCookiesForAccount(account);
     res = await apiCall(url, cookies, {}, {
-      method:    'POST',
-      body:      JSON.stringify(payload),
+      method: 'POST',
+      body: JSON.stringify(payload),
       partition: account.partition,
       account,
     });
@@ -577,8 +572,8 @@ export async function sendAirbnbMessage(
     operationName: 'SendMessageThread',
     variables: {
       threadId: String(threadId),
-      message:  message.trim(),
-      type:     'TEXT',
+      message: message.trim(),
+      type: 'TEXT',
     },
     extensions: {
       persistedQuery: { version: 1, sha256Hash: AIRBNB_SEND_HASH },
@@ -594,13 +589,13 @@ export async function sendAirbnbMessage(
   try {
     const ok = await sendAirbnbMessageViaComposer(account, threadId, message);
     if (ok) return true;
-  } catch (uiErr: any) {
-    console.warn('[Airbnb] Composer send failed, trying API fallback:', uiErr.message);
+  } catch (uiErr) {
+    console.warn('[Airbnb] Composer send failed, trying API fallback:', uiErr instanceof Error ? uiErr.message : uiErr);
   }
 
   // Fallback 1: bridge API call (if composer path fails)
   try {
-    const res = await dispatchFetchViaBridge(account, url, {
+    const res = await dispatchFetchViaBridge<{ errors?: Array<{ message: string }> }>(account, url, {
       method: 'POST',
       headers,
       body: payload,
@@ -610,14 +605,14 @@ export async function sendAirbnbMessage(
       throw new Error(res.errors[0]?.message || 'Airbnb API error');
     }
     return true;
-  } catch (bridgeErr: any) {
-    console.warn('[Airbnb] Bridge send failed:', bridgeErr.message);
+  } catch (bridgeErr: unknown) {
+    console.warn('[Airbnb] Bridge send failed:', bridgeErr instanceof Error ? bridgeErr.message : String(bridgeErr));
   }
 
   // Fallback 2: direct net.fetch with cookies (may fail on CSRF/hash rotation)
-  const data = await apiCall(url, cookies, headers, {
-    method:    'POST',
-    body:      payload,
+  const data = await apiCall<{ errors?: Array<{ message: string }> }>(url, cookies, headers, {
+    method: 'POST',
+    body: payload,
     partition: account.partition,
     account,
   });
@@ -636,8 +631,8 @@ export async function sendAirbnbMessage(
 
 export async function sendPlatformMessage(
   accountId: string,
-  threadId:  string,
-  message:   string
+  threadId: string,
+  message: string
 ): Promise<boolean> {
   const account = browserSessions.get(accountId);
   if (!account) throw new Error('Account session not found in memory');

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne } from "@/lib/db";
+import { Evaluation, Employee, EvaluationScore } from "@/lib/types/hr";
 
 export async function GET(
     request: Request,
@@ -14,7 +15,7 @@ export async function GET(
     }
 
     try {
-        const evaluation = await queryOne<any>(
+        const evaluation = await queryOne<Evaluation>(
             `SELECT ev.*, e.full_name as employee_name, e.department, e.job_title, t.name as template_name, u.name as evaluator_name
              FROM hr_evaluations ev
              JOIN hr_employees e ON ev.employee_id = e.id
@@ -32,7 +33,7 @@ export async function GET(
         // The middleware or scope check from earlier ensures basic auth, but we enforce it here
         const isEmployeePortal = request.headers.get("referer")?.includes("/employee");
         if (isEmployeePortal) {
-            const currentEmployee = await queryOne<any>(
+            const currentEmployee = await queryOne<Employee>(
                 "SELECT id FROM hr_employees WHERE user_id = ?",
                 [session.user.id]
             );
@@ -41,7 +42,7 @@ export async function GET(
             }
         }
 
-        const scores = await query(
+        const scores = await query<EvaluationScore & { criterion_name: string; max_score: number; weight: number }>(
             `SELECT s.*, c.criterion_name, c.max_score, c.weight 
              FROM hr_evaluation_scores s
              JOIN hr_evaluation_criteria c ON s.criterion_id = c.id
@@ -51,7 +52,7 @@ export async function GET(
         );
 
         return NextResponse.json({ ...evaluation, scores });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

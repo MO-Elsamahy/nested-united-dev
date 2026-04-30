@@ -2,26 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { ArrowRight, Plus, FileText, CheckCircle, Clock, XCircle, Trash2 } from "lucide-react";
+import { ArrowRight, Plus, FileText, CheckCircle, Clock, Trash2 } from "lucide-react";
+import { AccountingMove } from "@/lib/types/accounting";
+import { useCallback } from "react";
 import Link from "next/link";
 
 export default function JournalEntriesPage() {
     const { id } = useParams();
-    const [moves, setMoves] = useState<any[]>([]);
+    const [moves, setMoves] = useState<AccountingMove[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (id) fetchMoves();
-    }, [id]);
-
-    async function fetchMoves() {
+    const fetchMoves = useCallback(async () => {
         try {
             const res = await fetch(`/api/accounting/moves?journal_id=${id}`);
             if (res.ok) setMoves(await res.json());
         } finally {
             setLoading(false);
         }
-    }
+    }, [id]);
+
+    useEffect(() => {
+        if (id) void fetchMoves();
+    }, [id, fetchMoves]);
 
     const getStatus = (state: string) => {
         if (state === "posted") return <span className="flex items-center gap-1 text-green-700 bg-green-100 px-2 py-1 rounded-full text-xs font-medium"><CheckCircle className="w-3 h-3" /> مرحّل</span>;

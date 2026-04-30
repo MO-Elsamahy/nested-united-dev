@@ -1,35 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowRight, Printer, Search } from "lucide-react";
+import { useState, useCallback } from "react";
+import { ArrowRight, Printer } from "lucide-react";
 import Link from "next/link";
 
+interface GLMove {
+    date: string;
+    ref: string;
+    line_name?: string;
+    move_narration: string;
+    partner_name?: string;
+    debit: number;
+    credit: number;
+    running_balance: number;
+}
+
+interface GLData {
+    opening_balance: number;
+    moves: GLMove[];
+}
+
 export default function PartnerLedgerPage() {
-    const [partners, setPartners] = useState<any[]>([]); // Need an API for this
     const [selectedPartner, setSelectedPartner] = useState("");
-    const [data, setData] = useState<any>(null);
-    const [loading, setLoading] = useState(false);
-    const [from, setFrom] = useState("");
-    const [to, setTo] = useState("");
-
-    // Temp mock for partners until creation UI exists
-    useEffect(() => {
-        // TODO: Fetch from /api/accounting/partners
-        // setPartners([{id: 'uuid', name: 'عميل افتراضي'}]);
-    }, []);
-
-    async function fetchReport() {
+    const [data, setData] = useState<GLData | null>(null);
+    const fetchReport = useCallback(async () => {
         if (!selectedPartner) return;
-        setLoading(true);
         try {
             const p = new URLSearchParams();
             p.set("partner_id", selectedPartner);
-            if (from) p.set("from", from);
-            if (to) p.set("to", to);
             const res = await fetch(`/api/accounting/reports/partner-ledger?${p}`);
-            if (res.ok) setData(await res.json());
-        } finally { setLoading(false); }
-    }
+            if (res.ok) setData(await res.json() as GLData);
+        } catch (e: unknown) {
+            console.error(e);
+        }
+    }, [selectedPartner]);
 
     return (
         <div className="space-y-6">
@@ -82,7 +86,7 @@ export default function PartnerLedgerPage() {
                                 <td colSpan={5} className="px-6 py-3 text-left">الرصيد الافتتاحي</td>
                                 <td className="px-6 py-3 dir-ltr">{Number(data.opening_balance).toLocaleString()}</td>
                             </tr>
-                            {data.moves.map((m: any, i: number) => (
+                            {data.moves.map((m: GLMove, i: number) => (
                                 <tr key={i}>
                                     <td className="px-6 py-3 whitespace-nowrap">{new Date(m.date).toLocaleDateString('en-CA')}</td>
                                     <td className="px-6 py-3">{m.ref}</td>

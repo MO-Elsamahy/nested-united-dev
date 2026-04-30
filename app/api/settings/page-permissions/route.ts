@@ -35,6 +35,20 @@ const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
     ],
 };
 
+interface UserRow {
+    id: string;
+    name: string | null;
+    email: string | null;
+    role: string;
+}
+
+interface PermissionRow {
+    user_id: string;
+    page_path: string;
+    can_view: number | boolean;
+    can_edit: number | boolean;
+}
+
 // GET: Fetch users with access to a system and their page permissions
 export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
@@ -63,25 +77,25 @@ export async function GET(request: Request) {
             ? `SELECT id, name, email, role FROM users WHERE role IN (${placeholders}) AND is_active = TRUE`
             : `SELECT id, name, email, role FROM users WHERE 1=0`; // No users if only super_admin
 
-        const users = placeholders ? await query<any>(usersQuery, allowedRoles.filter(r => r !== 'super_admin')) : [];
+        const users = placeholders ? await query<UserRow>(usersQuery, allowedRoles.filter(r => r !== 'super_admin')) : [];
 
         // Get their page permissions
-        const userIds = users.map((u: any) => u.id);
-        let permissions: any[] = [];
+        const userIds = users.map((u) => u.id);
+        let permissions: PermissionRow[] = [];
         if (userIds.length > 0) {
             const permPlaceholders = userIds.map(() => "?").join(",");
-            permissions = await query<any>(
+            permissions = await query<PermissionRow>(
                 `SELECT user_id, page_path, can_view, can_edit FROM user_permissions WHERE user_id IN (${permPlaceholders})`,
                 userIds
             );
         }
 
         // Build response
-        const usersWithPerms = users.map((user: any) => ({
+        const usersWithPerms = users.map((user) => ({
             ...user,
             permissions: permissions
-                .filter((p: any) => p.user_id === user.id)
-                .reduce((acc: any, p: any) => {
+                .filter((p) => p.user_id === user.id)
+                .reduce((acc: Record<string, { can_view: boolean; can_edit: boolean }>, p) => {
                     acc[p.page_path] = { can_view: Boolean(p.can_view), can_edit: Boolean(p.can_edit) };
                     return acc;
                 }, {}),
@@ -92,8 +106,8 @@ export async function GET(request: Request) {
             pages: SYSTEM_PAGES[systemId] || [],
             system: systemId,
         });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
 }
 
@@ -115,7 +129,7 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
 }

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { History, RefreshCw, ArrowRight } from "lucide-react";
+import { RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useCallback } from "react";
 
 interface AuditLog {
     id: string;
@@ -11,27 +11,26 @@ interface AuditLog {
     action: string;
     entity_type: string;
     entity_id: string;
-    details: any;
+    details: unknown;
     created_at: string;
 }
 
 export default function BacklogPage() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
 
-    useEffect(() => {
-        fetchLogs();
-    }, []);
-
-    async function fetchLogs() {
+    const fetchLogs = useCallback(async () => {
         try {
             const res = await fetch("/api/accounting/audit");
             if (res.ok) setLogs(await res.json());
         } finally {
             setLoading(false);
         }
-    }
+    }, []);
+
+    useEffect(() => {
+        void fetchLogs();
+    }, [fetchLogs]);
 
     async function handleRestore(type: string, id: string) {
         if (!confirm("هل أنت متأكد من استعادة هذا العنصر؟")) return;
@@ -43,7 +42,7 @@ export default function BacklogPage() {
             } else {
                 alert("فشل الاستعادة");
             }
-        } catch (e) {
+        } catch (_e) {
             alert("حدث خطأ");
         }
     }

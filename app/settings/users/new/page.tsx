@@ -46,8 +46,8 @@ export default function NewUserPage() {
 
             router.push("/settings/users");
             router.refresh();
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "حدث خطأ غير متوقع");
         } finally {
             setLoading(false);
         }

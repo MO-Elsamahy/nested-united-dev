@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   MessageSquare, RefreshCw, Send, Search,
-  CheckCircle2, Filter, X, Wifi, WifiOff, AlertCircle,
+  CheckCircle2, X, Wifi, WifiOff, AlertCircle,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -195,11 +195,11 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
 
   // Listen for Electron new-messages push event
   useEffect(() => {
-    const api = (window as any).electronAPI;
+    const api = (window as unknown as { electronAPI?: { onPlatformMessagesUpdated?: (h: () => void) => void; offPlatformMessagesUpdated?: (h: () => void) => void } }).electronAPI;
     if (!api) return;
     const handler = () => {
       fetchThreads(false);
-      if (activeThreadId) fetchHistory(activeThreadId);
+      if (activeThreadId) void fetchHistory(activeThreadId);
     };
     api.onPlatformMessagesUpdated?.(handler);
     return () => api.offPlatformMessagesUpdated?.(handler);
@@ -207,7 +207,7 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
 
   // Listen for session health changes from Electron
   useEffect(() => {
-    const api = (window as any).electronAPI;
+    const api = (window as unknown as { electronAPI?: { onSessionHealthChanged?: (h: (p: { accountId: string; healthy: boolean }) => void) => void; offSessionHealthChanged?: (h: (p: { accountId: string; healthy: boolean }) => void) => void } }).electronAPI;
     if (!api?.onSessionHealthChanged) return;
     const handler = ({ accountId, healthy }: { accountId: string; healthy: boolean }) => {
       setHealthMap(prev => {
@@ -261,13 +261,13 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
 
   const handleReply = async () => {
     if (!selectedThread || !replyText.trim()) return;
-    const api = (window as any).electronAPI;
+    const api = (window as unknown as { electronAPI?: { sendMessage: (p: { accountId: string; platform: string; threadId: string; text: string; metadata: Record<string, unknown> }) => Promise<{ success: boolean; error?: string }> } }).electronAPI;
     if (!api) return alert('الرجاء التشغيل عبر تطبيق Electron');
 
     setSendError(null);
 
     // Extract unit_id from raw_data if available (used by Gathern send)
-    let metadata: any = {};
+    const metadata: Record<string, unknown> = {};
     const lastMsgWithRaw = [...history].reverse().find(m => m.raw_data);
     if (lastMsgWithRaw?.raw_data) {
       try {
@@ -296,8 +296,8 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       } else {
         setSendError(res.error || 'فشل الإرسال');
       }
-    } catch (e: any) {
-      setSendError(e.message || 'فشل الإرسال');
+    } catch (e: unknown) {
+      setSendError(e instanceof Error ? e.message : 'فشل الإرسال');
     } finally {
       setIsSending(false);
     }

@@ -16,10 +16,10 @@ let uuidCounter = 0;
 const mockGenerateUUID = vi.fn(() => `uuid-${++uuidCounter}`);
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
-    queryOne: (...args: any[]) => mockQueryOne(...args),
-    execute: (...args: any[]) => mockExecute(...args),
-    executeTransaction: (...args: any[]) => mockExecuteTransaction(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
+    queryOne: (...args: unknown[]) => mockQueryOne(...args),
+    execute: (...args: unknown[]) => mockExecute(...args),
+    executeTransaction: (cb: (conn: { execute: typeof mockConnExecute }) => Promise<void>) => mockExecuteTransaction(cb),
     generateUUID: () => mockGenerateUUID(),
 }));
 
@@ -75,7 +75,7 @@ describe('HR Payroll Approval — Accounting Integration', () => {
     beforeAll(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'user-001', name: 'محمد' },
-        } as any);
+        } as { user: { id: string; name: string } });
     });
 
     beforeEach(() => {
@@ -317,7 +317,7 @@ describe('HR Payroll Approval — Accounting Integration', () => {
                 accounting_move_id: 'move-abc',
             })
         );
-        mockConnExecute.mockResolvedValue([{ affectedRows: 1 } as any, []]);
+        mockConnExecute.mockResolvedValue([{ affectedRows: 1 } as { affectedRows: number }, []]);
 
         const req = new Request('http://localhost/api/hr/payroll/payroll-001', {
             method: 'PUT',

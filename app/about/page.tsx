@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Globe, Code, Heart, ExternalLink, Mail, Linkedin, Facebook } from "lucide-react";
+import { Globe, Code, Heart, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function AboutPage() {
   const [logoError, setLogoError] = useState(false);
@@ -12,17 +13,19 @@ export default function AboutPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <div className="flex justify-center mb-6">
-            <div className="w-24 h-24 rounded-2xl overflow-hidden bg-white border-2 border-gray-200 shadow-lg flex items-center justify-center">
+            <div className="w-24 h-24 relative rounded-2xl overflow-hidden bg-white border-2 border-gray-200 shadow-lg flex items-center justify-center">
               {logoError ? (
                 <div className="bg-blue-600 text-white w-full h-full flex items-center justify-center font-bold text-2xl">
                   شعار
                 </div>
               ) : (
-                <img
+                <Image
                   src="/api/company/logo"
                   alt="شعار المنصة"
-                  className="w-full h-full object-contain"
+                  fill
+                  className="object-contain"
                   onError={() => setLogoError(true)}
+                  unoptimized
                 />
               )}
             </div>
@@ -54,8 +57,13 @@ export default function AboutPage() {
             </div>
 
             {/* MZ Logo */}
-            <div className="w-40 h-40 md:w-56 md:h-56 bg-gray-50 rounded-2xl flex items-center justify-center p-6 shadow-sm border border-gray-200 shrink-0 transform hover:scale-105 transition-transform duration-300">
-              <img src="/mz-logo.png" alt="MZ Logo" className="w-full h-full object-contain mix-blend-multiply" />
+            <div className="w-40 h-40 md:w-56 md:h-56 relative bg-gray-50 rounded-2xl flex items-center justify-center p-6 shadow-sm border border-gray-200 shrink-0 transform hover:scale-105 transition-transform duration-300">
+              <Image 
+                src="/mz-logo.png" 
+                alt="MZ Logo" 
+                fill
+                className="object-contain mix-blend-multiply" 
+              />
             </div>
           </div>
         </div>

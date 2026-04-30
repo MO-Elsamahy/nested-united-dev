@@ -25,7 +25,7 @@ import { POST, PUT } from "@/app/api/crm/deals/route";
 beforeAll(() => {
     vi.mocked(getServerSession).mockResolvedValue({
         user: { id: "user-001" },
-    } as never);
+    } as { user: { id: string } });
 });
 
 afterEach(() => {

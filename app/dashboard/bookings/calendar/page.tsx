@@ -9,7 +9,7 @@ async function getBookingsForMonth(year: number, month: number) {
 
   try {
     // Get bookings from bookings table
-    const bookings = await query<any>(
+    const bookings = await query<Record<string, unknown>>(
       `SELECT b.*, u.id as unit_id_ref, u.unit_name, u.unit_code 
        FROM bookings b 
        LEFT JOIN units u ON b.unit_id = u.id 
@@ -19,7 +19,7 @@ async function getBookingsForMonth(year: number, month: number) {
     );
 
     // Get reservations from iCal sync
-    const reservations = await query<any>(
+    const reservations = await query<Record<string, unknown>>(
       `SELECT r.*, u.id as unit_id_ref, u.unit_name, u.unit_code 
        FROM reservations r 
        LEFT JOIN units u ON r.unit_id = u.id 
@@ -30,22 +30,22 @@ async function getBookingsForMonth(year: number, month: number) {
 
     // Combine and format
     const allBookings = [
-      ...(bookings || []).map((b: any) => ({
-        id: b.id,
+      ...(bookings || []).map((b) => ({
+        id: b.id as string,
         type: "manual" as const,
-        guest_name: b.guest_name || "غير محدد",
-        checkin_date: typeof b.checkin_date === 'string' ? b.checkin_date : new Date(b.checkin_date).toISOString().split('T')[0],
-        checkout_date: typeof b.checkout_date === 'string' ? b.checkout_date : new Date(b.checkout_date).toISOString().split('T')[0],
-        unit: { id: b.unit_id_ref, unit_name: b.unit_name, unit_code: b.unit_code },
+        guest_name: (b.guest_name as string) || "غير محدد",
+        checkin_date: typeof b.checkin_date === 'string' ? b.checkin_date : new Date(b.checkin_date as string | number | Date).toISOString().split('T')[0],
+        checkout_date: typeof b.checkout_date === 'string' ? b.checkout_date : new Date(b.checkout_date as string | number | Date).toISOString().split('T')[0],
+        unit: { id: b.unit_id_ref as string, unit_name: b.unit_name as string, unit_code: b.unit_code as string },
         platform_account: null,
       })),
-      ...(reservations || []).map((r: any) => ({
-        id: r.id,
+      ...(reservations || []).map((r) => ({
+        id: r.id as string,
         type: "ical" as const,
-        guest_name: r.summary || "حجز من iCal",
-        checkin_date: typeof r.start_date === 'string' ? r.start_date : new Date(r.start_date).toISOString().split('T')[0],
-        checkout_date: typeof r.end_date === 'string' ? r.end_date : new Date(r.end_date).toISOString().split('T')[0],
-        unit: { id: r.unit_id_ref, unit_name: r.unit_name, unit_code: r.unit_code },
+        guest_name: (r.summary as string) || "حجز من iCal",
+        checkin_date: typeof r.start_date === 'string' ? r.start_date : new Date(r.start_date as string | number | Date).toISOString().split('T')[0],
+        checkout_date: typeof r.end_date === 'string' ? r.end_date : new Date(r.end_date as string | number | Date).toISOString().split('T')[0],
+        unit: { id: r.unit_id_ref as string, unit_name: r.unit_name as string, unit_code: r.unit_code as string },
         platform_account: null,
       })),
     ];

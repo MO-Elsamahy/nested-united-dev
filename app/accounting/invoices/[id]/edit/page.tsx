@@ -1,21 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { AccountingInvoice } from "@/lib/types/accounting";
 import { useParams } from "next/navigation";
 import { InvoiceForm } from "@/components/accounting/InvoiceForm";
 
 export default function EditInvoicePage() {
     const params = useParams();
-    const [invoice, setInvoice] = useState<any>(null);
+    const [invoice, setInvoice] = useState<AccountingInvoice | null>(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (params.id) {
-            fetchInvoice();
-        }
-    }, [params.id]);
-
-    async function fetchInvoice() {
+    const fetchInvoice = useCallback(async () => {
         try {
             const res = await fetch(`/api/accounting/invoices/${params.id}`);
             if (res.ok) {
@@ -24,7 +19,13 @@ export default function EditInvoicePage() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [params.id]);
+
+    useEffect(() => {
+        if (params.id) {
+            void fetchInvoice();
+        }
+    }, [params.id, fetchInvoice]);
 
     if (loading) {
         return <div className="p-8 text-center">جاري التحميل...</div>;

@@ -2,12 +2,32 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, User, Trophy, FileText, Download, Loader2, Star } from "lucide-react";
+import { ArrowRight, Trophy, FileText, Download, Loader2, Star } from "lucide-react";
 import { useParams } from "next/navigation";
+
+interface EvaluationScore {
+    id: string;
+    criterion_name: string;
+    score: string;
+    max_score: string;
+    comment: string | null;
+}
+
+interface Evaluation {
+    id: string;
+    eval_month: number;
+    eval_year: number;
+    template_name: string;
+    total_score: number;
+    max_possible_score: number;
+    percentage: string;
+    notes: string | null;
+    scores: EvaluationScore[];
+}
 
 export default function EmployeeViewEvaluationPage() {
     const params = useParams();
-    const [evaluation, setEvaluation] = useState<any>(null);
+    const [evaluation, setEvaluation] = useState<Evaluation | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -93,7 +113,7 @@ export default function EmployeeViewEvaluationPage() {
                             </div>
                             <h2 className="text-3xl font-black text-gray-900">{getScoreLabel(percentage)}</h2>
                             <p className="text-gray-500 max-w-md mx-auto md:mx-0">
-                                تم تقييمك بناءً على معايير "{evaluation.template_name}" المعتمدة في القسم.
+                                تم تقييمك بناءً على معايير &quot;{evaluation.template_name}&quot; المعتمدة في القسم.
                                 حصيلة نقاطك هي {evaluation.total_score} من إجمالي {evaluation.max_possible_score} نقطة.
                             </p>
                         </div>
@@ -122,7 +142,7 @@ export default function EmployeeViewEvaluationPage() {
                     </h3>
                 </div>
                 <div className="divide-y">
-                    {evaluation.scores?.map((s: any) => {
+                    {evaluation.scores?.map((s: EvaluationScore) => {
                         const sPerc = (parseFloat(s.score) / parseFloat(s.max_score)) * 100;
                         return (
                             <div key={s.id} className="p-6 hover:bg-gray-50/50 transition">
@@ -147,7 +167,7 @@ export default function EmployeeViewEvaluationPage() {
                                 {s.comment && (
                                     <div className="mt-4 bg-white border border-dashed border-gray-200 p-4 rounded-2xl text-sm text-gray-600 italic">
                                         <span className="font-bold text-gray-900 not-italic block mb-1">ملاحظة المقيم:</span>
-                                        "{s.comment}"
+                                        &quot;{s.comment}&quot;
                                     </div>
                                 )}
                             </div>

@@ -1,31 +1,43 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Search, MessageSquare, AlertTriangle, FileWarning, Eye, Trash2, EyeOff, Loader2 } from "lucide-react";
 
+interface HRMessage {
+    id: string;
+    title: string;
+    content: string;
+    message_type: "notice" | "warning" | "violation";
+    employee_name: string;
+    department?: string;
+    job_title?: string;
+    is_read: boolean | number;
+    created_at: string;
+}
+
 export default function HRMessagesPage() {
-    const [messages, setMessages] = useState<any[]>([]);
+    const [messages, setMessages] = useState<HRMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterType, setFilterType] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
 
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/hr/messages${filterType ? `?type=${filterType}` : ""}`);
             const data = await res.json();
             setMessages(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [filterType]);
 
     useEffect(() => {
         fetchMessages();
-    }, [filterType]);
+    }, [fetchMessages]);
 
     const handleDelete = async (id: string) => {
         if (!confirm("هل أنت متأكد من حذف هذه الرسالة نهائياً؟")) return;
@@ -37,8 +49,8 @@ export default function HRMessagesPage() {
             } else {
                 alert("حدث خطأ أثناء الحذف");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         }
     };
 

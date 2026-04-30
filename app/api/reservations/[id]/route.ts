@@ -28,15 +28,15 @@ export async function GET(
     }
 
     // Transform to expected format
-    const res = reservation as any;
+    const res = reservation as Record<string, unknown>;
     const transformed = {
       ...res,
       unit: { id: res.unit_id, unit_name: res.unit_name, platform_account_id: res.platform_account_id },
     };
 
     return NextResponse.json(transformed);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -66,8 +66,8 @@ export async function PUT(
     );
 
     return NextResponse.json(reservation);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -86,7 +86,7 @@ export async function DELETE(
   try {
     await execute("DELETE FROM reservations WHERE id = ?", [resolvedParams.id]);
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

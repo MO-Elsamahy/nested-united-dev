@@ -73,8 +73,8 @@ export async function GET(request: Request) {
 
         const customers = await query(sql, params);
         return NextResponse.json(customers);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
         // 2. Duplicate Check (by Phone)
         if (phone) {
             // Check for duplicate phone
-            const existing = await query<any[]>(
+            const existing = await query<Array<{ id: string; full_name: string; phone: string }>>(
                 "SELECT id, full_name, phone FROM customers WHERE phone = ?",
                 [phone]
             );
@@ -121,11 +121,11 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, id });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Handle unique constraint error specifically
-        if (error.code === 'ER_DUP_ENTRY') {
+        if (error && typeof error === "object" && "code" in error && error.code === "ER_DUP_ENTRY") {
             return NextResponse.json({ error: "Duplicate Entry: Phone number already exists" }, { status: 409 });
         }
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

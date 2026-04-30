@@ -8,15 +8,27 @@ export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { Plus, FileText, CheckCircle, XCircle, AlertCircle, Calendar, ArrowRight } from "lucide-react";
 
+interface EmployeeRequest {
+    id: string;
+    request_type: string;
+    start_date: string;
+    end_date: string | null;
+    status: string;
+    days_count: number;
+    reason: string | null;
+    created_at: string;
+    reviewer_notes: string | null;
+}
+
 async function getMyRequests(userId: string) {
-    const employee = await queryOne<any>(
+    const employee = await queryOne<{ id: string }>(
         "SELECT id FROM hr_employees WHERE user_id = ?",
         [userId]
     );
 
     if (!employee) return [];
 
-    const requests = await query<any>(
+    const requests = await query<EmployeeRequest>(
         `SELECT * FROM hr_requests WHERE employee_id = ? ORDER BY created_at DESC`,
         [employee.id]
     );
@@ -79,7 +91,7 @@ export default async function EmployeeRequestsPage() {
             <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
                 {requests.length > 0 ? (
                     <div className="divide-y">
-                        {requests.map((req: any) => (
+                        {requests.map((req: EmployeeRequest) => (
                             <div key={req.id} className="p-6 hover:bg-gray-50 transition">
                                 <div className="flex items-start justify-between">
                                     <div className="flex gap-4">

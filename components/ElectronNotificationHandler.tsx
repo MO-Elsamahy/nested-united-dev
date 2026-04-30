@@ -6,7 +6,7 @@ import { Bell, X } from "lucide-react";
 interface NotificationData {
   accountId: string;
   accountName: string;
-  platform: "airbnb" | "gathern" | "zomrahub";
+  platform: string;
   count: number;
 }
 
@@ -17,6 +17,41 @@ interface ToastNotification extends NotificationData {
 
 export function ElectronNotificationHandler() {
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
+
+  const playNotificationSound = () => {
+    try {
+      // Create a notification sound using Web Audio API
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audioContext = new AudioContextClass();
+
+      // First beep (higher pitch)
+      const oscillator1 = audioContext.createOscillator();
+      const gainNode1 = audioContext.createGain();
+      oscillator1.connect(gainNode1);
+      gainNode1.connect(audioContext.destination);
+      oscillator1.frequency.value = 800;
+      oscillator1.type = 'sine';
+      gainNode1.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+      oscillator1.start(audioContext.currentTime);
+      oscillator1.stop(audioContext.currentTime + 0.1);
+
+      // Second beep (lower pitch) - delayed
+      const oscillator2 = audioContext.createOscillator();
+      const gainNode2 = audioContext.createGain();
+      oscillator2.connect(gainNode2);
+      gainNode2.connect(audioContext.destination);
+      oscillator2.frequency.value = 600;
+      oscillator2.type = 'sine';
+      gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime + 0.15);
+      gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+      oscillator2.start(audioContext.currentTime + 0.15);
+      oscillator2.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+      console.error("Failed to play notification sound:", error);
+    }
+  };
 
   useEffect(() => {
     // Check if running in Electron
@@ -90,39 +125,6 @@ export function ElectronNotificationHandler() {
       console.log("[Dashboard] Not running in Electron, notification listener disabled");
     }
   }, []);
-
-  const playNotificationSound = () => {
-    try {
-      // Create a notification sound using Web Audio API
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-
-      // First beep (higher pitch)
-      const oscillator1 = audioContext.createOscillator();
-      const gainNode1 = audioContext.createGain();
-      oscillator1.connect(gainNode1);
-      gainNode1.connect(audioContext.destination);
-      oscillator1.frequency.value = 800;
-      oscillator1.type = 'sine';
-      gainNode1.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-      oscillator1.start(audioContext.currentTime);
-      oscillator1.stop(audioContext.currentTime + 0.1);
-
-      // Second beep (lower pitch) - delayed
-      const oscillator2 = audioContext.createOscillator();
-      const gainNode2 = audioContext.createGain();
-      oscillator2.connect(gainNode2);
-      gainNode2.connect(audioContext.destination);
-      oscillator2.frequency.value = 600;
-      oscillator2.type = 'sine';
-      gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime + 0.15);
-      gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-      oscillator2.start(audioContext.currentTime + 0.15);
-      oscillator2.stop(audioContext.currentTime + 0.3);
-    } catch (error) {
-      console.error("Failed to play notification sound:", error);
-    }
-  };
 
   const removeNotification = (id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));

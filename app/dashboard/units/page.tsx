@@ -5,6 +5,7 @@ import { checkUserPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
 import { Building2, MapPin, Users } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { UnitsPageClient } from "./UnitsPageClient";
 import { UnitsDeleteButton } from "./UnitsDeleteButton";
 import { UnitsFilter } from "./UnitsFilter";
@@ -29,7 +30,7 @@ interface Unit {
 
 async function getUnits(): Promise<Unit[]> {
   // Get all units
-  const units = await query<any>(
+  const units = await query<Unit>(
     "SELECT * FROM units ORDER BY created_at DESC"
   );
 
@@ -165,9 +166,11 @@ export default async function UnitsPage({
                       className="h-6 px-1.5 bg-white border border-gray-200 rounded flex items-center justify-center shadow-sm"
                       title={`${cal.platform} ${cal.is_primary ? '(رئيسي)' : ''}`}
                     >
-                      <img
+                      <Image
                         src={`/images/platforms/${cal.platform}.svg`}
                         alt={cal.platform}
+                        width={40}
+                        height={14}
                         className="h-3.5 w-auto max-w-[40px] object-contain"
                       />
                       {cal.is_primary && <span className="text-[10px] mr-1">⭐</span>}

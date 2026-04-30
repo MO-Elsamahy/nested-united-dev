@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -11,15 +11,21 @@ import {
     User,
     Briefcase,
     DollarSign,
-    Building,
     CreditCard,
     Trash2,
 } from "lucide-react";
 
-interface User {
+interface AuthUser {
     id: string;
     name: string;
     email: string;
+}
+
+interface Shift {
+    id: string;
+    name: string;
+    start_time: string;
+    end_time: string;
 }
 
 export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
@@ -28,8 +34,8 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
     const isSuperAdmin = session?.user && (session.user as { role?: string }).role === "super_admin";
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [users, setUsers] = useState<User[]>([]);
-    const [shifts, setShifts] = useState<any[]>([]);
+    const [users, setUsers] = useState<AuthUser[]>([]);
+    const [shifts, setShifts] = useState<Shift[]>([]);
     const [formData, setFormData] = useState({
         user_id: "",
         shift_id: "",
@@ -52,17 +58,11 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         iban: "",
         status: "active",
         exclude_from_payroll: false,
+        salary_currency: "SAR",
     });
     const [id, setId] = useState<string>("");
 
-    useEffect(() => {
-        params.then(p => {
-            setId(p.id);
-            fetchData(p.id);
-        });
-    }, []);
-
-    const fetchData = async (empId: string) => {
+    const fetchData = useCallback(async (empId: string) => {
         try {
             const [empRes, usersRes, shiftsRes] = await Promise.all([
                 fetch(`/api/hr/employees/${empId}`),
@@ -89,12 +89,21 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                 const shiftsData = await shiftsRes.json();
                 setShifts(Array.isArray(shiftsData) ? shiftsData : []);
             }
-        } catch (error) {
-            console.error(error);
+        } catch (_error) {
+            console.error(_error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [router]);
+
+    useEffect(() => {
+        const init = async () => {
+            const p = await params;
+            setId(p.id);
+            void fetchData(p.id);
+        };
+        void init();
+    }, [params, fetchData]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -114,8 +123,8 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                 const data = await response.json();
                 alert(data.error || "حدث خطأ");
             }
-        } catch (error) {
-            alert("حدث خطأ في الاتصال");
+        } catch (_error) {
+            alert(_error instanceof Error ? _error.message : "حدث خطأ في الاتصال");
         } finally {
             setSaving(false);
         }
@@ -137,8 +146,8 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
             } else {
                 alert(data.error || "تعذر تنفيذ الطلب");
             }
-        } catch {
-            alert("خطأ في الاتصال");
+        } catch (_error) {
+            alert(_error instanceof Error ? _error.message : "خطأ في الاتصال");
         }
     };
 
@@ -162,8 +171,8 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
             } else {
                 alert(data.error || "تعذر الحذف النهائي");
             }
-        } catch {
-            alert("خطأ في الاتصال");
+        } catch (_error) {
+            alert(_error instanceof Error ? _error.message : "خطأ في الاتصال");
         }
     };
 
@@ -444,6 +453,21 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
+                                العملة
+                            </label>
+                            <select
+                                name="salary_currency"
+                                value={formData.salary_currency || "SAR"}
+                                onChange={handleChange}
+                                className="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500 bg-white"
+                            >
+                                <option value="SAR">ريال سعودي (SAR)</option>
+                                <option value="EGP">جنيه مصري (EGP)</option>
+                                <option value="USD">دولار أمريكي (USD)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
                                 بدل السكن
                             </label>
                             <input
@@ -486,7 +510,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                     <div className="mt-4 p-4 bg-gray-50 rounded-xl flex items-center justify-between">
                         <span className="text-gray-600">إجمالي الراتب الشهري:</span>
                         <span className="text-2xl font-bold text-green-600">
-                            {totalSalary.toLocaleString()} ر.س
+                            {totalSalary.toLocaleString()} {formData.salary_currency || "SAR"}
                         </span>
                     </div>
 

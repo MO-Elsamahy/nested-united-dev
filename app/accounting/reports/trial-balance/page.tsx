@@ -1,27 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ArrowRight, Printer, Filter } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ArrowRight, Printer } from "lucide-react";
 import Link from "next/link";
 
+interface TrialBalanceRow {
+    id: string;
+    code: string;
+    name: string;
+    total_debit: number;
+    total_credit: number;
+    balance: number;
+}
+
 export default function TrialBalancePage() {
-    const [data, setData] = useState<any[]>([]);
+    const [data, setData] = useState<TrialBalanceRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [from, setFrom] = useState("");
     const [to, setTo] = useState("");
 
-    useEffect(() => { fetchReport(); }, []);
-
-    async function fetchReport() {
+    const fetchReport = useCallback(async () => {
         setLoading(true);
         try {
             const p = new URLSearchParams();
             if (from) p.set("from", from);
             if (to) p.set("to", to);
             const res = await fetch(`/api/accounting/reports/trial-balance?${p}`);
-            if (res.ok) setData(await res.json());
+            if (res.ok) {
+                const json = await res.json() as TrialBalanceRow[];
+                setData(Array.isArray(json) ? json : []);
+            }
+        } catch (e: unknown) {
+            console.error(e);
         } finally { setLoading(false); }
-    }
+    }, [from, to]);
+
+    useEffect(() => { void fetchReport(); }, [fetchReport]);
 
     const totalDebit = data.reduce((sum, r) => sum + r.total_debit, 0);
     const totalCredit = data.reduce((sum, r) => sum + r.total_credit, 0);

@@ -7,12 +7,16 @@ import {
     ArrowRight, User, DollarSign, Calendar, Flag,
     Clock, Phone, Mail, FileText, Edit3, Loader2,
     CheckCircle2, XCircle, Handshake, CreditCard, PackageCheck,
-    BadgeCheck, MessagesSquare, AlertTriangle, History,
-    MessageSquare, PhoneCall, CalendarDays, MailIcon, RefreshCw,
+    BadgeCheck, MessagesSquare, History,
+    PhoneCall, CalendarDays, MailIcon, RefreshCw,
     StickyNote, Activity, Trash2, Archive, RotateCcw
 } from "lucide-react";
 
-const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
+import type { CrmDeal, CrmActivity } from "@/lib/types/crm";
+
+import type { LucideIcon } from "lucide-react";
+
+const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: LucideIcon }> = {
     new: { label: 'جديد', color: 'text-slate-700', bg: 'bg-slate-100', icon: Clock },
     contacting: { label: 'جاري التواصل', color: 'text-blue-700', bg: 'bg-blue-100', icon: Phone },
     qualified: { label: 'مؤهل', color: 'text-cyan-700', bg: 'bg-cyan-100', icon: BadgeCheck },
@@ -30,7 +34,7 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string
     low: { label: 'منخفضة', color: 'text-green-700', bg: 'bg-green-100' },
 };
 
-const ACTIVITY_ICONS: Record<string, any> = {
+const ACTIVITY_ICONS: Record<string, LucideIcon> = {
     status_change: RefreshCw,
     note: StickyNote,
     call: PhoneCall,
@@ -96,8 +100,8 @@ export default function DealDetailPage() {
     const id = params.id as string;
 
     const [loading, setLoading] = useState(true);
-    const [deal, setDeal] = useState<any>(null);
-    const [activities, setActivities] = useState<any[]>([]);
+    const [deal, setDeal] = useState<CrmDeal | null>(null);
+    const [activities, setActivities] = useState<CrmActivity[]>([]);
     const [error, setError] = useState("");
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -190,7 +194,7 @@ export default function DealDetailPage() {
     }
 
     const stage = STAGE_CONFIG[deal.stage] || STAGE_CONFIG.new;
-    const priority = PRIORITY_CONFIG[deal.priority] || PRIORITY_CONFIG.medium;
+    const priority = PRIORITY_CONFIG[deal.priority || "medium"] || PRIORITY_CONFIG.medium;
     const StageIcon = stage.icon;
 
     return (

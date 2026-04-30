@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
   turbopack: {},
 
   // Silence invalid source map warnings coming from some dependencies
-  webpack(config, { dev, isServer }) {
+  webpack(config, { dev, isServer: _isServer }) {
     // Ignore noisy sourcemap parse warnings
     config.ignoreWarnings = config.ignoreWarnings || [];
     config.ignoreWarnings.push(/Invalid source map/i, /sourceMapURL could not be parsed/i, /Failed to parse source map/i);

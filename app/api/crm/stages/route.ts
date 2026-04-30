@@ -5,9 +5,9 @@ import { query, execute } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
 
-function assertCrmSettingsRole(session: { user: unknown } | null) {
+function assertCrmSettingsRole(session: { user: { role?: string } } | null) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const role = (session.user as { role?: string }).role;
+    const role = session.user.role;
     if (!canAccessCrmReportsAndSettings(role)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -15,7 +15,7 @@ function assertCrmSettingsRole(session: { user: unknown } | null) {
 }
 
 // GET: List custom stages
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     const session = await getServerSession(authOptions);
     const denied = assertCrmSettingsRole(session);
     if (denied) return denied;
@@ -23,8 +23,8 @@ export async function GET(request: Request) {
     try {
         const stages = await query("SELECT * FROM crm_custom_stages WHERE is_active = 1 ORDER BY stage_order");
         return NextResponse.json(stages);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -49,8 +49,8 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -74,8 +74,8 @@ export async function PUT(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -96,7 +96,7 @@ export async function DELETE(request: Request) {
         // Soft delete
         await execute("UPDATE crm_custom_stages SET is_active = 0 WHERE id = ?", [id]);
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

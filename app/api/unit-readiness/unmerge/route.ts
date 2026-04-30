@@ -33,10 +33,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/unit-readiness/unmerge:", error);
     return NextResponse.json(
-      { error: error?.message || "Unexpected error unmerging units" },
+      { error: error instanceof Error ? error.message : "Unexpected error unmerging units" },
       { status: 500 }
     );
   }

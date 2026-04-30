@@ -9,6 +9,14 @@ import Link from "next/link";
 import { SyncStatus } from "@/components/SyncStatus";
 import { checkUserPermission } from "@/lib/permissions";
 
+interface SyncLog {
+  run_at: string;
+  status: "success" | "partial" | "failed";
+  message: string;
+  units_processed: number;
+  errors_count: number;
+}
+
 async function getDashboardStats() {
   const today = new Date().toISOString().split("T")[0];
 
@@ -62,7 +70,7 @@ async function getDashboardStats() {
   const openTickets = openTicketsResult?.count || 0;
 
   // Last sync
-  const lastSync = await queryOne(
+  const lastSync = await queryOne<SyncLog>(
     "SELECT * FROM sync_logs ORDER BY run_at DESC LIMIT 1"
   );
 
@@ -77,7 +85,7 @@ async function getDashboardStats() {
     bookedToday: uniqueUnitsToday,
     upcomingCheckIns,
     openTickets,
-    lastSync,
+    lastSync: lastSync || null,
     calendarsCount,
   };
 }

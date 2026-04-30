@@ -88,8 +88,8 @@ export function MergeUnitsPageClient({ units }: { units: UnitOption[] }) {
         router.push("/dashboard/unit-readiness");
         router.refresh();
       }, 1200);
-    } catch (err: any) {
-      setError(err.message || "فشل دمج الوحدات");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "فشل دمج الوحدات");
     } finally {
       setIsSubmitting(false);
     }
@@ -158,8 +158,8 @@ export function MergeUnitsPageClient({ units }: { units: UnitOption[] }) {
                         }
                         setSuccess("تم فك دمج المجموعة بنجاح");
                         router.refresh();
-                      } catch (err: any) {
-                        setError(err.message || "فشل فك دمج المجموعة");
+                      } catch (err: unknown) {
+                        setError(err instanceof Error ? err.message : "فشل فك دمج المجموعة");
                       } finally {
                         setIsSubmitting(false);
                       }
@@ -206,8 +206,8 @@ export function MergeUnitsPageClient({ units }: { units: UnitOption[] }) {
                             }
                             setSuccess("تم فك دمج الوحدة من المجموعة");
                             router.refresh();
-                          } catch (err: any) {
-                            setError(err.message || "فشل فك دمج الوحدة");
+                          } catch (err: unknown) {
+                            setError(err instanceof Error ? err.message : "فشل فك دمج الوحدة");
                           } finally {
                             setIsSubmitting(false);
                           }

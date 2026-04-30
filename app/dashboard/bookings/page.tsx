@@ -1,7 +1,7 @@
 import { query } from "@/lib/db";
 import Link from "next/link";
 import { Plus, Download, Calendar } from "lucide-react";
-import { PlatformExtended } from "@/lib/types/database";
+
 import { BookingsView } from "./BookingsView";
 import { BookingsPageClient } from "./BookingsPageClient";
 import { BookingsFilter } from "./BookingsFilter";
@@ -10,17 +10,80 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { queryOne } from "@/lib/db";
 
+interface AccountFilter {
+  id: string;
+  account_name: string;
+  platform: string;
+}
+
+interface UnitFilter {
+  id: string;
+  unit_name: string;
+  unit_code: string | null;
+}
+
 async function getFilters() {
   try {
     const [accounts, units] = await Promise.all([
-      query<any>("SELECT id, account_name, platform FROM platform_accounts ORDER BY account_name"),
-      query<any>("SELECT id, unit_name, unit_code FROM units ORDER BY unit_name"),
+      query<AccountFilter>("SELECT id, account_name, platform FROM platform_accounts ORDER BY account_name"),
+      query<UnitFilter>("SELECT id, unit_name, unit_code FROM units ORDER BY unit_name"),
     ]);
     return { accounts: accounts || [], units: units || [] };
-  } catch (error) {
-    console.error("[Bookings] Error fetching filters:", error);
+  } catch (error: unknown) {
+    console.error("[Bookings] Error fetching filters:", error instanceof Error ? error.message : String(error));
     return { accounts: [], units: [] };
   }
+}
+
+interface BookingRow {
+  id: string;
+  guest_name: string;
+  phone: string | null;
+  checkin_date: string;
+  checkout_date: string;
+  amount: number | null;
+  currency: string | null;
+  platform: string | null;
+  platform_account_id: string | null;
+  account_name: string | null;
+  notes: string | null;
+  unit_id_ref: string | null;
+  unit_name: string | null;
+  unit_code: string | null;
+}
+
+interface ReservationRow {
+  id: string;
+  summary: string | null;
+  start_date: string;
+  end_date: string;
+  platform: string | null;
+  platform_account_id: string | null;
+  account_name: string | null;
+  description: string | null;
+  unit_id_ref: string | null;
+  unit_name: string | null;
+  unit_code: string | null;
+}
+
+interface UnifiedBooking {
+  id: string;
+  type: "manual" | "ical";
+  guest_name: string;
+  phone: string | null;
+  checkin_date: string;
+  checkout_date: string;
+  amount: number | null;
+  currency: string | null;
+  platform: string | null;
+  platform_account_id: string | null;
+  platform_account: {
+    id: string;
+    account_name: string;
+    platform: string;
+  } | null;
+  notes: string | null;
+  unit: { id: string; unit_name: string; unit_code: string | null } | null;
 }
 
 async function getBookings(searchParams?: {
@@ -47,7 +110,7 @@ async function getBookings(searchParams?: {
       LEFT JOIN platform_accounts pa ON b.platform_account_id = pa.id
       WHERE 1=1
     `;
-    const bookingsParams: any[] = [];
+    const bookingsParams: string[] = [];
 
     // Platform accounts filter
     if (filters.platform_account_id) {
@@ -108,7 +171,7 @@ async function getBookings(searchParams?: {
 
     bookingsSql += " ORDER BY b.checkin_date DESC";
 
-    const bookingsData = await query<any>(bookingsSql, bookingsParams);
+    const bookingsRows = await query<BookingRow>(bookingsSql, bookingsParams);
 
     // Build reservations query
     let resSql = `
@@ -118,7 +181,7 @@ async function getBookings(searchParams?: {
       LEFT JOIN platform_accounts pa ON r.platform_account_id = pa.id
       WHERE 1=1
     `;
-    const resParams: any[] = [];
+    const resParams: string[] = [];
 
     // Unit filter for reservations
     if (filters.unit_id) {
@@ -168,10 +231,10 @@ async function getBookings(searchParams?: {
     }
     resSql += " ORDER BY r.start_date DESC";
 
-    const reservationsData = await query<any>(resSql, resParams);
+    const reservationsRows = await query<ReservationRow>(resSql, resParams);
 
     // Transform to unified format
-    const bookings = bookingsData.map((b: any) => ({
+    const bookings: UnifiedBooking[] = bookingsRows.map((b) => ({
       id: `booking-${b.id}`,
       type: "manual" as const,
       guest_name: b.guest_name,
@@ -184,14 +247,14 @@ async function getBookings(searchParams?: {
       platform_account_id: b.platform_account_id,
       platform_account: b.platform_account_id ? {
         id: b.platform_account_id,
-        account_name: b.account_name,
+        account_name: b.account_name || "Unknown",
         platform: b.platform || "manual"
       } : null,
       notes: b.notes,
-      unit: b.unit_id_ref ? { id: b.unit_id_ref, unit_name: b.unit_name, unit_code: b.unit_code } : null,
+      unit: b.unit_id_ref ? { id: b.unit_id_ref, unit_name: b.unit_name || "Unknown", unit_code: b.unit_code } : null,
     }));
 
-    const reservations = reservationsData.map((r: any) => ({
+    const reservations: UnifiedBooking[] = reservationsRows.map((r) => ({
       id: `reservation-${r.id}`,
       type: "ical" as const,
       guest_name: r.summary || "Reserved",
@@ -204,11 +267,11 @@ async function getBookings(searchParams?: {
       platform_account_id: r.platform_account_id,
       platform_account: r.platform_account_id ? {
         id: r.platform_account_id,
-        account_name: r.account_name,
+        account_name: r.account_name || "Unknown",
         platform: r.platform || "ical"
       } : null,
       notes: r.description,
-      unit: r.unit_id_ref ? { id: r.unit_id_ref, unit_name: r.unit_name, unit_code: r.unit_code } : null,
+      unit: r.unit_id_ref ? { id: r.unit_id_ref, unit_name: r.unit_name || "Unknown", unit_code: r.unit_code } : null,
     }));
 
     // Combine and filter
@@ -240,15 +303,15 @@ async function getBookings(searchParams?: {
     }
 
     // Sort descending by checkin date
-    combined.sort((a: any, b: any) => {
+    combined.sort((a, b) => {
       const dateA = new Date(a.checkin_date).getTime();
       const dateB = new Date(b.checkin_date).getTime();
       return dateB - dateA;
     });
 
     return combined;
-  } catch (error) {
-    console.error("[Bookings] Error fetching bookings:", error);
+  } catch (error: unknown) {
+    console.error("[Bookings] Error fetching bookings:", error instanceof Error ? error.message : String(error));
     return [];
   }
 }
@@ -302,10 +365,7 @@ export default async function BookingsPage({
   
   console.log("[BookingsPage] Rendering with params:", JSON.stringify(resolvedParams));
 
-  // Check View Permission
-  const canView = session?.user?.id
-    ? await checkUserPermission(session.user.id, "/dashboard/bookings", "view")
-    : false;
+
 
   // Check Edit Permission
   const canEdit = session?.user?.id
@@ -326,9 +386,9 @@ export default async function BookingsPage({
   const bookings = await getBookings({ ...resolvedParams, platform_account_id: platformAccountIds.length > 0 ? platformAccountIds : undefined });
 
   // Count bookings by type
-  const manualBookings = bookings.filter((b: any) => b.type === "manual").length;
-  const icalBookings = bookings.filter((b: any) => b.type === "ical").length;
-  const totalAmount = bookings.reduce((sum: number, b: any) => sum + (Number(b.amount) || 0), 0);
+  const manualBookings = bookings.filter((b) => b.type === "manual").length;
+  const icalBookings = bookings.filter((b) => b.type === "ical").length;
+  const totalAmount = bookings.reduce((sum, b) => sum + (Number(b.amount) || 0), 0);
 
   const csvLink = `/api/bookings?${formatQuery({
     from: resolvedParams.from,

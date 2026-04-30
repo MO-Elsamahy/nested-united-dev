@@ -11,9 +11,9 @@ const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'attendance-uuid-123');
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
-    queryOne: (...args: any[]) => mockQueryOne(...args),
-    execute: (...args: any[]) => mockExecute(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
+    queryOne: (...args: unknown[]) => mockQueryOne(...args),
+    execute: (...args: unknown[]) => mockExecute(...args),
     generateUUID: () => mockGenerateUUID(),
 }));
 
@@ -27,7 +27,7 @@ describe('Attendance Punch API', () => {
     beforeEach(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'user-001' },
-        } as any);
+        } as { user: { id: string } });
         // Default time: 2026-04-10 08:30:00 (present for 09:00 shift)
         // Use local time instead of UTC 'Z' to match now.getHours() in route
         vi.setSystemTime(new Date(2026, 3, 10, 8, 30, 0)); // Month is 0-indexed

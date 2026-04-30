@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -32,7 +33,7 @@ export default function LoginPage() {
         router.push("/portal"); // Redirect to Central Portal
         router.refresh();
       }
-    } catch (err) {
+    } catch (_err) {
       setError("حدث خطأ أثناء تسجيل الدخول");
     } finally {
       setLoading(false);
@@ -45,17 +46,19 @@ export default function LoginPage() {
         <div className="bg-white rounded-lg shadow-xl p-8 space-y-6">
           <div className="text-center space-y-4">
             <div className="flex justify-center">
-              <div className="w-20 h-20 rounded-xl overflow-hidden bg-white border-2 border-gray-200 shadow-md flex items-center justify-center">
+              <div className="w-20 h-20 relative rounded-xl overflow-hidden bg-white border-2 border-gray-200 shadow-md flex items-center justify-center">
                 {logoError ? (
                   <div className="bg-blue-600 text-white w-full h-full flex items-center justify-center font-bold text-lg">
                     شعار
                   </div>
                 ) : (
-                  <img
+                  <Image
                     src="/api/company/logo"
                     alt="شعار المنصة"
-                    className="w-full h-full object-contain"
+                    fill
+                    className="object-contain"
                     onError={() => setLogoError(true)}
+                    unoptimized
                   />
                 )}
               </div>

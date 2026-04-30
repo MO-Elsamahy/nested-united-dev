@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Monitor, AlertCircle, ExternalLink } from "lucide-react";
+import { Loader2, Monitor, AlertCircle } from "lucide-react";
 import { isElectron } from "@/lib/utils/isElectron";
 
 interface OpenAccountButtonProps {
@@ -13,9 +13,9 @@ interface OpenAccountButtonProps {
 
 export function OpenAccountButton({
   accountId,
-  accountName,
+  accountName: _accountName,
   platform,
-  partition,
+  partition: _partition,
 }: OpenAccountButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +25,7 @@ export function OpenAccountButton({
     setElectronEnv(isElectron());
   }, []);
 
-  const platformUrl = platform === "airbnb"
+  const _platformUrl = platform === "airbnb"
     ? "https://www.airbnb.com/hosting/inbox"
     : platform === "gathern"
       ? "https://business.gathern.co"
@@ -55,20 +55,23 @@ export function OpenAccountButton({
     setError(null);
 
     try {
+      if (!window.electronAPI) {
+        throw new Error("بيئة Electron غير متوفرة");
+      }
       // Call local Electron IPC to open browser instead of server API
-      const result = await (window as any).electronAPI.openBrowserAccount({
+      const result = await window.electronAPI.openBrowserAccount({
         id: accountId,
         platform,
-        accountName,
-        partition
+        accountName: _accountName,
+        partition: _partition,
       });
 
       if (!result?.success) {
         throw new Error(result?.error || "فشل في فتح الحساب");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error opening browser:", err);
-      setError(err.message || "خطأ في الاتصال بالسيرفر");
+      setError(err instanceof Error ? err.message : "خطأ في الاتصال بالسيرفر");
       setTimeout(() => setError(null), 3000);
     } finally {
       setLoading(false);

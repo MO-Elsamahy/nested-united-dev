@@ -6,19 +6,50 @@ import { query, queryOne } from "@/lib/db";
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import {
-    Clock,
+    
     FileText,
     CheckCircle,
     XCircle,
     AlertCircle,
-    Calendar,
+    
     Megaphone,
     MessageSquare,
 } from "lucide-react";
 import { AttendanceButton } from "./AttendanceButton";
 
+interface Employee {
+    id: string;
+    full_name: string;
+    job_title: string;
+    department: string;
+    annual_leave_balance: number;
+    sick_leave_balance: number;
+}
+
+interface Attendance {
+    id: string;
+    check_in: string | null;
+    check_out: string | null;
+}
+
+interface RequestData {
+    id: string;
+    request_type: string;
+    start_date: string;
+    end_date: string | null;
+    status: string;
+}
+
+interface Announcement {
+    id: string;
+    title: string;
+    content: string;
+    priority: "low" | "medium" | "high" | "urgent";
+    published_at: string | null;
+}
+
 async function getEmployeeData(userId: string) {
-    const employee = await queryOne<any>(
+    const employee = await queryOne<Employee>(
         `SELECT * FROM hr_employees WHERE user_id = ? AND status = 'active'`,
         [userId]
     );
@@ -27,22 +58,22 @@ async function getEmployeeData(userId: string) {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const todayAttendance = await queryOne<any>(
+    const todayAttendance = await queryOne<Attendance>(
         `SELECT * FROM hr_attendance WHERE employee_id = ? AND date = ?`,
         [employee.id, today]
     );
 
-    const pendingRequests = await queryOne<{ count: number }>(
+    const _pendingRequests = await queryOne<{ count: number }>(
         `SELECT COUNT(*) as count FROM hr_requests WHERE employee_id = ? AND status = 'pending'`,
         [employee.id]
     );
 
-    const recentRequests = await query<any>(
+    const recentRequests = await query<RequestData>(
         `SELECT * FROM hr_requests WHERE employee_id = ? ORDER BY created_at DESC LIMIT 3`,
         [employee.id]
     );
 
-    const announcements = await query<any>(
+    const announcements = await query<Announcement>(
         `SELECT * FROM hr_announcements 
      WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > NOW())
      ORDER BY is_pinned DESC, published_at DESC LIMIT 3`
@@ -56,7 +87,6 @@ async function getEmployeeData(userId: string) {
     return {
         employee,
         todayAttendance,
-        pendingRequests: pendingRequests?.count || 0,
         recentRequests: recentRequests || [],
         announcements: announcements || [],
         unreadMessagesCount: unreadMessages?.count || 0,
@@ -81,7 +111,7 @@ export default async function EmployeeDashboardPage() {
         );
     }
 
-    const { employee, todayAttendance, pendingRequests, recentRequests, announcements, unreadMessagesCount } = data;
+    const { employee, todayAttendance, recentRequests, announcements, unreadMessagesCount } = data;
 
     const getStatusBadge = (status: string) => {
         switch (status) {
@@ -161,7 +191,7 @@ export default async function EmployeeDashboardPage() {
 
                     {recentRequests.length > 0 ? (
                         <div className="space-y-3">
-                            {recentRequests.map((req: any) => (
+                            {recentRequests.map((req: RequestData) => (
                                 <div key={req.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                                     <div>
                                         <p className="font-medium text-gray-900">{getRequestType(req.request_type)}</p>
@@ -200,7 +230,7 @@ export default async function EmployeeDashboardPage() {
 
                     {announcements.length > 0 ? (
                         <div className="space-y-4">
-                            {announcements.map((ann: any) => (
+                            {announcements.map((ann: Announcement) => (
                                 <div
                                     key={ann.id}
                                     className={`p-4 rounded-xl border-r-4 ${ann.priority === "urgent"

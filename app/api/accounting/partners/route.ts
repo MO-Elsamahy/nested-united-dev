@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { AccountingPartner } from "@/lib/types/accounting";
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     try {
-        const { searchParams } = new URL(request.url);
         // Filter by deleted_at IS NULL
-        const rows = await query("SELECT * FROM accounting_partners WHERE deleted_at IS NULL ORDER BY name ASC");
+        const rows = await query<AccountingPartner>("SELECT * FROM accounting_partners WHERE deleted_at IS NULL ORDER BY name ASC");
         return NextResponse.json(rows);
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id });
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+    } catch (err: unknown) {
+        return NextResponse.json({ error: err instanceof Error ? err.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -57,7 +57,7 @@ export async function DELETE(request: Request) {
         );
 
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

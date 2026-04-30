@@ -6,6 +6,7 @@ import { query, queryOne, execute, generateUUID, executeTransaction } from "@/li
 import { resolvePayrollAccountingIntegration } from "@/lib/hr-payroll-accounting-defaults";
 import { loadHrSettingsMap } from "@/lib/hr-settings";
 import { insertHrPayrollRunLog, ensureHrPayrollRunLogsTable } from "@/lib/hr-payroll-run-logs";
+import { PayrollRun, PayrollDetail, PayrollLog } from "@/lib/types/hr";
 
 // GET: Get Single Payroll Details
 export async function GET(
@@ -17,10 +18,10 @@ export async function GET(
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const run = await queryOne("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
+        const run = await queryOne<PayrollRun>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
         if (!run) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-        const details = await query(`
+        const details = await query<PayrollDetail>(`
             SELECT d.*, e.full_name, e.department, e.job_title, e.bank_name, e.iban 
             FROM hr_payroll_details d
             JOIN hr_employees e ON d.employee_id = e.id
@@ -29,7 +30,7 @@ export async function GET(
         `, [id]);
 
         await ensureHrPayrollRunLogsTable();
-        const logs = await query(
+        const logs = await query<PayrollLog>(
             `SELECT l.id, l.payroll_run_id, l.user_id, l.action, l.note, l.meta, l.created_at,
                     u.name AS user_name
              FROM hr_payroll_run_logs l
@@ -40,8 +41,8 @@ export async function GET(
         );
 
         return NextResponse.json({ run, details, logs });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -58,7 +59,7 @@ export async function PUT(
         const body = await request.json().catch(() => ({}));
         const action = body?.action;
 
-        const run = await queryOne<any>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
+        const run = await queryOne<PayrollRun>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
         if (!run) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
         if (action === "approve") {
@@ -96,7 +97,7 @@ export async function PUT(
 
             // Aggregate payroll details to compute employer GOSI base
             // Employer GOSI = gosiEmployerRate% of (basic_salary + housing_allowance) per employee
-            const detailsAgg = await query<any>(
+            const detailsAgg = await query<{ gosi_base: number | string }>(
                 `SELECT SUM(basic_salary + housing_allowance) AS gosi_base FROM hr_payroll_details WHERE payroll_run_id = ?`,
                 [id]
             );
@@ -222,17 +223,17 @@ export async function PUT(
                     message: "تم اعتماد المسير وإنشاء القيد المحاسبي بنجاح"
                 });
 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 // Rollback the approval if accounting entry fails
                 await execute(
                     "UPDATE hr_payroll_runs SET status = 'draft', approved_by = NULL, approved_at = NULL WHERE id = ?",
                     [id]
                 );
-
+    
                 console.error("Accounting integration error:", error);
                 return NextResponse.json({
                     error: "Failed to create accounting entry. Payroll approval rolled back.",
-                    details: error.message
+                    details: error instanceof Error ? error.message : "Internal Server Error"
                 }, { status: 500 });
             }
         }
@@ -318,10 +319,10 @@ export async function PUT(
                     message: "تم إلغاء اعتماد المسير وإخفاء القيد المحاسبي من التقارير. يمكنك التعديل ثم إعادة الاعتماد.",
                     cleared_salary_confirmations: clearedConfirmations,
                 });
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error("Payroll revert_approval error:", error);
                 return NextResponse.json(
-                    { error: "تعذر إلغاء الاعتماد.", details: error.message },
+                    { error: "تعذر إلغاء الاعتماد.", details: error instanceof Error ? error.message : "Internal Server Error" },
                     { status: 500 }
                 );
             }
@@ -335,13 +336,13 @@ export async function PUT(
             const {
                 detail_id,
                 basic_salary, housing_allowance, transport_allowance, other_allowances,
-                overtime_amount, absence_deduction, late_deduction, gosi_deduction,
+                overtime_amount, absence_deduction, late_deduction, _gosi_deduction,
                 custom_addition, custom_addition_note,
                 custom_deduction, custom_deduction_note
             } = body;
 
             // Fetch the detail line
-            const detail = await queryOne<any>("SELECT * FROM hr_payroll_details WHERE id = ? AND payroll_run_id = ?", [detail_id, id]);
+            const detail = await queryOne<PayrollDetail>("SELECT * FROM hr_payroll_details WHERE id = ? AND payroll_run_id = ?", [detail_id, id]);
             if (!detail) return NextResponse.json({ error: "Detail not found" }, { status: 404 });
 
             // Use provided values or original ones if not provided
@@ -379,14 +380,14 @@ export async function PUT(
             ]);
 
             // Update the run header total
-            const totalAgg = await queryOne<any>("SELECT SUM(net_salary) as total_amount FROM hr_payroll_details WHERE payroll_run_id = ?", [id]);
-            await execute("UPDATE hr_payroll_runs SET total_amount = ? WHERE id = ?", [totalAgg.total_amount, id]);
+            const totalAgg = await queryOne<{ total_amount: number | string }>("SELECT SUM(net_salary) as total_amount FROM hr_payroll_details WHERE payroll_run_id = ?", [id]);
+            await execute("UPDATE hr_payroll_runs SET total_amount = ? WHERE id = ?", [totalAgg?.total_amount || 0, id]);
 
             return NextResponse.json({ 
                 success: true, 
                 net_salary: netSalary, 
                 total_deductions: totalDeductions,
-                total_amount: totalAgg.total_amount 
+                total_amount: totalAgg?.total_amount || 0
             });
         }
 
@@ -402,7 +403,7 @@ export async function PUT(
 
         return NextResponse.json({ error: "Invalid action" }, { status: 400 });
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

@@ -1,15 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020", "DOM"],
+    "target": "ES2022",
+    "module": "node16",
+    "lib": ["ES2022", "DOM"],
     "outDir": "dist",
     "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
+    "moduleResolution": "node16",
     "resolveJsonModule": true,
     "declaration": false,
     "sourceMap": true
@@ -17,5 +17,3 @@
   "include": ["*.ts"],
   "exclude": ["node_modules"]
 }
-
-

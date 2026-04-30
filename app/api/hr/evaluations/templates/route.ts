@@ -1,22 +1,23 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, execute, generateUUID, executeTransaction } from "@/lib/db";
+import { query, generateUUID, executeTransaction } from "@/lib/db";
+import { EvaluationTemplate } from "@/lib/types/hr";
 
 // GET: List all evaluation templates
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
     try {
-        const templates = await query(
+        const templates = await query<EvaluationTemplate>(
             "SELECT * FROM hr_evaluation_templates ORDER BY created_at DESC"
         );
         return NextResponse.json(templates);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
         });
 
         return NextResponse.json({ success: true, id: templateId });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

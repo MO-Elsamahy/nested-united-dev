@@ -103,8 +103,8 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
 
       router.push("/dashboard/bookings");
       router.refresh();
-    } catch (err: any) {
-      setError(err.message || "فشل تحويل الحجز");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "فشل تحويل الحجز");
     } finally {
       setSaving(false);
     }

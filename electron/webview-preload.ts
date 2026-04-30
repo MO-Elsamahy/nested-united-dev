@@ -54,17 +54,18 @@ if (typeof window !== 'undefined') {
       } else {
         ipcRenderer.send('exec-fetch-response', { success: true, data, requestId });
       }
-    } catch (err: any) {
-      logToMain(`❌  Bridge fetch error: ${err.message}`, 'error');
-      ipcRenderer.send('exec-fetch-response', { success: false, error: err.message, requestId });
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      logToMain(`❌  Bridge fetch error: ${errMsg}`, 'error');
+      ipcRenderer.send('exec-fetch-response', { success: false, error: errMsg, requestId });
     }
   });
 }
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  notifyNewNotification: (data: any) => ipcRenderer.send("new-notification-from-webview", data),
-  onMessageReceived:     (callback: any) => ipcRenderer.on("page-command", (_event, data) => callback(data)),
-  sendToMain:            (channel: string, data: any) => ipcRenderer.send(channel, data),
+  notifyNewNotification: (data: unknown) => ipcRenderer.send("new-notification-from-webview", data),
+  onMessageReceived:     (callback: (data: unknown) => void) => ipcRenderer.on("page-command", (_event, data) => callback(data)),
+  sendToMain:            (channel: string, data: unknown) => ipcRenderer.send(channel, data),
 });
 
 console.log("[WebView Preload] ✅  Loaded — exec-fetch bridge only");

@@ -23,10 +23,10 @@ export async function GET(request: Request) {
             LEFT JOIN users u ON m.sent_by = u.id
             WHERE 1=1
         `;
-        const params: any[] = [];
+        const params: unknown[] = [];
 
         if (isEmployeePortal) {
-            const currentEmployee = await queryOne<any>(
+            const currentEmployee = await queryOne<{ id: string }>(
                 "SELECT id FROM hr_employees WHERE user_id = ?",
                 [session.user.id]
             );
@@ -48,10 +48,10 @@ export async function GET(request: Request) {
 
         sql += " ORDER BY m.created_at DESC";
 
-        const messages = await query(sql, params);
+        const messages = await query<{ id: string, employee_id: string, msg_type: string, title: string, content: string, is_read: boolean | number, created_at: string, employee_name: string, department?: string, job_title?: string, sender_name?: string }>(sql, params);
         return NextResponse.json(messages);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

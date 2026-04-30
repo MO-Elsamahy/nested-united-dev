@@ -1,10 +1,8 @@
 import { query, queryOne } from "@/lib/db";
 import { ArrowRight, MapPin, Users, Calendar, Wrench, AlertTriangle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { UpdateStatusButton } from "../../unit-readiness/UpdateStatusButton";
 import { hasPermission } from "@/lib/server-permissions";
-import { UnitEditButton } from "./UnitEditButton";
 
 // Status configurations
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -17,10 +15,91 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
   occupied: { label: "تم التسكين", color: "bg-gray-100 text-gray-800", icon: "🏠" },
 };
 
-async function getUnit(id: string) {
+interface UnitCalendar {
+  id: string;
+  platform: string;
+  ical_url: string;
+  is_primary: boolean;
+  platform_account_id: string | null;
+  platform_account?: {
+    id: string;
+    account_name: string;
+    platform: string;
+  };
+}
+
+interface UnitReservation {
+  id: string;
+  unit_id: string;
+  start_date: string;
+  end_date: string;
+  summary: string | null;
+  platform: string | null;
+}
+
+interface UnitBooking {
+  id: string;
+  unit_id: string;
+  guest_name: string;
+  phone: string | null;
+  checkin_date: string;
+  checkout_date: string;
+  amount: number | null;
+  currency: string | null;
+  notes: string | null;
+  platform: string | null;
+  platform_account?: {
+    account_name: string;
+  };
+}
+
+interface MaintenanceTicket {
+  id: string;
+  unit_id: string;
+  title: string;
+  status: string;
+  created_at: string;
+}
+
+interface UnitDetail {
+  id: string;
+  unit_name: string;
+  unit_code: string | null;
+  city: string | null;
+  address: string | null;
+  capacity: number | null;
+  status: "active" | "inactive" | "maintenance";
+  readiness_status: string;
+  readiness_guest_name: string | null;
+  readiness_checkin_date: string | null;
+  readiness_checkout_date: string | null;
+  readiness_notes: string | null;
+  unit_calendars: UnitCalendar[];
+  reservations: UnitReservation[];
+  bookings: UnitBooking[];
+  maintenance_tickets: MaintenanceTicket[];
+}
+
+interface UnifiedBooking {
+  id: string;
+  type: "ical" | "manual";
+  start_date: string;
+  end_date: string;
+  summary: string | null;
+  platform: string | null;
+  guest_name: string;
+  amount?: number | null;
+  currency?: string | null;
+  phone?: string | null;
+  platform_account?: {
+    account_name: string;
+  };
+}
+
+async function getUnit(id: string): Promise<UnitDetail | null> {
   try {
     // Get unit
-    const unit = await queryOne<any>(
+    const unit = await queryOne<Omit<UnitDetail, 'unit_calendars' | 'reservations' | 'bookings' | 'maintenance_tickets'>>(
       "SELECT * FROM units WHERE id = ?",
       [id]
     );
@@ -30,22 +109,22 @@ async function getUnit(id: string) {
     }
 
     // Get related data
-    const unit_calendars = await query(
+    const unit_calendars = await query<UnitCalendar>(
       "SELECT id, platform, ical_url, is_primary, platform_account_id FROM unit_calendars WHERE unit_id = ?",
       [id]
     );
 
-    const reservations = await query(
+    const reservations = await query<UnitReservation>(
       "SELECT * FROM reservations WHERE unit_id = ? ORDER BY start_date DESC",
       [id]
     );
 
-    const bookings = await query(
+    const bookings = await query<UnitBooking>(
       "SELECT * FROM bookings WHERE unit_id = ? ORDER BY checkin_date DESC",
       [id]
     );
 
-    const maintenance_tickets = await query(
+    const maintenance_tickets = await query<MaintenanceTicket>(
       "SELECT * FROM maintenance_tickets WHERE unit_id = ? ORDER BY created_at DESC",
       [id]
     );
@@ -57,8 +136,9 @@ async function getUnit(id: string) {
       bookings,
       maintenance_tickets,
     };
-  } catch (error) {
-    console.error("[UnitDetails] MySQL error:", error);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("[UnitDetails] MySQL error:", errorMessage);
     return null;
   }
 }
@@ -77,11 +157,11 @@ export default async function UnitDetailsPage({
   const backLabel = isFromReadiness ? "الرجوع للجاهزية" : "الرجوع للوحدات";
   const canEdit = await hasPermission("/dashboard/units", "edit");
 
-  let unit = null;
+  let unit: UnitDetail | null = null;
   try {
     unit = await getUnit(id);
-  } catch (error) {
-    console.error("[UnitDetails] Error loading unit:", error);
+  } catch (_error) {
+    console.error("[UnitDetails] Error loading unit:", _error);
   }
 
   if (!unit) {
@@ -105,10 +185,10 @@ export default async function UnitDetailsPage({
   const today = new Date().toISOString().split("T")[0];
 
   // Combine reservations (iCal) and bookings (manual)
-  const allUpcoming = [
+  const allUpcoming: UnifiedBooking[] = [
     ...(unit.reservations || [])
-      .filter((r: any) => r.start_date >= today)
-      .map((r: any) => ({
+      .filter((r) => r.start_date >= today)
+      .map((r): UnifiedBooking => ({
         id: r.id,
         type: "ical",
         start_date: r.start_date,
@@ -118,8 +198,8 @@ export default async function UnitDetailsPage({
         guest_name: r.summary || "حجز من iCal",
       })),
     ...(unit.bookings || [])
-      .filter((b: any) => b.checkin_date >= today)
-      .map((b: any) => ({
+      .filter((b) => b.checkin_date >= today)
+      .map((b): UnifiedBooking => ({
         id: b.id,
         type: "manual",
         start_date: b.checkin_date,
@@ -133,11 +213,11 @@ export default async function UnitDetailsPage({
         platform_account: b.platform_account,
       })),
   ]
-    .sort((a: any, b: any) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
     .slice(0, 10);
 
   const openTickets = unit.maintenance_tickets?.filter(
-    (t: any) => t.status !== "resolved"
+    (t) => t.status !== "resolved"
   );
 
   // Check if unit has upcoming booking and is not ready
@@ -176,7 +256,7 @@ export default async function UnitDetailsPage({
               {unit.unit_code && (
                 <span className="text-gray-500">كود: {unit.unit_code}</span>
               )}
-              {(unit.unit_calendars || []).map((cal: any) => (
+              {(unit.unit_calendars || []).map((cal) => (
                 <span
                   key={cal.id}
                   className={`px-2 py-1 rounded text-xs ${cal.platform === "airbnb"
@@ -247,7 +327,7 @@ export default async function UnitDetailsPage({
               </div>
             )}
             <p className="text-gray-500 text-sm">
-              المنصات: {(unit.unit_calendars || []).map((cal: any) => cal.platform_account?.account_name || cal.platform).join(", ") || "لا توجد منصات"}
+              المنصات: {(unit.unit_calendars || []).map((cal) => cal.platform_account?.account_name || cal.platform).join(", ") || "لا توجد منصات"}
             </p>
           </div>
         </div>
@@ -305,7 +385,7 @@ export default async function UnitDetailsPage({
           </div>
           {allUpcoming.length > 0 ? (
             <div className="space-y-2">
-              {allUpcoming.map((item: any) => (
+              {allUpcoming.map((item) => (
                 <div key={item.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-gray-900">{item.guest_name}</span>
@@ -358,7 +438,7 @@ export default async function UnitDetailsPage({
           </div>
           {openTickets && openTickets.length > 0 ? (
             <div className="space-y-2">
-              {openTickets.map((ticket: any) => (
+              {openTickets.map((ticket) => (
                 <div key={ticket.id} className="p-2 bg-gray-50 rounded text-sm">
                   <div className="flex justify-between items-start">
                     <span className="font-medium">{ticket.title}</span>
@@ -384,8 +464,8 @@ export default async function UnitDetailsPage({
       <div className="bg-white rounded-lg shadow p-6">
         <h2 className="font-semibold text-lg mb-4">جميع الحجوزات</h2>
         {(() => {
-          const allBookings = [
-            ...(unit.reservations || []).map((r: any) => ({
+          const allHistory: UnifiedBooking[] = [
+            ...(unit.reservations || []).map((r): UnifiedBooking => ({
               id: r.id,
               type: "ical",
               start_date: r.start_date,
@@ -394,7 +474,7 @@ export default async function UnitDetailsPage({
               platform: r.platform,
               guest_name: r.summary || "حجز من iCal",
             })),
-            ...(unit.bookings || []).map((b: any) => ({
+            ...(unit.bookings || []).map((b): UnifiedBooking => ({
               id: b.id,
               type: "manual",
               start_date: b.checkin_date,
@@ -407,9 +487,9 @@ export default async function UnitDetailsPage({
               phone: b.phone,
               platform_account: b.platform_account,
             })),
-          ].sort((a: any, b: any) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+          ].sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
-          return allBookings.length > 0 ? (
+          return allHistory.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -424,7 +504,7 @@ export default async function UnitDetailsPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {allBookings.map((item: any) => (
+                  {allHistory.map((item) => (
                     <tr key={item.id} className="border-b hover:bg-gray-50">
                       <td className="py-2 px-4">
                         {item.type === "manual" ? (

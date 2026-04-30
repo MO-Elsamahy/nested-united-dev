@@ -313,12 +313,16 @@ function NewDealForm() {
     });
 
     useEffect(() => {
-        fetch("/api/crm/customers")
-            .then((res) => res.json().then((data) => ({ res, data })))
-            .then(({ res, data }) => {
+        const loadCustomers = async () => {
+            try {
+                const res = await fetch("/api/crm/customers");
+                const data = await res.json();
                 if (res.ok && Array.isArray(data)) setCustomers(data);
-            })
-            .catch(() => setCustomers([]));
+            } catch {
+                setCustomers([]);
+            }
+        };
+        void loadCustomers();
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {

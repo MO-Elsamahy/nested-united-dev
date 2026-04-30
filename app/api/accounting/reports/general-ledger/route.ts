@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       AND m.deleted_at IS NULL
       AND m.date < ?
     `;
-        const obRes = await query(obSql, [accountId, from]);
+        const obRes = await query<{ balance: number }>(obSql, [accountId, from]);
         openingBalance = Number(obRes[0]?.balance) || 0;
     }
 
@@ -52,7 +52,7 @@ export async function GET(request: Request) {
     AND m.deleted_at IS NULL
   `;
 
-    const params: any[] = [accountId];
+    const params: (string | number | boolean | null)[] = [accountId];
 
     if (from) {
         sql += " AND m.date >= ?";
@@ -66,11 +66,11 @@ export async function GET(request: Request) {
     sql += " ORDER BY m.date ASC, m.created_at ASC";
 
     try {
-        const moves = await query(sql, params);
+        const moves = await query<{ debit: number; credit: number }>(sql, params);
 
         // Calculate running balance
         let currentBalance = openingBalance;
-        const report = moves.map((move: any) => {
+        const report = moves.map((move) => {
             const debit = Number(move.debit);
             const credit = Number(move.credit);
             currentBalance += (debit - credit);
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
             opening_balance: openingBalance,
             moves: report
         });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

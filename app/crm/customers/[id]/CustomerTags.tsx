@@ -1,19 +1,41 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Tag, Plus, X } from "lucide-react";
-import type { CRMTag } from "@/lib/types/crm";
+import type { CrmTag } from "@/lib/types/crm";
 
 export default function CustomerTags({ customerId }: { customerId: string }) {
-    const [tags, setTags] = useState<CRMTag[]>([]);
-    const [allTags, setAllTags] = useState<CRMTag[]>([]);
+    const [tags, setTags] = useState<CrmTag[]>([]);
+    const [allTags, setAllTags] = useState<CrmTag[]>([]);
     const [showAddMenu, setShowAddMenu] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        fetchTags();
-        fetchAllTags();
+    const fetchTags = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/crm/customer-tags?customer_id=${customerId}`);
+            const data = await res.json();
+            if (!res.ok) return;
+            setTags(Array.isArray(data) ? data : []);
+        } catch (_error) {
+            console.error(_error);
+        }
     }, [customerId]);
+
+    const fetchAllTags = useCallback(async () => {
+        try {
+            const res = await fetch("/api/crm/tags");
+            const data = await res.json();
+            if (!res.ok) return;
+            setAllTags(Array.isArray(data) ? data : []);
+        } catch (_error) {
+            console.error(_error);
+        }
+    }, []);
+
+    useEffect(() => {
+        void fetchTags();
+        void fetchAllTags();
+    }, [fetchTags, fetchAllTags]);
 
     useEffect(() => {
         if (!showAddMenu) return;
@@ -33,28 +55,6 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
         };
     }, [showAddMenu]);
 
-    const fetchTags = async () => {
-        try {
-            const res = await fetch(`/api/crm/customer-tags?customer_id=${customerId}`);
-            const data = await res.json();
-            if (!res.ok) return;
-            setTags(Array.isArray(data) ? data : []);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
-    const fetchAllTags = async () => {
-        try {
-            const res = await fetch("/api/crm/tags");
-            const data = await res.json();
-            if (!res.ok) return;
-            setAllTags(Array.isArray(data) ? data : []);
-        } catch (e) {
-            console.error(e);
-        }
-    };
-
     const handleAddTag = async (tagId: string) => {
         try {
             const res = await fetch("/api/crm/customer-tags", {
@@ -66,9 +66,9 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
                 alert("تعذّر إضافة التصنيف");
                 return;
             }
-            fetchTags();
+            void fetchTags();
             setShowAddMenu(false);
-        } catch {
+        } catch (_error) {
             alert("تعذّر إضافة التصنيف");
         }
     };
@@ -82,8 +82,8 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
                 alert("تعذّر حذف التصنيف");
                 return;
             }
-            fetchTags();
-        } catch {
+            void fetchTags();
+        } catch (_error) {
             alert("تعذّر حذف التصنيف");
         }
     };

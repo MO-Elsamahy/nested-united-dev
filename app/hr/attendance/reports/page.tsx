@@ -3,10 +3,22 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, FileText, Filter, Calendar } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+
+interface AttendanceReportRow {
+    id: string;
+    full_name: string;
+    department: string;
+    job_title: string;
+    present_days: number;
+    absent_days: number;
+    leave_days: number;
+    total_late_minutes: number;
+    total_overtime_minutes: number;
+}
 
 export default function AttendanceReportsPage() {
-    const [report, setReport] = useState<any[]>([]);
+    const [report, setReport] = useState<AttendanceReportRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [month, setMonth] = useState(new Date().getMonth() + 1);
     const [year, setYear] = useState(new Date().getFullYear());
@@ -24,7 +36,7 @@ export default function AttendanceReportsPage() {
             const res = await fetch(`/api/hr/attendance/reports?${params}`);
             const data = await res.json();
             setReport(Array.isArray(data) ? data : []);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error(error);
         } finally {
             setLoading(false);
@@ -33,6 +45,7 @@ export default function AttendanceReportsPage() {
 
     useEffect(() => {
         fetchReport();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [month, year, department]);
 
     return (
@@ -108,7 +121,7 @@ export default function AttendanceReportsPage() {
                                     <td colSpan={6} className="text-center py-12">جاري التحميل...</td>
                                 </tr>
                             ) : report.length > 0 ? (
-                                report.map((row: any) => (
+                                report.map((row) => (
                                     <tr key={row.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4">
                                             <div>

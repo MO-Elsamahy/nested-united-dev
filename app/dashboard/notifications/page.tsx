@@ -1,5 +1,5 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
+
 import { query } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { Bell } from "lucide-react";
@@ -7,12 +7,12 @@ import { NotificationItem } from "./NotificationItem";
 import { MarkAllReadButton } from "./MarkAllReadButton";
 import { redirect } from "next/navigation";
 
-import { Notification } from "@/lib/types/database";
+import { NotificationWithRelations } from "@/lib/types/database";
 // remove local interface
 
-async function getNotifications(userId: string, role: string): Promise<Notification[]> {
+async function getNotifications(userId: string, role: string): Promise<NotificationWithRelations[]> {
   // Get user-specific notifications
-  const userNotifications = await query<any>(
+  const userNotifications = await query<Record<string, unknown>>(
     `SELECT n.*, u.unit_name
      FROM notifications n
      LEFT JOIN units u ON n.unit_id = u.id
@@ -35,7 +35,7 @@ async function getNotifications(userId: string, role: string): Promise<Notificat
   }
 
   // Get general notifications based on audience
-  const generalNotifications = await query<any>(
+  const generalNotifications = await query<Record<string, unknown>>(
     `SELECT n.*, u.unit_name
      FROM notifications n
      LEFT JOIN units u ON n.unit_id = u.id
@@ -47,13 +47,25 @@ async function getNotifications(userId: string, role: string): Promise<Notificat
 
   // Combine and deduplicate
   const allNotifications = [...userNotifications, ...generalNotifications];
-  const uniqueMap = new Map<string, any>();
+  const uniqueMap = new Map<string, NotificationWithRelations>();
   for (const n of allNotifications) {
-    if (!uniqueMap.has(n.id)) {
-      uniqueMap.set(n.id, {
-        ...n,
+    const id = n.id as string;
+    if (!uniqueMap.has(id)) {
+      uniqueMap.set(id, {
+        ...(n as unknown as NotificationWithRelations),
         is_read: n.is_read === 1 || n.is_read === true,
-        unit: { unit_name: n.unit_name },
+        unit: n.unit_id ? { 
+            id: n.unit_id as string, 
+            unit_name: n.unit_name as string,
+            platform_account_id: "", // dummy
+            unit_code: null,
+            city: null,
+            address: null,
+            capacity: null,
+            status: "active",
+            created_at: "",
+            last_synced_at: null
+        } : undefined,
       });
     }
   }

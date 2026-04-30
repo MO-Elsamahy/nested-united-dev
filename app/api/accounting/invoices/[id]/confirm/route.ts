@@ -4,8 +4,37 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 
-interface RouteParams {
-    params: { id: string };
+interface InvoiceRow {
+    id: string;
+    invoice_number: string;
+    invoice_type: 'customer_invoice' | 'supplier_bill' | 'credit_note';
+    state: string;
+    invoice_date: string;
+    due_date: string;
+    partner_id: string;
+    total_amount: number;
+    notes: string | null;
+}
+
+interface InvoiceLineRow {
+    id: string;
+    invoice_id: string;
+    account_id: string | null;
+    description: string;
+    line_total: number;
+    tax_amount: number;
+    tax_rate: number;
+}
+
+interface JournalRow {
+    id: string;
+    type: string;
+}
+
+interface AccountRow {
+    id: string;
+    type: string;
+    code: string;
 }
 
 // POST /api/accounting/invoices/[id]/confirm - Confirm invoice and create journal entry
@@ -19,7 +48,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         const { id: invoiceId } = await context.params;
 
         // Get invoice with lines
-        const invoices: any = await query(
+        const invoices = await query<InvoiceRow>(
             "SELECT * FROM accounting_invoices WHERE id = ? AND deleted_at IS NULL",
             [invoiceId]
         );
@@ -39,7 +68,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         }
 
         // Get invoice lines
-        const lines: any = await query(
+        const lines = await query<InvoiceLineRow>(
             "SELECT * FROM accounting_invoice_lines WHERE invoice_id = ?",
             [invoiceId]
         );
@@ -56,7 +85,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             ? "sale"
             : "purchase";
 
-        const journals: any = await query(
+        const journals = await query<JournalRow>(
             "SELECT * FROM accounting_journals WHERE type = ? AND deleted_at IS NULL LIMIT 1",
             [journalType]
         );
@@ -74,23 +103,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         // For customer invoice: Debit Receivable, Credit Revenue
         // For supplier bill: Debit Expense, Credit Payable
 
-        const receivableAccounts: any = await query(
+        const receivableAccounts = await query<AccountRow>(
             "SELECT * FROM accounting_accounts WHERE type = 'asset_receivable' AND deleted_at IS NULL LIMIT 1"
         );
 
-        const payableAccounts: any = await query(
+        const payableAccounts = await query<AccountRow>(
             "SELECT * FROM accounting_accounts WHERE type = 'liability_payable' AND deleted_at IS NULL LIMIT 1"
         );
 
-        const incomeAccounts: any = await query(
+        const incomeAccounts = await query<AccountRow>(
             "SELECT * FROM accounting_accounts WHERE type = 'income' AND deleted_at IS NULL LIMIT 1"
         );
 
-        const expenseAccounts: any = await query(
+        const expenseAccounts = await query<AccountRow>(
             "SELECT * FROM accounting_accounts WHERE type = 'expense' OR type = 'cost_of_sales' ORDER BY FIELD(type, 'cost_of_sales', 'expense') LIMIT 1"
         );
 
-        const taxAccounts: any = await query(
+        const taxAccounts = await query<AccountRow>(
             "SELECT * FROM accounting_accounts WHERE type = 'liability_current' AND code LIKE '22%' AND deleted_at IS NULL LIMIT 1"
         );
 
@@ -263,7 +292,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         );
 
         // Fetch updated invoice
-        const updated: any = await query(
+        const updated = await query<InvoiceRow & { partner_name: string }>(
             `SELECT i.*, p.name as partner_name
              FROM accounting_invoices i
              LEFT JOIN accounting_partners p ON i.partner_id = p.id
@@ -276,10 +305,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             invoice: updated[0],
             accounting_move_id: moveId,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Error confirming invoice:", error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
         return NextResponse.json(
-            { error: "Failed to confirm invoice", details: error.message },
+            { error: "Failed to confirm invoice", details: errorMessage },
             { status: 500 }
         );
     }

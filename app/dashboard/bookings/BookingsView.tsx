@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CalendarDays, Phone, User, DollarSign, Home, Layers, List, Grid3x3, Table, Edit, Trash2, AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { CalendarDays, Phone, User, DollarSign, Home, Layers, List, Grid3x3, Table, AlertCircle } from "lucide-react";
 import { EditBookingButton } from "./EditBookingButton";
 import { DeleteBookingButton } from "./DeleteBookingButton";
 

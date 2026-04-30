@@ -3,11 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   CheckCircle2, AlertTriangle, XCircle, Clock, RefreshCw,
-  Wifi, WifiOff, ExternalLink, Activity, Shield, Zap,
-  MessageSquare, Calendar
+  WifiOff, ExternalLink, Shield, Zap,
+  MessageSquare
 } from 'lucide-react';
 
-interface AccountStatus {
+export interface AccountStatus {
   id: string;
   account_name: string;
   platform: 'airbnb' | 'gathern';
@@ -99,7 +99,7 @@ function AccountCard({ account, onSync, onOpen, isSyncing }: {
   const platform = PLATFORM_CONFIG[account.platform];
   const statusKey = account.current_status ?? 'null';
   const status = STATUS_CONFIG[statusKey as keyof typeof STATUS_CONFIG];
-  const StatusIcon = status.icon;
+  const _StatusIcon = status.icon;
 
   return (
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
@@ -220,17 +220,17 @@ export default function StatusClient({ initialAccounts }: { initialAccounts: Acc
   const [isElectron, setIsElectron] = useState(false);
 
   useEffect(() => {
-    setIsElectron(typeof window !== 'undefined' && !!(window as any).electronAPI);
+    setIsElectron(typeof window !== 'undefined' && !!window.electronAPI);
   }, []);
 
   const refreshCounts = useCallback(async () => {
     // Refresh message counts from Electron
-    if (!(window as any).electronAPI) return;
+    if (!window.electronAPI?.getPlatformMessages) return;
     try {
-      const res = await (window as any).electronAPI.getPlatformMessages?.({});
+      const res = await window.electronAPI.getPlatformMessages({});
       if (res?.success && res.messages) {
         const counts: Record<string, number> = {};
-        for (const msg of res.messages) {
+        for (const msg of res.messages as { platform_account_id: string }[]) {
           counts[msg.platform_account_id] = (counts[msg.platform_account_id] || 0) + 1;
         }
         setAccounts(prev => prev.map(a => ({ ...a, message_count: counts[a.id] || 0 })));
@@ -243,10 +243,10 @@ export default function StatusClient({ initialAccounts }: { initialAccounts: Acc
   }, [refreshCounts]);
 
   const handleSync = async (accountId: string) => {
-    if (!(window as any)?.electronAPI) return;
+    if (!window.electronAPI?.forcePlatformSync) return;
     setSyncingIds(prev => new Set(prev).add(accountId));
     try {
-      await (window as any).electronAPI.forcePlatformSync(accountId);
+      await window.electronAPI.forcePlatformSync(accountId);
       setLastRefresh(new Date());
       await refreshCounts();
     } catch (err) {
@@ -257,8 +257,8 @@ export default function StatusClient({ initialAccounts }: { initialAccounts: Acc
   };
 
   const handleOpen = (id: string, partition: string, name: string, platform: string) => {
-    if (!(window as any)?.electronAPI) return;
-    (window as any).electronAPI.openBrowserAccount({ id, platform, accountName: name, partition });
+    if (!window.electronAPI?.openBrowserAccount) return;
+    window.electronAPI.openBrowserAccount({ id, platform, accountName: name, partition });
   };
 
   const handleSyncAll = async () => {

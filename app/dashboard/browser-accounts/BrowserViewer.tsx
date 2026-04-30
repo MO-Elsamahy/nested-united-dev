@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { isElectron } from "@/lib/utils/isElectron";
 import { 
   X, 
-  Minus, 
   ArrowLeft, 
   ArrowRight, 
   RotateCw, 
@@ -27,7 +26,7 @@ interface BrowserViewerProps {
 export function BrowserViewer({ accountId, accountName, platform, onClose }: BrowserViewerProps) {
   const [isMaximized, setIsMaximized] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUrl, setCurrentUrl] = useState("");
+  const [currentUrl] = useState("");
   const [electronEnv, setElectronEnv] = useState<boolean | null>(null);
 
   useEffect(() => {

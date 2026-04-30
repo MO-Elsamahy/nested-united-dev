@@ -11,9 +11,9 @@ const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'emp-uuid-123');
 
 vi.mock('@/lib/db', () => ({
-    query: (...args: any[]) => mockQuery(...args),
-    queryOne: (...args: any[]) => mockQueryOne(...args),
-    execute: (...args: any[]) => mockExecute(...args),
+    query: (...args: unknown[]) => mockQuery(...args),
+    queryOne: (...args: unknown[]) => mockQueryOne(...args),
+    execute: (...args: unknown[]) => mockExecute(...args),
     generateUUID: () => mockGenerateUUID(),
 }));
 
@@ -28,7 +28,7 @@ describe('Employees CRUD API', () => {
     beforeEach(() => {
         vi.mocked(getServerSession).mockResolvedValue({
             user: { id: 'admin-001' },
-        } as any);
+        } as { user: { id: string } });
     });
 
     afterEach(() => {
@@ -183,7 +183,7 @@ describe('Employees CRUD API', () => {
             mockQueryOne.mockResolvedValueOnce({ id: empId });
             vi.mocked(getServerSession).mockResolvedValueOnce({
                 user: { id: 'admin-001', role: 'hr_manager' },
-            } as any);
+            } as { user: { id: string; role: string } });
             const res = await DELETE(
                 new Request('http://localhost/api/hr/employees/123?permanent=1', { method: 'DELETE' }),
                 { params: getParams() }
@@ -195,7 +195,7 @@ describe('Employees CRUD API', () => {
         it('DELETE with permanent=1 deletes row when super_admin and no blocking rows', async () => {
             vi.mocked(getServerSession).mockResolvedValueOnce({
                 user: { id: 'admin-001', role: 'super_admin' },
-            } as any);
+            } as { user: { id: string; role: string } });
             mockQueryOne
                 .mockResolvedValueOnce({ id: empId })
                 .mockResolvedValueOnce({ c: 0 })
@@ -222,7 +222,7 @@ describe('Employees CRUD API', () => {
         it('DELETE with permanent=1 returns 409 when payroll lines exist', async () => {
             vi.mocked(getServerSession).mockResolvedValueOnce({
                 user: { id: 'admin-001', role: 'super_admin' },
-            } as any);
+            } as { user: { id: string; role: string } });
             mockQueryOne
                 .mockResolvedValueOnce({ id: empId })
                 .mockResolvedValueOnce({ c: 3 })

@@ -4,10 +4,11 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Send, ArrowRight, Loader2, MessageSquare, AlertTriangle, FileWarning, Search } from "lucide-react";
+import { Employee } from "@/lib/types/hr";
 
 export default function ComposeMessagePage() {
     const router = useRouter();
-    const [employees, setEmployees] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
     const [loadingEmployees, setLoadingEmployees] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -58,8 +59,8 @@ export default function ComposeMessagePage() {
                 alert(data.error || "حدث خطأ أثناء الإرسال");
                 setSubmitting(false);
             }
-        } catch (error) {
-            alert("فشل في الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل في الاتصال");
             setSubmitting(false);
         }
     };

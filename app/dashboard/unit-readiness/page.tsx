@@ -1,7 +1,9 @@
 import { query } from "@/lib/db";
+import { UnitWithReadiness, UnitCalendar } from "@/lib/types/pms";
 import { getCurrentUser } from "@/lib/auth";
-import { Building2, Calendar, User, Filter, CheckCircle2, AlertCircle, Clock, Home, LogOut, LogIn } from "lucide-react";
+import { Building2, User, Filter, LogOut, LogIn } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { UpdateStatusButton } from "./UpdateStatusButton";
 import { StatusFilterButtons } from "./StatusFilterButtons";
 
@@ -64,7 +66,7 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     // Fetch units and also check for arrivals/departures today in real-time
-    const units = await query<any>(
+    const units = await query<UnitWithReadiness>(
       `SELECT u.*,
               (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date = ? LIMIT 1) as manual_checkin_guest,
               (SELECT r.summary FROM reservations r WHERE r.unit_id = u.id AND r.start_date = ? LIMIT 1) as ical_checkin_guest,
@@ -82,14 +84,14 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
 
     if (!units || units.length === 0) return [];
 
-    const unitIds = units.map((u: any) => u.id);
-    const calendars = await query<any>(
+    const unitIds = units.map((u) => u.id);
+    const calendars = await query<UnitCalendar>(
       `SELECT id, unit_id, platform, is_primary FROM unit_calendars WHERE unit_id IN (${unitIds.map(() => '?').join(',')})`,
       unitIds
     );
 
     for (const unit of units) {
-      unit.unit_calendars = calendars.filter((c: any) => c.unit_id === unit.id);
+      unit.unit_calendars = calendars.filter((c) => c.unit_id === unit.id);
       
       // Compute dynamic Today flags
       unit._has_checkin_today = !!(unit.manual_checkin_date || unit.ical_checkin_date);
@@ -117,7 +119,7 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
       unit._computed_status = computed;
     }
 
-    const grouped = new Map<string, { primary: any; units: any[] }>();
+    const grouped = new Map<string, { primary: UnitWithReadiness; units: UnitWithReadiness[] }>();
 
     for (const unit of units) {
       const key =
@@ -140,12 +142,12 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     }));
 
     if (statusFilter && statusFilter !== "all") {
-      uniqueUnits = uniqueUnits.filter((unit: any) => unit._computed_status === statusFilter);
+      uniqueUnits = uniqueUnits.filter((unit) => unit._computed_status === statusFilter);
     }
 
     return uniqueUnits;
-  } catch (err: any) {
-    console.error("[Unit Readiness] Unexpected error:", err?.message || err);
+  } catch (err) {
+    console.error("[Unit Readiness] Unexpected error:", err instanceof Error ? err.message : err);
     return [];
   }
 }
@@ -164,14 +166,14 @@ export default async function UnitReadinessPage({
   const isSuperAdmin = currentUser?.role === "super_admin";
 
   const stats = {
-    checkout_today: units.filter((u: any) => u._computed_status === "checkout_today").length,
-    checkin_today: units.filter((u: any) => u._computed_status === "checkin_today").length,
-    awaiting_cleaning: units.filter((u: any) => u._computed_status === "awaiting_cleaning").length,
-    cleaning_in_progress: units.filter((u: any) => u._computed_status === "cleaning_in_progress").length,
-    ready: units.filter((u: any) => u._computed_status === "ready").length,
-    occupied: units.filter((u: any) => u._computed_status === "occupied").length,
-    guest_not_checked_out: units.filter((u: any) => u._computed_status === "guest_not_checked_out").length,
-    booked: units.filter((u: any) => u._computed_status === "booked").length,
+    checkout_today: units.filter((u) => u._computed_status === "checkout_today").length,
+    checkin_today: units.filter((u) => u._computed_status === "checkin_today").length,
+    awaiting_cleaning: units.filter((u) => u._computed_status === "awaiting_cleaning").length,
+    cleaning_in_progress: units.filter((u) => u._computed_status === "cleaning_in_progress").length,
+    ready: units.filter((u) => u._computed_status === "ready").length,
+    occupied: units.filter((u) => u._computed_status === "occupied").length,
+    guest_not_checked_out: units.filter((u) => u._computed_status === "guest_not_checked_out").length,
+    booked: units.filter((u) => u._computed_status === "booked").length,
   };
 
   return (
@@ -230,21 +232,20 @@ export default async function UnitReadinessPage({
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {units.map((unit: any) => {
-              const now = new Date();
-              const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            {units.map((unit) => {
+
               
               const isCheckinToday = unit._has_checkin_today;
               const isCheckoutToday = unit._has_checkout_today;
 
               const status = unit._computed_status;
               const config = STATUS_CONFIG[status as keyof typeof STATUS_CONFIG];
-              const mergedUnits: any[] = unit._merged_units || [unit];
+              const mergedUnits = unit._merged_units || [unit];
 
               const platforms = Array.from(
                 new Set(
                   mergedUnits
-                    .flatMap((u) => (u.unit_calendars || []).map((cal: any) => cal.platform))
+                    .flatMap((u) => (u.unit_calendars || []).map((cal) => cal.platform))
                     .filter(Boolean)
                 )
               );
@@ -346,14 +347,15 @@ export default async function UnitReadinessPage({
                     <div className="flex gap-2 flex-wrap">
                       {platforms.length > 0 ? platforms.map((p) => (
                         <div key={p as string} className="
-                           w-20 h-9 rounded-lg bg-white border border-gray-200 shadow-sm 
+                           w-20 h-9 relative rounded-lg bg-white border border-gray-200 shadow-sm 
                            flex items-center justify-center 
                            hover:border-blue-300 hover:shadow-md transition-all
                          " title={p as string}>
-                          <img
+                          <Image
                             src={`/images/platforms/${p}.svg`}
                             alt={p as string}
-                            className="h-5 w-full object-contain px-2"
+                            fill
+                            className="object-contain px-2"
                           />
                         </div>
                       )) : (
@@ -372,7 +374,7 @@ export default async function UnitReadinessPage({
                       </Link>
                       <UpdateStatusButton
                         unit={unit}
-                        currentStatus={status}
+                        currentStatus={status || ""}
                       />
                     </div>
                   </div>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Save, Loader2, User, Building2 } from "lucide-react";
+import { ArrowRight, Save, Loader2 } from "lucide-react";
 
 export default function NewCustomerPage() {
     const router = useRouter();
@@ -46,8 +46,8 @@ export default function NewCustomerPage() {
                 }
                 setLoading(false);
             }
-        } catch (e) {
-            alert("خطأ في الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "خطأ في الاتصال");
             setLoading(false);
         }
     };

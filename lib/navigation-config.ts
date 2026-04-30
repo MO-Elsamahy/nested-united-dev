@@ -8,7 +8,6 @@ import {
     Globe,
     Users,
     FileText,
-    Info,
     ScrollText,
     Calculator,
     BookOpen,
@@ -22,13 +21,14 @@ import {
     Trophy,
     PieChart,
     Shield,
-    MessageSquare
+    MessageSquare,
+    LucideIcon
 } from "lucide-react";
 
 export interface NavItem {
     label: string;
     href: string;
-    icon: any;
+    icon: LucideIcon;
     requiresSuperAdmin?: boolean;
     /** If set, only these roles see the item (e.g. CRM reports & settings). */
     allowedRoles?: string[];

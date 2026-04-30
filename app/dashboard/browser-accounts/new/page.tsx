@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, AlertCircle, Monitor, Globe, CheckCircle2, MessageCircle } from "lucide-react";
+import { ArrowRight, AlertCircle, Monitor, Globe, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon";
@@ -49,7 +49,7 @@ export default function NewBrowserAccountPage() {
 
     const formData = new FormData(e.currentTarget);
 
-    let payload: any = {
+    let payload: Record<string, unknown> = {
       account_email: formData.get("account_email") || null,
       notes: formData.get("notes") || null,
     };

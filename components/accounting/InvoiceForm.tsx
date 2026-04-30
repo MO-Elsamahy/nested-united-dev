@@ -21,7 +21,7 @@ interface InvoiceLine {
     discount_type: "percentage" | "fixed";
     discount_value: number;
     tax_rate: number;
-    account_id?: string;
+    account_id?: string | null;
 }
 
 interface Partner {
@@ -34,8 +34,24 @@ interface Partner {
     type: string;
 }
 
+interface InvoiceData {
+    partner_id?: string;
+    partner_name?: string;
+    partner_email?: string;
+    partner_phone?: string;
+    partner_vat?: string;
+    address?: string;
+    invoice_date?: string;
+    due_date?: string | null;
+    reference?: string | null;
+    notes?: string | null;
+    payment_terms?: string | null;
+    attachment_url?: string | null;
+    lines?: InvoiceLine[];
+}
+
 interface InvoiceFormProps {
-    initialData?: any;
+    initialData?: InvoiceData;
     invoiceId?: string;
 }
 
@@ -85,6 +101,13 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
         ]
     );
 
+    async function fetchPartners() {
+        const res = await fetch("/api/accounting/partners");
+        if (res.ok) {
+            setAllPartners(await res.json());
+        }
+    }
+
     useEffect(() => {
         fetchPartners();
         // Close suggestions on outside click
@@ -96,13 +119,6 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
         document.addEventListener("mousedown", handler);
         return () => document.removeEventListener("mousedown", handler);
     }, []);
-
-    async function fetchPartners() {
-        const res = await fetch("/api/accounting/partners");
-        if (res.ok) {
-            setAllPartners(await res.json());
-        }
-    }
 
     const handlePartnerSelect = (partner: Partner) => {
         setPartnerQuery(partner.name);
@@ -148,9 +164,9 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
         setItems(items.filter((_, i) => i !== index));
     };
 
-    const updateLine = (index: number, field: string, value: any) => {
+    const updateLine = (index: number, field: keyof InvoiceLine, value: string | number) => {
         const updated = [...items];
-        updated[index] = { ...updated[index], [field]: value };
+        updated[index] = { ...updated[index], [field]: value } as InvoiceLine;
         setItems(updated);
     };
 
@@ -375,7 +391,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                                     className="w-full text-right px-4 py-3 hover:bg-blue-50 flex items-center gap-3 text-blue-600 font-medium bg-blue-50/50"
                                 >
                                     <UserPlus className="w-4 h-4" />
-                                    <span>إضافة "{partnerQuery}" كعميل جديد</span>
+                                    <span>إضافة &quot;{partnerQuery}&quot; كعميل جديد</span>
                                 </button>
                             </div>
                         )}
@@ -540,7 +556,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                                             />
                                             <select
                                                 value={line.discount_type}
-                                                onChange={(e) => updateLine(index, "discount_type", e.target.value)}
+                                                onChange={(e) => updateLine(index, "discount_type", e.target.value as InvoiceLine["discount_type"])}
                                                 className="px-1 py-1 border rounded text-xs"
                                             >
                                                 <option value="percentage">%</option>

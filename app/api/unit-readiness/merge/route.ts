@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     }
 
     // Determine group id
-    let groupId =
+    const groupId =
       (distinctGroupIds[0] as string | undefined) ||
       units.find((u) => u.readiness_group_id)?.readiness_group_id ||
       generateUUID();
@@ -87,10 +87,10 @@ export async function POST(request: Request) {
       group_id: groupId,
       unit_ids: unitIds,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in POST /api/unit-readiness/merge:", error);
     return NextResponse.json(
-      { error: error?.message || "Unexpected error merging units" },
+      { error: error instanceof Error ? error.message : "Unexpected error merging units" },
       { status: 500 }
     );
   }

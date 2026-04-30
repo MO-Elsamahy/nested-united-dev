@@ -130,7 +130,7 @@ export async function logActivityInServer(data: {
   resource_type?: string | null;
   resource_id?: string | null;
   description?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown> | null;
 }) {
   // Skip logging page views to reduce database load
   if (data.action_type === "page_view") {

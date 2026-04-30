@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -44,7 +44,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
     const [notesDirty, setNotesDirty] = useState(false);
     const [notesSaving, setNotesSaving] = useState(false);
 
-    const fetchData = async (opts?: { silent?: boolean }) => {
+    const fetchData = useCallback(async (opts?: { silent?: boolean }) => {
         const silent = Boolean(opts?.silent);
         if (!silent) setLoading(true);
         try {
@@ -69,11 +69,11 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
         } finally {
             if (!silent) setLoading(false);
         }
-    };
+    }, [id, router]);
 
     useEffect(() => {
         void fetchData();
-    }, [id]);
+    }, [fetchData]);
 
     useEffect(() => {
         setNotesDirty(false);
@@ -81,8 +81,10 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
 
     useEffect(() => {
         if (!data?.customer || data.customer.id !== id) return;
-        if (!notesDirty) setGeneralNotes(data.customer.notes ?? "");
-    }, [id, data?.customer?.id, data?.customer?.notes, notesDirty]);
+        if (!notesDirty) {
+            setGeneralNotes(data.customer.notes ?? "");
+        }
+    }, [id, data?.customer, notesDirty]);
 
     const handleAddActivity = async (e: React.FormEvent) => {
         e.preventDefault();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Check, X, Building2, Calculator, Users, LucideIcon } from "lucide-react";
 
 const systemTabs: { id: string; label: string; icon: LucideIcon }[] = [
@@ -28,16 +28,16 @@ export default function PagePermissionsPage() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchData();
-    }, [activeSystem]);
-
-    async function fetchData() {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         const res = await fetch(`/api/settings/page-permissions?system=${activeSystem}`);
         if (res.ok) setData(await res.json());
         setLoading(false);
-    }
+    }, [activeSystem]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
 
     async function togglePermission(userId: string, pagePath: string, currentValue: boolean) {
         setSaving(`${userId}-${pagePath}`);
@@ -101,7 +101,7 @@ export default function PagePermissionsPage() {
             ) : !data || data.users.length === 0 ? (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center text-yellow-700">
                     <p className="font-medium">لا يوجد مستخدمين مسموح لهم بالوصول لهذا النظام</p>
-                    <p className="text-sm mt-1">يرجى تفعيل صلاحية الوصول للنظام أولاً من صفحة "صلاحيات الأدوار"</p>
+                    <p className="text-sm mt-1">يرجى تفعيل صلاحية الوصول للنظام أولاً من صفحة &quot;صلاحيات الأدوار&quot;</p>
                 </div>
             ) : (
                 <div className="space-y-6">

@@ -6,6 +6,7 @@ import { SidebarItem } from "./SidebarItem";
 import { SidebarHeader } from "./SidebarHeader";
 import { SidebarFooter } from "./SidebarFooter";
 import { NavSection, NavItem } from "@/lib/navigation-config";
+import { LucideIcon } from "lucide-react";
 
 function isNavItemVisibleForUser(item: NavItem, userRole: string): boolean {
     if (item.requiresSuperAdmin && userRole !== "super_admin") return false;
@@ -19,7 +20,7 @@ interface AppSidebarProps {
     header: {
         title: string;
         subtitle: string;
-        icon: any;
+        icon: LucideIcon;
         iconColorClass: string;
     };
     isLoading?: boolean;

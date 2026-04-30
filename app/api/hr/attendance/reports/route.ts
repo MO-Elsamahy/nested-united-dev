@@ -37,7 +37,7 @@ export async function GET(request: Request) {
             AND (u.role IS NULL OR u.role NOT IN ('super_admin', 'accountant'))
         `;
 
-        const params: any[] = [month, year];
+        const params: (string | number)[] = [month, year];
 
         if (department) {
             sql += " AND e.department = ?";
@@ -46,9 +46,9 @@ export async function GET(request: Request) {
 
         sql += " GROUP BY e.id, e.full_name, e.department, e.job_title ORDER BY e.full_name ASC";
 
-        const report = await query(sql, params);
+        const report = await query<Record<string, unknown>>(sql, params); 
         return NextResponse.json(report);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

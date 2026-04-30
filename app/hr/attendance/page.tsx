@@ -4,12 +4,20 @@ import { redirect } from "next/navigation";
 import { query } from "@/lib/db";
 import Link from "next/link";
 import { Clock, CheckCircle, AlertTriangle, Calendar } from "lucide-react";
+import { Attendance } from "@/lib/types/hr";
+
+interface AttendanceWithEmployee extends Partial<Attendance> {
+    id: string;
+    full_name: string;
+    department?: string | null;
+    job_title?: string | null;
+}
 
 async function getAttendanceData() {
     const today = new Date().toISOString().split("T")[0];
 
     // Get all active employees with their attendance today
-    const data = await query<any>(`
+    const data = await query<AttendanceWithEmployee>(`
     SELECT 
       e.id,
       e.full_name,
@@ -45,9 +53,9 @@ export default async function AttendancePage() {
 
     const stats = {
         total: employees.length,
-        present: employees.filter((e: any) => e.check_in).length,
-        absent: employees.filter((e: any) => !e.check_in).length,
-        late: employees.filter((e: any) => e.status === "late").length,
+        present: employees.filter((e) => e.check_in).length,
+        absent: employees.filter((e) => !e.check_in).length,
+        late: employees.filter((e) => e.status === "late").length,
     };
 
     const formatTime = (dateStr: string | null) => {
@@ -58,7 +66,7 @@ export default async function AttendancePage() {
         });
     };
 
-    const getStatusBadge = (emp: any) => {
+    const getStatusBadge = (emp: AttendanceWithEmployee) => {
         if (!emp.check_in) {
             return (
                 <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded text-xs">
@@ -141,7 +149,7 @@ export default async function AttendancePage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y">
-                            {employees.map((emp: any) => (
+                            {employees.map((emp) => (
                                 <tr key={emp.id} className="hover:bg-gray-50">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
@@ -157,13 +165,13 @@ export default async function AttendancePage() {
                                     <td className="px-6 py-4 text-gray-600">{emp.department || "—"}</td>
                                     <td className="px-6 py-4 text-center">{getStatusBadge(emp)}</td>
                                     <td className="px-6 py-4 text-center font-mono text-gray-900">
-                                        {formatTime(emp.check_in)}
+                                        {formatTime(emp.check_in || null)}
                                     </td>
                                     <td className="px-6 py-4 text-center font-mono text-gray-900">
-                                        {formatTime(emp.check_out)}
+                                        {formatTime(emp.check_out || null)}
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        {emp.overtime_minutes > 0 ? (
+                                        {(emp.overtime_minutes || 0) > 0 ? (
                                             <span className="text-blue-600 font-medium">{emp.overtime_minutes} د</span>
                                         ) : (
                                             "—"

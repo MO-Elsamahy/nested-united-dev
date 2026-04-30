@@ -4,13 +4,61 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, CheckCircle, Trash2, Printer, Loader2, AlertTriangle, Download, Edit2, Save, X, PlusCircle, MinusCircle, Undo2, ScrollText } from "lucide-react";
+import { ArrowRight, CheckCircle, Trash2, Printer, Loader2, AlertTriangle, Download, Edit2, Save, X, Undo2, ScrollText } from "lucide-react";
+
+interface PayrollRun {
+    id: string;
+    period_year: number;
+    period_month: number;
+    total_employees: number;
+    total_amount: number;
+    status: string;
+    currency: string;
+}
+
+interface PayrollDetail {
+    id: string;
+    full_name: string;
+    job_title: string;
+    basic_salary: number;
+    housing_allowance: number;
+    transport_allowance: number;
+    other_allowances: number;
+    gross_salary: number;
+    overtime_amount: number;
+    custom_addition: number;
+    custom_addition_note: string;
+    absence_deduction: number;
+    absent_days: number;
+    late_deduction: number;
+    gosi_deduction: number;
+    custom_deduction: number;
+    custom_deduction_note: string;
+    total_deductions: number;
+    net_salary: number;
+    currency: string;
+    salary_confirmed_at: string;
+}
+
+interface PayrollLog {
+    id: string;
+    action: string;
+    user_name?: string;
+    note?: string;
+    created_at: string;
+}
+
+interface PayrollData {
+    run: PayrollRun;
+    details: PayrollDetail[];
+    logs?: PayrollLog[];
+}
 
 export default function PayrollDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const router = useRouter();
     const { id } = use(params);
 
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<PayrollData | null>(null);
     const [loading, setLoading] = useState(true);
     const [processing, setProcessing] = useState(false);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -55,15 +103,18 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
             if (res.ok) {
                 const updatedData = await res.json();
                 // Update local state
-                setData((prev: any) => ({
-                    ...prev,
-                    run: { ...prev.run, total_amount: updatedData.total_amount },
-                    details: prev.details.map((d: any) => 
-                        d.id === detailId 
-                        ? { ...d, ...editForm, net_salary: updatedData.net_salary, total_deductions: updatedData.total_deductions } 
-                        : d
-                    )
-                }));
+                setData((prev) => {
+                    if (!prev) return null;
+                    return {
+                        ...prev,
+                        run: { ...prev.run, total_amount: updatedData.total_amount },
+                        details: prev.details.map((d) => 
+                            d.id === detailId 
+                            ? { ...d, ...editForm, net_salary: updatedData.net_salary, total_deductions: updatedData.total_deductions } 
+                            : d
+                        )
+                    };
+                });
                 setEditingId(null);
                 setSuccessMsg("تم تحديث سطر الراتب بنجاح");
                 setTimeout(() => setSuccessMsg(null), 3000);
@@ -71,14 +122,14 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                 const err = await res.json();
                 alert(err.error || "حدث خطأ");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessing(false);
         }
     };
 
-    const startEditing = (row: any) => {
+    const startEditing = (row: PayrollDetail) => {
         setEditingId(row.id);
         setEditForm({
             basic_salary: Number(row.basic_salary || 0),
@@ -120,8 +171,8 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                 const err = await res.json();
                 alert(err.error || "حدث خطأ");
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessing(false);
         }
@@ -154,8 +205,8 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
             } else {
                 alert(json.error || "تعذر إلغاء الاعتماد");
             }
-        } catch {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessing(false);
         }
@@ -205,6 +256,16 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                         </p>
                     </div>
                 </div>
+
+                {run.currency === "MIXED" && (
+                    <div className="flex-1 max-w-md bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-3">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div className="text-xs text-amber-800">
+                            <p className="font-bold mb-0.5">تنبيه: عملات مختلطة</p>
+                            <p>هذا المسير يحتوي على موظفين بعملات مختلفة. الإجمالي المعروض هو مجموع رقمي فقط دون تحويل عملات.</p>
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex items-center gap-3">
                     {isDraft ? (
@@ -283,7 +344,7 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                         </p>
                     ) : (
                         <ul className="divide-y max-h-56 overflow-y-auto text-sm">
-                            {logs.map((entry: any) => (
+                            {logs.map((entry) => (
                                 <li key={entry.id} className="px-4 py-3 flex flex-col gap-1">
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <span className="font-medium text-gray-900">
@@ -321,27 +382,83 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-xl border shadow-sm">
                     <p className="text-gray-500 text-xs">إجمالي الرواتب والبدلات</p>
-                    <p className="text-xl font-bold text-gray-900">
-                        {details.reduce((acc: number, d: any) => acc + Number(d.gross_salary), 0).toLocaleString()} <span className="text-xs">SAR</span>
-                    </p>
+                    <div className="space-y-1">
+                        {run.currency === "MIXED" ? (
+                            Object.entries(details.reduce((acc: Record<string, number>, d) => {
+                                const curr = d.currency || "SAR";
+                                acc[curr] = (acc[curr] || 0) + Number(d.gross_salary);
+                                return acc;
+                            }, {})).map(([curr, total]) => (
+                                <p key={curr} className="text-lg font-bold text-gray-900">
+                                    {total.toLocaleString()} <span className="text-xs">{curr}</span>
+                                </p>
+                            ))
+                        ) : (
+                            <p className="text-xl font-bold text-gray-900">
+                                {details.reduce((acc: number, d) => acc + Number(d.gross_salary), 0).toLocaleString()} <span className="text-xs">{run.currency || "SAR"}</span>
+                            </p>
+                        )}
+                    </div>
                 </div>
                 <div className="bg-white p-4 rounded-xl border shadow-sm">
                     <p className="text-gray-500 text-xs">إجمالي الإضافي</p>
-                    <p className="text-xl font-bold text-blue-600">
-                        +{details.reduce((acc: number, d: any) => acc + Number(d.overtime_amount), 0).toLocaleString()} <span className="text-xs">SAR</span>
-                    </p>
+                    <div className="space-y-1">
+                        {run.currency === "MIXED" ? (
+                            Object.entries(details.reduce((acc: Record<string, number>, d) => {
+                                const curr = d.currency || "SAR";
+                                acc[curr] = (acc[curr] || 0) + Number(d.overtime_amount);
+                                return acc;
+                            }, {})).map(([curr, total]) => (
+                                <p key={curr} className="text-lg font-bold text-blue-600">
+                                    +{total.toLocaleString()} <span className="text-xs">{curr}</span>
+                                </p>
+                            ))
+                        ) : (
+                            <p className="text-xl font-bold text-blue-600">
+                                +{details.reduce((acc: number, d) => acc + Number(d.overtime_amount), 0).toLocaleString()} <span className="text-xs">{run.currency || "SAR"}</span>
+                            </p>
+                        )}
+                    </div>
                 </div>
                 <div className="bg-white p-4 rounded-xl border shadow-sm">
                     <p className="text-gray-500 text-xs">إجمالي الخصومات</p>
-                    <p className="text-xl font-bold text-red-600">
-                        -{details.reduce((acc: number, d: any) => acc + Number(d.total_deductions), 0).toLocaleString()} <span className="text-xs">SAR</span>
-                    </p>
+                    <div className="space-y-1">
+                        {run.currency === "MIXED" ? (
+                            Object.entries(details.reduce((acc: Record<string, number>, d) => {
+                                const curr = d.currency || "SAR";
+                                acc[curr] = (acc[curr] || 0) + Number(d.total_deductions);
+                                return acc;
+                            }, {})).map(([curr, total]) => (
+                                <p key={curr} className="text-lg font-bold text-red-600">
+                                    -{total.toLocaleString()} <span className="text-xs">{curr}</span>
+                                </p>
+                            ))
+                        ) : (
+                            <p className="text-xl font-bold text-red-600">
+                                -{details.reduce((acc: number, d) => acc + Number(d.total_deductions), 0).toLocaleString()} <span className="text-xs">{run.currency || "SAR"}</span>
+                            </p>
+                        )}
+                    </div>
                 </div>
                 <div className="bg-violet-50 p-4 rounded-xl border border-violet-100 shadow-sm">
                     <p className="text-violet-700 text-xs">صافي الرواتب المستحقة</p>
-                    <p className="text-2xl font-bold text-violet-900">
-                        {Number(run.total_amount).toLocaleString()} <span className="text-sm">SAR</span>
-                    </p>
+                    <div className="space-y-1">
+                        {run.currency === "MIXED" ? (
+                            Object.entries(details.reduce((acc: Record<string, number>, d) => {
+                                const curr = d.currency || "SAR";
+                                acc[curr] = (acc[curr] || 0) + Number(d.net_salary);
+                                return acc;
+                            }, {})).map(([curr, total]) => (
+                                <p key={curr} className="text-xl font-bold text-violet-900">
+                                    {total.toLocaleString()} <span className="text-xs">{curr}</span>
+                                </p>
+                            ))
+                        ) : (
+                            <p className="text-2xl font-bold text-violet-900">
+                                {Number(run.total_amount).toLocaleString()} <span className="text-sm">{run.currency || "SAR"}</span>
+                            </p>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -366,7 +483,7 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                             </tr>
                         </thead>
                         <tbody className="divide-y">
-                            {details.map((row: any) => (
+                            {details.map((row) => (
                                 <tr key={row.id} className="hover:bg-gray-50">
                                     <td className="px-4 py-3">
                                         <p className="font-bold text-gray-900">{row.full_name}</p>
@@ -473,7 +590,7 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                                         )}
                                     </td>
                                     <td className="px-4 py-3 text-center font-bold text-gray-900 text-lg bg-gray-50/50">
-                                        {Number(row.net_salary).toLocaleString()}
+                                        {Number(row.net_salary).toLocaleString()} <span className="text-[10px] font-normal opacity-50">{row.currency || "SAR"}</span>
                                     </td>
                                     {!isDraft && (
                                         <td className="px-4 py-3 text-center">

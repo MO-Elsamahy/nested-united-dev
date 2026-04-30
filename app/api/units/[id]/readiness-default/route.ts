@@ -108,10 +108,10 @@ export async function GET(
       checkout_date,
       guest_name,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error in GET /api/units/[id]/readiness-default:", error);
     return NextResponse.json(
-      { error: error?.message || "Unexpected error fetching default readiness dates" },
+      { error: error instanceof Error ? error.message : "Unexpected error fetching default readiness dates" },
       { status: 500 }
     );
   }

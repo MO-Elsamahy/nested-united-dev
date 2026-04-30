@@ -27,7 +27,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: true, id });
 
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

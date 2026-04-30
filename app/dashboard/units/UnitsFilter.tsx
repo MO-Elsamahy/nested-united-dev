@@ -17,16 +17,12 @@ export function UnitsFilter() {
 
   const hasActiveFilters = statusFilter !== "all" || platformFilter !== "all" || searchQuery !== "";
 
-  // Sync search query with URL params (only on mount or external URL changes)
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
-    // Only update if URL changed externally (not from our own updates)
-    if (urlSearch !== searchQuery) {
-      setSearchQuery(urlSearch);
-    }
+    setSearchQuery(urlSearch);
   }, [urlSearch]);
 
   const updateFilter = useCallback((key: string, value: string) => {

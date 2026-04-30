@@ -4,22 +4,23 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Save, Loader2, Trophy, Search, User, SlidersHorizontal, AlertCircle, Calendar } from "lucide-react";
+import { Employee, EvaluationTemplate, EvaluationCriterion } from "@/lib/types/hr";
 
 export default function NewEvaluationPage() {
     const router = useRouter();
-    const [employees, setEmployees] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
     const [loadingInit, setLoadingInit] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     
     // Selection state
     const [searchTerm, setSearchTerm] = useState("");
-    const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+    const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [evalMonth, setEvalMonth] = useState((new Date().getMonth() + 1).toString());
     const [evalYear, setEvalYear] = useState(new Date().getFullYear().toString());
     
     // Template & Config state
-    const [templateConfig, setTemplateConfig] = useState<any>(null);
-    const [availableTemplates, setAvailableTemplates] = useState<any[]>([]);
+    const [templateConfig, setTemplateConfig] = useState<EvaluationTemplate & { criteria?: EvaluationCriterion[] } | null>(null);
+    const [availableTemplates, setAvailableTemplates] = useState<EvaluationTemplate[]>([]);
     const [loadingTemplate, setLoadingTemplate] = useState(false);
     
     // Evaluation Form state
@@ -38,7 +39,7 @@ export default function NewEvaluationPage() {
                 const tempRes = await fetch("/api/hr/evaluations/templates");
                 const tempData = await tempRes.json();
                 setAvailableTemplates(Array.isArray(tempData) ? tempData : []);
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error(error);
             } finally {
                 setLoadingInit(false);
@@ -70,14 +71,14 @@ export default function NewEvaluationPage() {
                     
                     // Init scores state
                     const initialScores: Record<string, { score: number, comment: string }> = {};
-                    templateData.criteria?.forEach((c: any) => {
+                    templateData.criteria?.forEach((c: EvaluationCriterion) => {
                         initialScores[c.id] = { score: c.max_score, comment: "" }; // default to full score
                     });
                     setScores(initialScores);
                 } else {
                     setTemplateConfig(null);
                 }
-            } catch (error) {
+            } catch (error: unknown) {
                 console.error(error);
             } finally {
                 setLoadingTemplate(false);
@@ -106,13 +107,13 @@ export default function NewEvaluationPage() {
                 setTemplateConfig(templateData);
                 
                 const initialScores: Record<string, { score: number, comment: string }> = {};
-                templateData.criteria?.forEach((c: any) => {
+                templateData.criteria?.forEach((c: EvaluationCriterion) => {
                     initialScores[c.id] = { score: c.max_score, comment: "" };
                 });
                 setScores(initialScores);
             }
-        } catch (error) {
-            alert("فشل تعيين القالب");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل تعيين القالب");
         } finally {
             setLoadingTemplate(false);
         }
@@ -169,8 +170,8 @@ export default function NewEvaluationPage() {
                 alert(data.error || "حدث خطأ أثناء حفظ التقييم");
                 setSubmitting(false);
             }
-        } catch (error) {
-            alert("فشل الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "فشل الاتصال");
             setSubmitting(false);
         }
     };
@@ -184,7 +185,7 @@ export default function NewEvaluationPage() {
     let currentTotal = 0;
     let maxTotal = 0;
     if (templateConfig?.criteria) {
-        templateConfig.criteria.forEach((c: any) => {
+        templateConfig.criteria.forEach((c) => {
             currentTotal += scores[c.id]?.score || 0;
             maxTotal += c.max_score;
         });
@@ -327,12 +328,12 @@ export default function NewEvaluationPage() {
 
                             <div className="p-6 space-y-8">
                                 <div className="space-y-6">
-                                    {templateConfig.criteria?.map((c: any) => (
+                                    {templateConfig.criteria?.map((c) => (
                                         <div key={c.id} className="border rounded-xl p-5 bg-white relative hover:border-violet-300 transition group">
                                             <div className="flex justify-between items-center mb-4">
                                                 <h4 className="font-bold text-gray-900 flex items-center gap-2">
                                                     <SlidersHorizontal className="w-4 h-4 text-violet-500" />
-                                                    {c.criterion_name}
+                                                    {c.name}
                                                 </h4>
                                                 <div className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-lg">
                                                     <input 

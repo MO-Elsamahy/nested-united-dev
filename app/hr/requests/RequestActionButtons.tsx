@@ -31,8 +31,8 @@ export function RequestActionButtons({ requestId }: RequestActionButtonsProps) {
             } else {
                 alert(data.error || "حدث خطأ");
             }
-        } catch (error) {
-            alert("حدث خطأ في الاتصال");
+        } catch (error: unknown) {
+            alert(error instanceof Error ? error.message : "حدث خطأ في الاتصال");
         } finally {
             setLoading(null);
             setShowNotes(false);

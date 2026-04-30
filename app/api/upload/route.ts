@@ -30,8 +30,8 @@ export async function POST(request: Request) {
 
         // Return public URL
         return NextResponse.json({ url: `/uploads/${filename}` });
-    } catch (error: any) {
-        console.error("Upload error:", error);
+    } catch (error: unknown) {
+        console.error("Upload error:", error instanceof Error ? error.message : error);
         return NextResponse.json({ error: "Upload failed" }, { status: 500 });
     }
 }

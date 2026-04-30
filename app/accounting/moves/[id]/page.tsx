@@ -3,10 +3,11 @@
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
 import { ArrowRight, FileText, Loader2 } from "lucide-react";
+import { AccountingMove, AccountingMoveLine } from "@/lib/types/accounting";
 
 export default function MoveDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const [data, setData] = useState<{ move: any; lines: any[] } | null>(null);
+    const [data, setData] = useState<{ move: AccountingMove; lines: AccountingMoveLine[] } | null>(null);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
@@ -21,8 +22,8 @@ export default function MoveDetailPage({ params }: { params: Promise<{ id: strin
                     return;
                 }
                 if (!cancelled) setData({ move: json.move, lines: json.lines || [] });
-            } catch {
-                if (!cancelled) setErr("فشل الاتصال");
+            } catch (error: unknown) {
+                if (!cancelled) setErr(error instanceof Error ? error.message : "فشل الاتصال");
             } finally {
                 if (!cancelled) setLoading(false);
             }

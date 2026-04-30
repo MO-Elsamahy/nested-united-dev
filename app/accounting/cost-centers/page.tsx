@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, Target, Trash2 } from "lucide-react";
+import { Plus, Target, Trash2 } from "lucide-react";
 import { CostCenterForm } from "./form";
+import { CostCenter } from "@/lib/types/accounting";
 
 export default function CostCentersPage() {
-    const [centers, setCenters] = useState<any[]>([]);
+    const [centers, setCenters] = useState<CostCenter[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
 

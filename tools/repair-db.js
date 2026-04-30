@@ -43,8 +43,8 @@ async function repairDatabase() {
                 } else {
                     console.log(`   ⏭️ Column ${col.name} already exists.`);
                 }
-            } catch (err) {
-                console.log(`   ⚠️ Failed to process column ${col.name}: ${err.message}`);
+            } catch (_err) {
+                console.log(`   ⚠️ Failed to process column ${col.name}: ${_err.message}`);
             }
         }
 
@@ -57,7 +57,7 @@ async function repairDatabase() {
                 await connection.query(`ALTER TABLE browser_accounts ADD COLUMN last_sync_at DATETIME NULL`);
                 console.log(`   ✅ Success.`);
             }
-        } catch (err) { /* ignore */ }
+        } catch (_err) { /* ignore */ }
 
         console.log('🎉 Database Repair Finalized Successfully!');
         process.exit(0);

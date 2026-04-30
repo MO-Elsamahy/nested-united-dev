@@ -37,7 +37,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("browser-go-home", accountId),
 
   // Notification handling
-  onBrowserNotification: (callback: (data: any) => void) => {
+  onBrowserNotification: (callback: (data: unknown) => void) => {
     ipcRenderer.on("browser-notification", (_, data) => callback(data));
   },
 
@@ -47,18 +47,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
 
   // Database notification
-  onDatabaseNotification: (callback: (data: any) => void) => {
+  onDatabaseNotification: (callback: (data: { title: string; body: string; id: string }) => void) => {
     ipcRenderer.on("database-notification", (_, data) => callback(data));
   },
-  onNewPlatformMessage: (callback: (data: any) => void) => {
+  onNewPlatformMessage: (callback: (data: unknown) => void) => {
     ipcRenderer.on("new-platform-message", (_, data) => callback(data));
   },
   // New event: polling service found new messages
   onPlatformMessagesUpdated: (callback: (data: { accountId: string; newCount: number }) => void) => {
     ipcRenderer.on('platform-messages-updated', (_, data) => callback(data));
   },
-  offPlatformMessagesUpdated: (callback: any) => {
-    ipcRenderer.removeListener('platform-messages-updated', callback);
+  offPlatformMessagesUpdated: (callback: (data: { accountId: string; newCount: number }) => void) => {
+    ipcRenderer.removeListener('platform-messages-updated', (_event: Electron.IpcRendererEvent, data: { accountId: string; newCount: number }) => callback(data));
   },
   sendDatabaseNotification: (data: { title: string; body: string; id: string }) => {
     ipcRenderer.send("database-notification", data);
@@ -86,7 +86,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onSyncComplete: (callback: (data: { accountId: string; platform: string }) => void) => {
     ipcRenderer.on("sync-complete", (_, data) => callback(data));
   },
-  sendMessage: (payload: { accountId: string; platform: 'airbnb' | 'gathern'; threadId: string; text: string; metadata?: any }) =>
+  sendMessage: (payload: { accountId: string; platform: 'airbnb' | 'gathern'; threadId: string; text: string; metadata?: Record<string, unknown> }) =>
     ipcRenderer.invoke('send-message', payload),
 
   // Platform messages (direct DB read — useful for debugging)
@@ -101,7 +101,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onSessionHealthChanged: (callback: (data: { accountId: string; healthy: boolean; reason: string }) => void) => {
     ipcRenderer.on('session-health-changed', (_, data) => callback(data));
   },
-  offSessionHealthChanged: (callback: any) => {
-    ipcRenderer.removeListener('session-health-changed', callback);
+  offSessionHealthChanged: (callback: (data: { accountId: string; healthy: boolean; reason: string }) => void) => {
+    ipcRenderer.removeListener('session-health-changed', (_event: Electron.IpcRendererEvent, data: { accountId: string; healthy: boolean; reason: string }) => callback(data));
   },
 });

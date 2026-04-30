@@ -2,10 +2,21 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Trophy, FileText, Loader2, Calendar } from "lucide-react";
+import { ArrowRight, Trophy, Loader2, Calendar } from "lucide-react";
+
+interface Evaluation {
+    id: string;
+    eval_month: number;
+    eval_year: number;
+    template_name: string;
+    total_score: number;
+    max_possible_score: number;
+    percentage: string;
+    notes: string | null;
+}
 
 export default function EmployeeEvaluationsPage() {
-    const [evaluations, setEvaluations] = useState<any[]>([]);
+    const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {

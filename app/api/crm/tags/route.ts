@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { query, execute, queryOne } from "@/lib/db";
+import { query, execute } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
+import { CrmTag } from "@/lib/types/crm";
 
 // GET: List all tags
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
     const session = await getServerSession(authOptions);
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const tags = await query("SELECT * FROM crm_tags ORDER BY name");
+        const tags = await query<CrmTag>("SELECT * FROM crm_tags ORDER BY name");
         return NextResponse.json(tags);
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -38,8 +39,8 @@ export async function POST(request: Request) {
         );
 
         return NextResponse.json({ success: true, id });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
 
@@ -62,7 +63,7 @@ export async function DELETE(request: Request) {
 
         await execute("DELETE FROM crm_tags WHERE id = ?", [id]);
         return NextResponse.json({ success: true });
-    } catch (error: any) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+    } catch (error) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }

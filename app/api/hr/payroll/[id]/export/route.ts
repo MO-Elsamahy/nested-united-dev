@@ -17,12 +17,12 @@ export async function GET(
         const { id } = await context.params;
         const format = req.nextUrl.searchParams.get("format") ?? "csv"; // "csv" or "xlsx"
 
-        const run = await queryOne<any>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
+        const run = await queryOne<{ period_month: number; period_year: number }>("SELECT period_month, period_year FROM hr_payroll_runs WHERE id = ?", [id]);
         if (!run) {
             return NextResponse.json({ error: "Payroll run not found" }, { status: 404 });
         }
 
-        const details = await query<any>(`
+        const details = await query<Record<string, unknown>>(`
             SELECT d.*, e.full_name, e.job_title, e.department, e.bank_name, e.iban
             FROM hr_payroll_details d
             JOIN hr_employees e ON d.employee_id = e.id
@@ -54,7 +54,7 @@ export async function GET(
             "رقم IBAN",
         ];
 
-        const rows = details.map((d: any) => [
+        const rows = details.map((d: Record<string, unknown>) => [
             d.full_name ?? "",
             d.job_title ?? "",
             d.department ?? "",
@@ -72,7 +72,7 @@ export async function GET(
             Number(d.net_salary).toFixed(2),
             d.bank_name ?? "",
             d.iban ?? "",
-        ]);
+        ]) as (string | number)[][];
 
         const filename = `payroll_${run.period_month}_${run.period_year}`;
 
@@ -82,7 +82,7 @@ export async function GET(
                 `# مسير رواتب - ${periodLabel}`,
                 ARABIC_HEADERS.join(","),
                 ...rows.map((r: (string | number)[]) =>
-                    r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")
+                    r.map((c: string | number) => `"${String(c).replace(/"/g, '""')}"`).join(",")
                 ),
             ].join("\r\n");
 
@@ -111,7 +111,7 @@ export async function GET(
 
         // RTL sheet direction
         if (!ws["!sheetView"]) ws["!sheetView"] = [];
-        (ws as any)["!sheetView"] = [{ rightToLeft: true }];
+        ((ws as unknown) as Record<string, unknown>)["!sheetView"] = [{ rightToLeft: true }];
 
         // Merge title across all columns
         const colCount = ARABIC_HEADERS.length;
@@ -149,8 +149,8 @@ export async function GET(
             },
         });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Export error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
     }
 }

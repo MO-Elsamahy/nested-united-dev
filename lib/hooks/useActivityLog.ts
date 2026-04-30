@@ -30,7 +30,7 @@ export async function logActivity(data: {
   resource_type?: string | null;
   resource_id?: string | null;
   description?: string | null;
-  metadata?: any;
+  metadata?: Record<string, unknown> | null;
 }) {
   try {
     await fetch("/api/activity-logs", {

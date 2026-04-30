@@ -1,10 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import { ArrowRight, Plus, Trash2, Calendar } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
+
+interface CalendarItem {
+    id: string;
+    platform: string;
+    ical_url: string;
+    is_primary: boolean;
+    platform_account?: {
+        account_name: string;
+    };
+}
+
+interface AccountItem {
+    id: string;
+    account_name: string;
+    platform: string;
+}
 
 export default function UnitCalendarsPage({
   params,
@@ -12,9 +27,8 @@ export default function UnitCalendarsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
-  const [calendars, setCalendars] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [calendars, setCalendars] = useState<CalendarItem[]>([]);
+  const [accounts, setAccounts] = useState<AccountItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
@@ -25,16 +39,16 @@ export default function UnitCalendarsPage({
       .catch(console.error);
   }, []);
 
-  const fetchCalendars = () => {
+  const fetchCalendars = useCallback(() => {
     fetch(`/api/units/${id}/calendars`)
       .then((res) => res.json())
       .then(setCalendars)
       .catch(console.error);
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchCalendars();
-  }, [id]);
+  }, [fetchCalendars]);
 
   const handleAdd = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -163,7 +177,7 @@ export default function UnitCalendarsPage({
                 id="platform"
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                onChange={(e) => {
+                onChange={(_e) => {
                   // Reset account select when platform changes
                   const accountSelect = document.getElementById("platform_account_id") as HTMLSelectElement;
                   if (accountSelect) accountSelect.value = "";

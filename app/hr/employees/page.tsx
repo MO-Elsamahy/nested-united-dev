@@ -7,15 +7,14 @@ import {
     Users,
     Plus,
     Search,
-    Filter,
-    MoreVertical,
     Phone,
     Mail,
     Building,
 } from "lucide-react";
+import { Employee } from "@/lib/types/hr";
 
 async function getEmployees() {
-    const employees = await query<any>(
+    const employees = await query<Employee>(
         `SELECT e.*, u.name as user_name
      FROM hr_employees e
      LEFT JOIN users u ON e.user_id = u.id
@@ -25,10 +24,10 @@ async function getEmployees() {
 }
 
 async function getDepartments() {
-    const depts = await query<any>(
+    const depts = await query<{ department: string }>(
         `SELECT DISTINCT department FROM hr_employees WHERE department IS NOT NULL ORDER BY department`
     );
-    return depts?.map((d: any) => d.department) || [];
+    return depts?.map((d) => d.department) || [];
 }
 
 export default async function EmployeesPage() {
@@ -96,7 +95,7 @@ export default async function EmployeesPage() {
                     </div>
                     <select className="px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-violet-500 bg-white">
                         <option value="">كل الأقسام</option>
-                        {departments.map((dept: string) => (
+                        {departments.map((dept) => (
                             <option key={dept} value={dept}>{dept}</option>
                         ))}
                     </select>
@@ -112,7 +111,7 @@ export default async function EmployeesPage() {
             {/* Employees Grid */}
             {employees.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {employees.map((emp: any) => (
+                    {employees.map((emp) => (
                         <Link
                             key={emp.id}
                             href={`/hr/employees/${emp.id}`}

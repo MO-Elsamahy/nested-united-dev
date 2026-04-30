@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
@@ -8,17 +8,7 @@ const SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes
 export function AutoSync() {
   const router = useRouter();
 
-  useEffect(() => {
-    // Run sync immediately on mount
-    runSync();
-
-    // Set up periodic sync
-    const interval = setInterval(runSync, SYNC_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  async function runSync() {
+  const runSync = useCallback(async () => {
     try {
       // console.log("Running background sync...");
       const res = await fetch("/api/sync", {
@@ -36,7 +26,17 @@ export function AutoSync() {
     } catch (error) {
       console.error("Background sync failed:", error);
     }
-  }
+  }, [router]);
+
+  useEffect(() => {
+    // Run sync immediately on mount
+    runSync();
+
+    // Set up periodic sync
+    const interval = setInterval(runSync, SYNC_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [runSync]);
 
   return null;
 }

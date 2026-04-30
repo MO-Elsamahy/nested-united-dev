@@ -3,28 +3,38 @@
 import { useState, useEffect } from "react";
 import { Receipt, Download, Loader2, CheckCircle, Handshake } from "lucide-react";
 
+interface Payslip {
+    id: string;
+    period_month: number;
+    period_year: number;
+    net_salary: string | number;
+    approved_at: string;
+    salary_confirmed_at: string | null;
+    payroll_run_id: string;
+}
+
 export default function EmployeePayslipsPage() {
-    const [payslips, setPayslips] = useState<any[]>([]);
+    const [payslips, setPayslips] = useState<Payslip[]>([]);
     const [loading, setLoading] = useState(true);
     const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
-    useEffect(() => {
-        fetchPayslips();
-    }, []);
-
-    const fetchPayslips = async () => {
+    async function fetchPayslips() {
         try {
             const res = await fetch("/api/hr/payroll/me");
             const data = await res.json();
             if (Array.isArray(data)) {
                 setPayslips(data);
             }
-        } catch (error) {
+        } catch (_error) {
             console.error("Failed to fetch payslips");
         } finally {
             setLoading(false);
         }
-    };
+    }
+
+    useEffect(() => {
+        void fetchPayslips();
+    }, []);
 
     const handleConfirm = async (payrollRunId: string) => {
         if (!confirm("هل تؤكد استلامك لراتب هذا الشهر؟")) return;
@@ -36,12 +46,12 @@ export default function EmployeePayslipsPage() {
             });
             if (res.ok) {
                 alert("تم تأكيد الاستلام بنجاح");
-                fetchPayslips();
+                void fetchPayslips();
             } else {
                 const err = await res.json();
                 alert(err.error || "حدث خطأ أثناء التأكيد");
             }
-        } catch (error) {
+        } catch (_error) {
             alert("فشل الاتصال بالخادم");
         } finally {
             setConfirmingId(null);

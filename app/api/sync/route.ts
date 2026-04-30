@@ -49,17 +49,14 @@ async function parseICalUrl(url: string): Promise<ParsedEvent[]> {
       if (event.startDate && event.endDate) {
         // CRITICAL FIX: Check if this is a DATE (not DATETIME)
         // DATE values should not be affected by timezone
-        const isDateOnly = event.startDate.isDate;
-
-        let startStr: string;
-        let endStr: string;
+        const _isDateOnly = event.startDate.isDate;
 
         // ALWAYS use components to avoid timezone shifts during JS Date conversion
         const startInfo = event.startDate;
         const endInfo = event.endDate;
 
-        startStr = `${startInfo.year}-${pad(startInfo.month)}-${pad(startInfo.day)}`;
-        endStr = `${endInfo.year}-${pad(endInfo.month)}-${pad(endInfo.day)}`;
+        const startStr = `${startInfo.year}-${pad(startInfo.month)}-${pad(startInfo.day)}`;
+        const endStr = `${endInfo.year}-${pad(endInfo.month)}-${pad(endInfo.day)}`;
 
         const statusVal = vevent.getFirstPropertyValue("status");
         const transpVal = vevent.getFirstPropertyValue("transp");
@@ -78,8 +75,9 @@ async function parseICalUrl(url: string): Promise<ParsedEvent[]> {
     }
 
     return events;
-  } catch (error: any) {
-    console.error(`Error parsing iCal from ${url}:`, error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+    console.error(`Error parsing iCal from ${url}:`, errorMessage);
     throw error;
   }
 }
@@ -189,9 +187,10 @@ export async function POST() {
         await execute("UPDATE units SET last_synced_at = NOW() WHERE id = ?", [calendar.unit_id]);
         unitsProcessed++;
 
-      } catch (error: any) {
+      } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
         errorsCount++;
-        errors.push(`${calendar.unit_name} [PRIMARY]: ${error.message}`);
+        errors.push(`${calendar.unit_name} [PRIMARY]: ${errorMessage}`);
       }
     }
 
@@ -269,9 +268,10 @@ export async function POST() {
         await execute("UPDATE units SET last_synced_at = NOW() WHERE id = ?", [calendar.unit_id]);
         unitsProcessed++;
 
-      } catch (error: any) {
+      } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
         errorsCount++;
-        errors.push(`${calendar.unit_name}: ${error.message}`);
+        errors.push(`${calendar.unit_name}: ${errorMessage}`);
       }
     }
 
@@ -295,8 +295,9 @@ export async function POST() {
       errors: errors.length > 0 ? errors : undefined,
     });
 
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
 
