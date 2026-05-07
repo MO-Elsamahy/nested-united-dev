@@ -6,14 +6,12 @@ export const dynamic = "force-dynamic";
 // Helper to build a safe absolute URL for redirects
 function safeRedirectUrl(path: string, req: NextRequest): URL {
     try {
-        const reqUrl = new URL(req.url);
-        // Replace 0.0.0.0 with localhost to avoid browser errors
-        if (reqUrl.hostname === "0.0.0.0") {
-            reqUrl.hostname = "localhost";
-        }
-        return new URL(path, reqUrl);
+        // Use the request origin if possible
+        const baseUrl = req.nextUrl.origin;
+        return new URL(path, baseUrl);
     } catch {
-        return new URL(`http://localhost:3000${path}`);
+        // Ultimate fallback: use the full request URL as the base to stay on the same origin
+        return new URL(path, req.url);
     }
 }
 

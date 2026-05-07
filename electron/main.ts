@@ -57,7 +57,7 @@ async function startNextServer(): Promise<number> {
 
     if (!fs.existsSync(serverPath)) {
       console.error("Server file not found:", serverPath);
-      resolve(3000);
+      resolve(port);
       return;
     }
 
@@ -87,7 +87,7 @@ async function startNextServer(): Promise<number> {
 
     nextServerProcess.on("error", (err) => {
       console.error("Failed to start Next.js server:", err);
-      resolve(3000);
+      resolve(port);
     });
 
     setTimeout(() => resolve(port), 5000);
@@ -254,7 +254,8 @@ function createMainWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL("http://localhost:3000");
+    const devUrl = process.env.DEV_SERVER_URL || "http://localhost:3000";
+    mainWindow.loadURL(devUrl);
     // DevTools will open manually with F12 if needed
   } else {
     // في الإنتاج: تم تحويل التطبيق ليعتمد على الخادم المحلي (Localhost) بدلاً من Netlify

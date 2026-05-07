@@ -92,8 +92,9 @@ Best regards,
 ${company.company_name}
         `;
 
-        // Generate PDF URL for attachment (in production, attach the actual PDF)
-        const pdfUrl = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/accounting/invoices/${invoiceId}/pdf`;
+        // Generate PDF URL for attachment
+        const baseUrl = process.env.NEXTAUTH_URL || req.nextUrl.origin;
+        const pdfUrl = `${baseUrl}/api/accounting/invoices/${invoiceId}/pdf`;
 
         // Send email
         await transporter.sendMail({
