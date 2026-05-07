@@ -2,24 +2,21 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 
 const mockQuery = vi.fn();
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
 }));
 
-vi.mock('next-auth', () => ({
-    getServerSession: vi.fn(),
-}));
 
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({
-    authOptions: {},
-}));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { GET } from '@/app/api/accounting/reports/income-statement/route';
 
 describe('Income Statement Report', () => {
     beforeAll(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'user-123' },
         } as { user: { id: string } });
     });

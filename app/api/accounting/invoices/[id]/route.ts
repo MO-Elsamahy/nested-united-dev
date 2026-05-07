@@ -1,8 +1,9 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne } from "@/lib/db";
 import { AccountingInvoice, AccountingInvoiceLine, AccountingPaymentAllocation, AccountingMoveLine } from "@/lib/types/accounting";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // GET /api/accounting/invoices/[id] - Get invoice details
 export async function GET(
@@ -10,8 +11,8 @@ export async function GET(
     context: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -74,8 +75,8 @@ export async function PUT(
     context: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -106,10 +107,11 @@ export async function PUT(
             lines,
         } = body;
 
-        // Action: Cancel Invoice (Super Admin Only)
+        // Action: Cancel Invoice (Super Admin or Accountant)
         if (action === "cancel") {
-            if (session.user.role !== "super_admin") {
-                return NextResponse.json({ error: "Forbidden. Only super admins can cancel invoices." }, { status: 403 });
+            const hasAccess = await hasSystemAccess(user.role, "accounting");
+            if (!hasAccess) {
+                return NextResponse.json({ error: "Forbidden. Only authorized staff can cancel invoices." }, { status: 403 });
             }
 
             if (invoice.state === "draft" || invoice.state === "cancelled") {
@@ -132,7 +134,7 @@ export async function PUT(
                         `إلغاء الفاتورة رقم ${invoice.invoice_number}`,
                         invoice.partner_id,
                         invoice.total_amount,
-                        session.user.id
+                        user.id
                     ]
                 );
 
@@ -163,7 +165,7 @@ export async function PUT(
             await query(
                 `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
                  VALUES (UUID(), ?, 'cancel', 'invoice', ?, ?)`,
-                [session.user.id, invoiceId, JSON.stringify({ reason: body.reason || "Manual cancellation by admin" })]
+                [user.id, invoiceId, JSON.stringify({ reason: body.reason || "Manual cancellation by admin" })]
             );
 
             return NextResponse.json({ message: "Invoice cancelled and reversed successfully" });
@@ -294,8 +296,8 @@ export async function DELETE(
     context: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -313,10 +315,11 @@ export async function DELETE(
 
         const invoice = existing[0];
 
-        // Permission Check: Only super_admin can delete confirmed/paid invoices
-        if (invoice.state !== "draft" && session.user.role !== "super_admin") {
+        // Permission Check: Only authorized staff can delete confirmed/paid invoices
+        const hasAccess = await hasSystemAccess(user.role, "accounting");
+        if (invoice.state !== "draft" && !hasAccess) {
             return NextResponse.json(
-                { error: "Forbidden. Confirmed invoices can only be deleted by super admins." },
+                { error: "Forbidden. Confirmed invoices can only be deleted by authorized staff." },
                 { status: 403 }
             );
         }

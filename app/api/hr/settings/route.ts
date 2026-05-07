@@ -1,13 +1,13 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute, queryOne, generateUUID } from "@/lib/db";
 import { hrSettingsRowsToMap } from "@/lib/hr-settings";
 
 // GET: كل الإعدادات (أحدث قيمة لكل مفتاح عند وجود صفوف مكررة)
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -21,8 +21,8 @@ export async function GET(_request: Request) {
 
 // POST: تحديث الإعدادات (تحديث حسب المفتاح أو إدراج صف جديد — لا يعتمد على UNIQUE)
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 

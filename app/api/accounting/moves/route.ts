@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { query, execute, generateUUID, queryOne } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getCurrentUser } from "@/lib/auth";
 import { AccountingMove } from "@/lib/types/accounting";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // GET: List journal entries (moves) with filtering
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -61,8 +61,8 @@ export async function GET(request: Request) {
 
 // POST: Create a complete Journal Entry (Header + Lines)
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
         }
 
         const moveId = generateUUID();
-        const userId = session.user.id;
+        const userId = user.id;
 
         // 1. Create Header
         await execute(
@@ -119,7 +119,6 @@ export async function POST(request: Request) {
             );
         }
 
-
         // 3. Audit Log
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
@@ -136,12 +135,13 @@ export async function POST(request: Request) {
 
 // DELETE: Soft Delete a Move
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        if (session.user.role !== "super_admin") {
-            return NextResponse.json({ error: "Forbidden. Only super admins can delete journal entries." }, { status: 403 });
+        const hasAccess = await hasSystemAccess(user.role, "accounting");
+        if (!hasAccess) {
+            return NextResponse.json({ error: "Forbidden. Only authorized staff can delete journal entries." }, { status: 403 });
         }
 
         const { searchParams } = new URL(request.url);
@@ -159,7 +159,7 @@ export async function DELETE(request: Request) {
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
              VALUES (?, ?, 'delete', 'move', ?, ?)`,
-            [generateUUID(), session.user.id, id, JSON.stringify({ old_amount: move.amount_total })]
+            [generateUUID(), user.id, id, JSON.stringify({ old_amount: move.amount_total })]
         );
 
         return NextResponse.json({ success: true });

@@ -96,7 +96,7 @@ export class BrowserManager {
             if (account.platform === 'airbnb') url = 'https://www.airbnb.com/hosting/inbox';
             if (account.platform === 'gathern') url = 'https://business.gathern.co/app/chat';
             if (account.platform === 'whatsapp') url = 'https://web.whatsapp.com';
-            if (account.platform === 'zomrahub') url = 'https://login.zomrahub.com';
+
 
             console.log(`[BrowserManager] Navigating to ${url}...`);
             await page.goto(url, { waitUntil: 'domcontentloaded' });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query, execute } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 // ─────────────────────────────────────────────
 // GET /api/messages
@@ -32,6 +33,11 @@ interface PostBody {
 }
 
 export async function GET(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const accountId  = searchParams.get('accountId');
   const threadId   = searchParams.get('threadId');
@@ -159,6 +165,11 @@ export async function GET(req: NextRequest) {
 // ─────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { threadId, browserAccountId } = await req.json() as PostBody;
     if (!threadId) {

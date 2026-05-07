@@ -14,16 +14,16 @@ vi.mock("@/lib/db", () => ({
     execute: (...args: unknown[]) => mockExecute(...args),
 }));
 
-vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
-vi.mock("@/app/api/auth/[...nextauth]/route", () => ({ authOptions: {} }));
+
+
 
 vi.mock("uuid", () => ({ v4: () => "deal-test-uuid" }));
 
-import { getServerSession } from "next-auth";
+import { getCurrentUser } from '@/lib/auth';
 import { POST, PUT } from "@/app/api/crm/deals/route";
 
 beforeAll(() => {
-    vi.mocked(getServerSession).mockResolvedValue({
+    vi.mocked(getCurrentUser).mockResolvedValue({
         user: { id: "user-001" },
     } as { user: { id: string } });
 });

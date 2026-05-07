@@ -6,7 +6,7 @@ import { ShieldCheck, Loader2, AlertCircle } from "lucide-react";
 interface AuthenticateButtonProps {
     accountId: string;
     accountName: string;
-    platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+    platform: "airbnb" | "gathern" | "whatsapp";
     partition: string;
 }
 

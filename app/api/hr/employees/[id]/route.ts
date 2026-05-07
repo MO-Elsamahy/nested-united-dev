@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { queryOne, execute } from "@/lib/db";
 import { Employee } from "@/lib/types/hr";
 
@@ -9,8 +9,8 @@ export async function GET(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -39,8 +39,8 @@ export async function PUT(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -142,8 +142,8 @@ export async function DELETE(
     request: Request,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -152,7 +152,7 @@ export async function DELETE(
         const url = new URL(request.url);
         const permanent =
             url.searchParams.get("permanent") === "1" || url.searchParams.get("permanent") === "true";
-        const role = session.user.role;
+        const role = user.role;
 
         const exists = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE id = ?", [id]);
         if (!exists) {
@@ -160,9 +160,19 @@ export async function DELETE(
         }
 
         if (permanent) {
-            if (role !== "super_admin") {
+            // Check if user has HR access (or is super_admin)
+            let hasHRAccess = role === "super_admin";
+            if (!hasHRAccess) {
+                const perm = await queryOne<{ can_access: number }>(
+                    "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'hr'",
+                    [role]
+                );
+                hasHRAccess = !!perm?.can_access;
+            }
+
+            if (!hasHRAccess) {
                 return NextResponse.json(
-                    { error: "الحذف النهائي متاح لمسؤول النظام (super_admin) فقط." },
+                    { error: "ليس لديك صلاحية كافية للحذف النهائي." },
                     { status: 403 }
                 );
             }

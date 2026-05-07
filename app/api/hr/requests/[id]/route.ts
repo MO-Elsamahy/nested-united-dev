@@ -1,9 +1,10 @@
 
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { execute, queryOne } from "@/lib/db";
 import { HRRequest } from "@/lib/types/hr";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // PUT: Approve / Reject Request
 export async function PUT(
@@ -16,9 +17,14 @@ export async function PUT(
     // But let's handle the promise just in case for future compat.
     const { id } = await params;
 
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "ليس لديك صلاحية لإدارة الطلبات" }, { status: 403 });
     }
 
     try {
@@ -37,7 +43,7 @@ export async function PUT(
            reviewed_at = NOW(), 
            reviewer_notes = ? 
        WHERE id = ?`,
-            [status, session.user.id, reviewer_notes, id]
+            [status, user.id, reviewer_notes, id]
         );
 
         // 2. If Approved & is Leave, deduct balance?
@@ -70,11 +76,15 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
-    
-    // Only HR Managers or Admins can delete
-    if (!session?.user || !['super_admin', 'admin', 'hr_manager'].includes(session.user.role)) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
+    // Only HR Managers or Admins can delete
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "غير مصرح" }, { status: 403 });
     }
 
     try {

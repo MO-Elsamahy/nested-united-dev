@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { logActivityInServer, clearPermissionCacheForUser } from "@/lib/permissions";
+import { getCurrentUser } from "@/lib/auth";
 
 interface UserPermission {
   id: string;
@@ -18,20 +17,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Allow users to fetch their own permissions OR super_admin to fetch anyone's
-  const currentUser = await queryOne<{ role: string }>(
-    "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
-  );
-
-  const isOwnPermissions = session.user.id === id;
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  const isOwnPermissions = user.id === id;
+  const isSuperAdmin = user.role === "super_admin";
 
   if (!isOwnPermissions && !isSuperAdmin) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -59,20 +53,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check if current user is super admin
-  const currentUser = await queryOne<{ role: string }>(
-    "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
-  );
-
-  if (currentUser?.role !== "super_admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user || user.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }
 
   const body = await request.json();
@@ -114,7 +98,7 @@ export async function PUT(
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "update",
       page_path: "/dashboard/users",
       resource_type: "user_permissions",

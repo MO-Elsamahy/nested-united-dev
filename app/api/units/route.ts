@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getCurrentUser } from "@/lib/auth";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
 import { Unit, UnitCalendar } from "@/lib/types/pms";
@@ -8,10 +7,15 @@ import { Unit, UnitCalendar } from "@/lib/types/pms";
 
 // GET all units
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    // Get all units
+    // Get all non-archived units
     const units = await query<Unit>(
-      "SELECT * FROM units ORDER BY created_at DESC"
+      "SELECT * FROM units WHERE status != 'archived' ORDER BY created_at DESC"
     );
 
     // Get calendars for each unit
@@ -49,14 +53,14 @@ export async function GET() {
 
 // POST create new unit
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check permission
-  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/units", "edit");
+  const hasPermission = await checkUserPermission(user.id, "/dashboard/units", "edit");
   if (!hasPermission) {
     return NextResponse.json({ error: "Forbidden: لا تملك صلاحية الإنشاء" }, { status: 403 });
   }
@@ -102,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "create",
       page_path: "/dashboard/units",
       resource_type: "unit",

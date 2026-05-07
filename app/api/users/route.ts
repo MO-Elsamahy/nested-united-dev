@@ -1,20 +1,20 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne } from "@/lib/db";
 
 // GET all users (super admin only)
 export async function GET() {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check if current user is super admin
   const currentUser = await queryOne<{ role: string }>(
     "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
+    [user.id]
   );
 
   if (currentUser?.role !== "super_admin") {
@@ -22,7 +22,7 @@ export async function GET() {
   }
 
   const users = await query(
-    "SELECT * FROM users ORDER BY created_at DESC"
+    "SELECT id, name, email, role, is_active, created_at FROM users ORDER BY created_at DESC"
   );
 
   return NextResponse.json(users);

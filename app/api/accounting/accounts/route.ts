@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { query, execute, generateUUID } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getCurrentUser } from "@/lib/auth";
 import { AccountingAccount } from "@/lib/types/accounting";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // GET: List all accounts
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const hasAccess = await hasSystemAccess(user.role, "accounting");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: No access to accounting accounts" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -34,8 +39,13 @@ export async function GET(request: Request) {
 
 // DELETE: Soft Delete Account
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "accounting");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: Cannot delete accounting accounts" }, { status: 403 });
+    }
 
     try {
         const { searchParams } = new URL(request.url);
@@ -52,7 +62,7 @@ export async function DELETE(request: Request) {
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
              VALUES (?, ?, ?, ?, ?, ?)`,
-            [generateUUID(), session.user.id, 'delete', 'account', id, JSON.stringify({})]
+            [generateUUID(), user.id, 'delete', 'account', id, JSON.stringify({})]
         );
 
         return NextResponse.json({ success: true });
@@ -63,9 +73,14 @@ export async function DELETE(request: Request) {
 
 // POST: Create a new account
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const hasAccess = await hasSystemAccess(user.role, "accounting");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: Cannot create accounting accounts" }, { status: 403 });
     }
 
     try {

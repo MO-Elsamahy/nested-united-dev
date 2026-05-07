@@ -1,13 +1,13 @@
 
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { execute } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const body = await request.json();
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
         await execute(`
             INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
             VALUES (?, ?, ?, ?, ?, ?, ?)
-        `, [id, customer_id, deal_id || null, type, title, description, session.user.id]);
+        `, [id, customer_id, deal_id || null, type, title, description, user.id]);
 
         return NextResponse.json({ success: true, id });
 

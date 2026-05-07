@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import ICAL from "ical.js";
 
 interface ParsedEvent {
@@ -84,13 +86,17 @@ async function parseICalUrl(url: string): Promise<ParsedEvent[]> {
 
 // POST - Sync calendars
 export async function POST() {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "super_admin" && user.role !== "admin")) {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  }
+
   let unitsProcessed = 0;
   let errorsCount = 0;
   let newBookings = 0;
   const errors: string[] = [];
 
   try {
-    // Get all calendars for active units
     const calendars = await query<UnitCalendar>(
       `SELECT uc.*, u.unit_name, u.status as unit_status
        FROM unit_calendars uc
@@ -109,35 +115,32 @@ export async function POST() {
 
     const primaryReservations = new Map<string, Set<string>>();
 
-    // Pass 1: Process primary calendars
-    // SAFETY NOTE: We intentionally DO NOT delete reservations that are missing from the iCal feed.
-    // This ensures that past bookings (history) are preserved forever in our database,
-    // even if Airbnb/Gathern removes them from their recent iCal feed.
     for (const calendar of calendars) {
-      const isPrimary = calendar.is_primary === 1 || calendar.is_primary === true;
-      if (!isPrimary) continue;
-
       try {
-        console.log(`[PRIMARY] Syncing: ${calendar.unit_name} (${calendar.platform})`);
-        const events = await parseICalUrl(calendar.ical_url);
 
+
+        const events = await parseICalUrl(calendar.ical_url);
         const unitId = calendar.unit_id;
-        if (!primaryReservations.has(unitId)) {
+        const isPrimary = calendar.is_primary === 1 || calendar.is_primary === true;
+
+        if (isPrimary && !primaryReservations.has(unitId)) {
           primaryReservations.set(unitId, new Set());
         }
-        const primarySet = primaryReservations.get(unitId)!;
+        const primarySet = isPrimary ? primaryReservations.get(unitId)! : primaryReservations.get(unitId);
+
+        const seenIds: string[] = [];
 
         for (const event of events) {
           if (!event.start || !event.end) continue;
           if (event.start > event.end) continue;
-          if (event.status && event.status.toUpperCase() === "CANCELLED") continue;
+          if (event.status?.toUpperCase() === "CANCELLED") continue;
 
           const rangeKey = `${event.start}-${event.end}`;
-          primarySet.add(rangeKey);
+          if (isPrimary && primarySet) primarySet.add(rangeKey);
 
-          // Filter blocked events
+          // Filtering logic (Airbnb/Gathern specific)
+          const summaryLower = (event.summary || "").toLowerCase();
           if (calendar.platform === "airbnb" || calendar.platform === "gathern") {
-            const summaryLower = (event.summary || "").toLowerCase();
             if (
               summaryLower.includes("not available") ||
               summaryLower.includes("unavailable") ||
@@ -150,82 +153,6 @@ export async function POST() {
 
             if (calendar.platform === "airbnb") {
               const descLower = (event.description || "").toLowerCase();
-              // Accept if: summary is "reserved", OR has URL in description, OR has meaningful summary (length > 2)
-              const isReserved = summaryLower === "reserved" || summaryLower.includes("reserved");
-              const hasUrl = descLower.includes("http");
-              const hasMeaningfulSummary = (event.summary || "").trim().length > 2;
-              if (!isReserved && !hasUrl && !hasMeaningfulSummary) continue;
-            }
-          }
-
-          // Check if reservation exists and is manually edited
-          const existing = await queryOne<{ id: string; is_manually_edited: number }>(
-            `SELECT id, is_manually_edited FROM reservations
-             WHERE unit_id = ? AND platform = ? AND start_date = ? AND end_date = ?`,
-            [calendar.unit_id, calendar.platform, event.start, event.end]
-          );
-
-          if (existing?.is_manually_edited === 1) continue;
-
-          // Upsert reservation with platform_account_id
-          if (existing) {
-            await execute(
-              `UPDATE reservations SET summary = ?, raw_event = ?, platform_account_id = ?, last_synced_at = NOW()
-               WHERE id = ?`,
-              [event.summary, JSON.stringify(event), calendar.platform_account_id || null, existing.id]
-            );
-          } else {
-            await execute(
-              `INSERT INTO reservations (id, unit_id, platform, platform_account_id, start_date, end_date, summary, raw_event, last_synced_at, is_manually_edited)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0)`,
-              [generateUUID(), calendar.unit_id, calendar.platform, calendar.platform_account_id || null, event.start, event.end, event.summary, JSON.stringify(event)]
-            );
-            newBookings++;
-          }
-        }
-
-        await execute("UPDATE units SET last_synced_at = NOW() WHERE id = ?", [calendar.unit_id]);
-        unitsProcessed++;
-
-      } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
-        errorsCount++;
-        errors.push(`${calendar.unit_name} [PRIMARY]: ${errorMessage}`);
-      }
-    }
-
-    // Pass 2: Process non-primary calendars
-    for (const calendar of calendars) {
-      const isPrimary = calendar.is_primary === 1 || calendar.is_primary === true;
-      if (isPrimary) continue;
-
-      try {
-        console.log(`[NON-PRIMARY] Syncing: ${calendar.unit_name} (${calendar.platform})`);
-        const events = await parseICalUrl(calendar.ical_url);
-        const primarySet = primaryReservations.get(calendar.unit_id);
-
-        for (const event of events) {
-          if (!event.start || !event.end) continue;
-          if (event.start > event.end) continue;
-          if (event.status?.toUpperCase() === "CANCELLED") continue;
-
-          // Filter blocked events
-          if (calendar.platform === "airbnb" || calendar.platform === "gathern") {
-            const summaryLower = (event.summary || "").toLowerCase();
-            if (
-              summaryLower.includes("not available") ||
-              summaryLower.includes("unavailable") ||
-              summaryLower.includes("blocked") ||
-              summaryLower.includes("closed") ||
-              summaryLower.includes("غير متاح") ||
-              summaryLower.includes("مغلق") ||
-              summaryLower.includes("محجوب") ||
-              summaryLower === "airbnb (not available)"
-            ) continue;
-
-            if (calendar.platform === "airbnb") {
-              const descLower = (event.description || "").toLowerCase();
-              // Accept if: summary is "reserved", OR has URL/reservation in description, OR has meaningful summary (length > 2)
               const isReserved = summaryLower === "reserved" || summaryLower.includes("reserved");
               const hasUrl = descLower.includes("http") || descLower.includes("reservation");
               const hasMeaningfulSummary = (event.summary || "").trim().length > 2;
@@ -233,52 +160,83 @@ export async function POST() {
             }
           }
 
-          // Skip if already in primary
-          const eventRange = `${event.start}-${event.end}`;
-          if ((calendar.platform === "airbnb" || calendar.platform === "gathern") && primarySet && primarySet.has(eventRange)) {
-            continue;
-          }
+          // Skip if already in primary (for non-primary calendars)
+          if (!isPrimary && primarySet && primarySet.has(rangeKey)) continue;
 
-          // Check existing
+          // NEW: Skip if already exists as a manual booking
+          const asBooking = await queryOne(
+            "SELECT id FROM bookings WHERE unit_id = ? AND checkin_date = ? AND checkout_date = ?",
+            [calendar.unit_id, event.start, event.end]
+          );
+          if (asBooking) continue;
+
+          // Check if reservation exists
           const existing = await queryOne<{ id: string; is_manually_edited: number }>(
             `SELECT id, is_manually_edited FROM reservations
              WHERE unit_id = ? AND platform = ? AND start_date = ? AND end_date = ?`,
             [calendar.unit_id, calendar.platform, event.start, event.end]
           );
 
-          if (existing?.is_manually_edited === 1) continue;
+          if (existing?.is_manually_edited === 1) {
+            seenIds.push(existing.id);
+            continue;
+          }
 
-          // Upsert
           if (existing) {
             await execute(
               `UPDATE reservations SET summary = ?, raw_event = ?, platform_account_id = ?, last_synced_at = NOW()
                WHERE id = ?`,
               [event.summary, JSON.stringify(event), calendar.platform_account_id || null, existing.id]
             );
+            seenIds.push(existing.id);
           } else {
+            const newId = generateUUID();
             await execute(
               `INSERT INTO reservations (id, unit_id, platform, platform_account_id, start_date, end_date, summary, raw_event, last_synced_at, is_manually_edited)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0)`,
-              [generateUUID(), calendar.unit_id, calendar.platform, calendar.platform_account_id || null, event.start, event.end, event.summary, JSON.stringify(event)]
+              [newId, calendar.unit_id, calendar.platform, calendar.platform_account_id || null, event.start, event.end, event.summary, JSON.stringify(event)]
             );
+            seenIds.push(newId);
             newBookings++;
           }
+        }
+
+        // CLEANUP: Delete future reservations for this unit+platform that are no longer in the feed
+        // This ensures cancelled Airbnb/Gathern bookings are removed.
+        if (seenIds.length > 0) {
+          const placeholders = seenIds.map(() => "?").join(",");
+          await execute(
+            `DELETE FROM reservations 
+             WHERE unit_id = ? AND platform = ? 
+             AND start_date >= CURDATE() 
+             AND is_manually_edited = 0
+             AND id NOT IN (${placeholders})`,
+            [calendar.unit_id, calendar.platform, ...seenIds]
+          );
+        } else {
+          // If no events in feed, delete all future reservations for this feed
+          await execute(
+            `DELETE FROM reservations 
+             WHERE unit_id = ? AND platform = ? 
+             AND start_date >= CURDATE() 
+             AND is_manually_edited = 0`,
+            [calendar.unit_id, calendar.platform]
+          );
         }
 
         await execute("UPDATE units SET last_synced_at = NOW() WHERE id = ?", [calendar.unit_id]);
         unitsProcessed++;
 
       } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
+        const errorMessage = error instanceof Error ? error.message : "Internal Server Error";
         errorsCount++;
-        errors.push(`${calendar.unit_name}: ${errorMessage}`);
+        errors.push(`${calendar.unit_name} (${calendar.platform}): ${errorMessage}`);
       }
     }
 
     const status = errorsCount === 0 ? "success" : errorsCount === calendars.length ? "failed" : "partial";
     const message = `تمت معالجة ${unitsProcessed} وحدة، ${newBookings} حجز`;
 
-    // Log sync
     await execute(
       `INSERT INTO sync_logs (id, status, message, units_processed, errors_count, details)
        VALUES (?, ?, ?, ?, ?, ?)`,
@@ -303,6 +261,11 @@ export async function POST() {
 
 // GET - Get last sync status
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user || (user.role !== "super_admin" && user.role !== "admin")) {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  }
+
   const lastSync = await queryOne(
     "SELECT * FROM sync_logs ORDER BY run_at DESC LIMIT 1"
   );

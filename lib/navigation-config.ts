@@ -76,19 +76,19 @@ export const ACCOUNTING_NAV: NavSection[] = [
     {
         title: "العمليات اليومية",
         items: [
-            { label: "الفواتير", href: "/accounting/invoices", icon: FileText },
-            { label: "سندات القبض والصرف", href: "/accounting/payments", icon: DollarSign },
-            { label: "دفاتر اليومية", href: "/accounting/journals", icon: ScrollText },
-            { label: "قيد جديد", href: "/accounting/moves/create", icon: Calculator }
+            { label: "الفواتير", href: "/accounting/invoices", icon: FileText, allowedRoles: ["super_admin", "admin", "accountant"] },
+            { label: "سندات القبض والصرف", href: "/accounting/payments", icon: DollarSign, allowedRoles: ["super_admin", "admin", "accountant"] },
+            { label: "دفاتر اليومية", href: "/accounting/journals", icon: ScrollText, allowedRoles: ["super_admin", "admin", "accountant"] },
+            { label: "قيد جديد", href: "/accounting/moves/create", icon: Calculator, allowedRoles: ["super_admin", "admin", "accountant"] }
         ]
     },
     {
         title: "الإعدادات والبيانات",
         items: [
-            { label: "دليل الحسابات", href: "/accounting/accounts", icon: BookOpen },
-            { label: "الشركاء والموردين", href: "/accounting/partners", icon: Users }, // Renamed
-            { label: "مراكز التكلفة", href: "/accounting/cost-centers", icon: Target },
-            { label: "سجل الأحداث", href: "/accounting/backlog", icon: History }
+            { label: "دليل الحسابات", href: "/accounting/accounts", icon: BookOpen, allowedRoles: ["super_admin", "admin", "accountant"] },
+            { label: "الشركاء والموردين", href: "/accounting/partners", icon: Users },
+            { label: "مراكز التكلفة", href: "/accounting/cost-centers", icon: Target, allowedRoles: ["super_admin", "admin", "accountant"] },
+            { label: "سجل الأحداث", href: "/accounting/backlog", icon: History, allowedRoles: ["super_admin", "admin", "accountant"] }
         ]
     },
     {
@@ -120,7 +120,7 @@ export const HR_NAV: NavSection[] = [
     {
         title: "العمليات المالية",
         items: [
-            { label: "الرواتب", href: "/hr/payroll", icon: DollarSign }
+            { label: "الرواتب", href: "/hr/payroll", icon: DollarSign, allowedRoles: ["super_admin", "hr_manager"] }
         ]
     },
     {

@@ -1,13 +1,13 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, generateUUID, executeTransaction } from "@/lib/db";
 import { EvaluationTemplate } from "@/lib/types/hr";
 
 // GET: List all evaluation templates
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -23,8 +23,8 @@ export async function GET(_request: Request) {
 
 // POST: Create a new template with initial criteria
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
             await connection.execute(
                 `INSERT INTO hr_evaluation_templates (id, name, description, created_by)
                  VALUES (?, ?, ?, ?)`,
-                [templateId, name, description || null, session.user.id]
+                [templateId, name, description || null, user.id]
             );
 
             for (let i = 0; i < criteria.length; i++) {

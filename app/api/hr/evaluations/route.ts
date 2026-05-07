@@ -1,13 +1,13 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, executeTransaction, generateUUID, queryOne } from "@/lib/db";
 import { Evaluation, Employee, EvaluationCriterion } from "@/lib/types/hr";
 
 // GET: List all evaluations (filtered by month/year/employee)
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
         if (isEmployeePortal) {
             const currentEmployee = await queryOne<Employee>(
                 "SELECT id FROM hr_employees WHERE user_id = ?",
-                [session.user.id]
+                [user.id]
             );
             if (!currentEmployee) {
                 return NextResponse.json({ error: "لا يوجد ملف موظف مرتبط" }, { status: 403 });
@@ -64,8 +64,8 @@ export async function GET(request: Request) {
 
 // POST: Submit a new monthly evaluation
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
             await connection.execute(
                 `INSERT INTO hr_evaluations (id, employee_id, template_id, eval_month, eval_year, total_score, max_possible_score, percentage, notes, evaluated_by)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [evaluationId, employee_id, template_id, eval_month, eval_year, totalScore, maxPossibleScore, percentage, notes || null, session.user.id]
+                [evaluationId, employee_id, template_id, eval_month, eval_year, totalScore, maxPossibleScore, percentage, notes || null, user.id]
             );
 
             for (const s of scores) {

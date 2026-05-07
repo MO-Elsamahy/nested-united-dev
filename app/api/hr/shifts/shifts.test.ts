@@ -9,21 +9,22 @@ const mockQuery = vi.fn();
 const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'shift-uuid-123');
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     execute: (...args: unknown[]) => mockExecute(...args),
     generateUUID: () => mockGenerateUUID(),
 }));
 
-vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { GET, POST } from '@/app/api/hr/shifts/route';
 
 describe('Shifts API', () => {
     beforeEach(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'admin-001' },
         } as { user: { id: string } });
     });

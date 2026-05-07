@@ -121,7 +121,6 @@ export function UnitsFilter() {
             <option value="all">جميع المنصات</option>
             <option value="airbnb">Airbnb</option>
             <option value="gathern">Gathern</option>
-            <option value="zomrahub">Zomrahub</option>
           </select>
         </div>
 
@@ -161,7 +160,7 @@ export function UnitsFilter() {
                   ? "bg-green-100 text-green-700"
                   : "bg-purple-100 text-purple-700"
               }`}>
-              المنصة: {platformFilter === "airbnb" ? "Airbnb" : platformFilter === "gathern" ? "Gathern" : "Zomrahub"}
+              المنصة: {platformFilter === "airbnb" ? "Airbnb" : "Gathern"}
               <button
                 onClick={() => updateFilter("platform", "all")}
                 className="hover:text-green-900"

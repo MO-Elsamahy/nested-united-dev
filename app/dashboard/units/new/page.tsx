@@ -105,7 +105,6 @@ export default function NewUnitPage() {
                       <option value="">اختر المنصة</option>
                       <option value="airbnb">Airbnb</option>
                       <option value="gathern">Gathern</option>
-                      <option value="zomrahub">Zomrahub</option>
                     </select>
                     {cal.platform && (
                       <select

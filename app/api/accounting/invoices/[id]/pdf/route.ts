@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query } from "@/lib/db";
 import { AccountingInvoice, AccountingInvoiceLine, CompanySettings } from "@/lib/types/accounting";
 import React from "react";
@@ -489,8 +489,8 @@ function generateInvoicePDF(invoice: AccountingInvoice, company: CompanySettings
 // GET /api/accounting/invoices/[id]/pdf - Generate PDF
 export async function GET(req: NextRequest, params: { params: Promise<{ id: string }> }) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

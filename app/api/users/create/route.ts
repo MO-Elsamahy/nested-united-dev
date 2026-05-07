@@ -1,24 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getCurrentUser } from "@/lib/auth";
 import { queryOne, execute, generateUUID } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
-  // Check if current user is super admin
-  const currentUser = await queryOne<{ role: string }>(
-    "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
-  );
-
-  if (currentUser?.role !== "super_admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user || user.role !== "super_admin") {
+    return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
   }
 
   const body = await request.json();

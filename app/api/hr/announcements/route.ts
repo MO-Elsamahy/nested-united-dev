@@ -1,13 +1,14 @@
 
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute, generateUUID } from "@/lib/db";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // GET: List all announcements
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         // Admins see all. Employees see only active.
@@ -29,8 +30,13 @@ export async function GET(_request: Request) {
 
 // POST: Create a new announcement
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "ليس لديك صلاحية لإدارة الإعلانات" }, { status: 403 });
+    }
 
     try {
         const body = await request.json();
@@ -45,7 +51,7 @@ export async function POST(request: Request) {
         await execute(
             `INSERT INTO hr_announcements (id, title, content, priority, is_pinned, expires_at, created_by, published_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, NOW())`,
-            [id, title, content, priority || "normal", is_pinned ? 1 : 0, expires_at || null, session.user.id]
+            [id, title, content, priority || "normal", is_pinned ? 1 : 0, expires_at || null, user.id]
         );
 
         return NextResponse.json({ success: true, id });
@@ -55,11 +61,15 @@ export async function POST(request: Request) {
     }
 }
 
-
 // PUT: Update an announcement
 export async function PUT(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "ليس لديك صلاحية لإدارة الإعلانات" }, { status: 403 });
+    }
 
     try {
         const body = await request.json();
@@ -84,8 +94,13 @@ export async function PUT(request: Request) {
 
 // DELETE: Delete an announcement
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "ليس لديك صلاحية لإدارة الإعلانات" }, { status: 403 });
+    }
 
     try {
         const { searchParams } = new URL(request.url);

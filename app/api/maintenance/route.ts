@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { MaintenanceTicket } from "@/lib/types/maintenance";
+import { hasSystemAccess } from "@/lib/permissions";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET all maintenance tickets
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const hasAccess = await hasSystemAccess(user.role, "maintenance");
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Forbidden: No access to maintenance" }, { status: 403 });
+  }
+
   try {
     // Get tickets with unit and creator info
     const tickets = await query<MaintenanceTicket>(
@@ -33,10 +43,15 @@ export async function GET() {
 
 // POST create new maintenance ticket
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const hasAccess = await hasSystemAccess(user.role, "maintenance");
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Forbidden: Cannot create maintenance tickets" }, { status: 403 });
   }
 
   const body = await request.json();
@@ -59,7 +74,7 @@ export async function POST(request: NextRequest) {
     await execute(
       `INSERT INTO maintenance_tickets (id, unit_id, title, description, priority, status, created_by)
        VALUES (?, ?, ?, ?, ?, 'open', ?)`,
-      [ticketId, unit_id, title, description || null, priority || null, session.user.id]
+      [ticketId, unit_id, title, description || null, priority || null, user.id]
     );
 
     const ticket = await queryOne(
@@ -93,7 +108,7 @@ export async function POST(request: NextRequest) {
     // Also create notification for all admins (but only if they're not the creator)
     const admins = await query<{ id: string }>(
       "SELECT id FROM users WHERE role IN ('admin', 'super_admin') AND is_active = 1 AND id != ?",
-      [session.user.id]
+      [user.id]
     );
 
     if (admins.length > 0) {

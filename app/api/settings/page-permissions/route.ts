@@ -1,7 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 // Define pages per system
 const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
@@ -51,6 +50,11 @@ interface PermissionRow {
 
 // GET: Fetch users with access to a system and their page permissions
 export async function GET(request: Request) {
+    const user = await getCurrentUser();
+    if (!user || user.role !== "super_admin") {
+        return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const systemId = searchParams.get("system") || "rentals";
 
@@ -113,8 +117,10 @@ export async function GET(request: Request) {
 
 // POST: Update a user's page permission
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user || user.role !== "super_admin") {
+        return NextResponse.json({ error: "Forbidden: Super Admin only" }, { status: 403 });
+    }
 
     try {
         const body = await request.json();

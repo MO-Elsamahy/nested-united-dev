@@ -1,12 +1,12 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute } from "@/lib/db";
 
 // GET: Get user's notifications
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const { searchParams } = new URL(request.url);
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
         }
         sql += " ORDER BY created_at DESC LIMIT 50";
 
-        const notifications = await query(sql, [session.user.id]);
+        const notifications = await query(sql, [user.id]);
         return NextResponse.json(notifications);
     } catch (error: unknown) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
@@ -27,17 +27,17 @@ export async function GET(request: Request) {
 
 // PUT: Mark notification as read
 export async function PUT(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const body = await request.json();
         const { id, markAllRead } = body;
 
         if (markAllRead) {
-            await execute("UPDATE crm_notifications SET is_read = 1 WHERE user_id = ?", [session.user.id]);
+            await execute("UPDATE crm_notifications SET is_read = 1 WHERE user_id = ?", [user.id]);
         } else if (id) {
-            await execute("UPDATE crm_notifications SET is_read = 1 WHERE id = ? AND user_id = ?", [id, session.user.id]);
+            await execute("UPDATE crm_notifications SET is_read = 1 WHERE id = ? AND user_id = ?", [id, user.id]);
         }
 
         return NextResponse.json({ success: true });

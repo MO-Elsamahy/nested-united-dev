@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
@@ -8,8 +8,8 @@ import { CrmTag } from "@/lib/types/crm";
 
 // GET: List all tags
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const tags = await query<CrmTag>("SELECT * FROM crm_tags ORDER BY name");
@@ -21,8 +21,8 @@ export async function GET(_request: Request) {
 
 // POST: Create new tag
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const body = await request.json();
@@ -46,9 +46,9 @@ export async function POST(request: Request) {
 
 // DELETE: Remove tag
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const role = (session.user as { role?: string }).role;
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const role = (user as { role?: string }).role;
     if (!canAccessCrmReportsAndSettings(role)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -1,22 +1,45 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { queryOne, execute, generateUUID } from "@/lib/db";
 import { Attendance, Shift, Employee } from "@/lib/types/hr";
 
 // POST: تسجيل حضور أو انصراف
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
     try {
         const body = await request.json();
-        const { employee_id, type } = body;
+        const { type } = body;
+        let { employee_id } = body;
 
-        if (!employee_id || !type) {
-            return NextResponse.json({ error: "بيانات ناقصة" }, { status: 400 });
+        if (!type) {
+            return NextResponse.json({ error: "نوع العملية مطلوب" }, { status: 400 });
+        }
+
+        // Security Check: If not a manager, enforce punching for self only
+        const userRole = user.role;
+        const isManager = ["super_admin", "admin", "hr_manager", "accountant"].includes(userRole);
+
+        if (!isManager || !employee_id) {
+            // Find employee linked to this user
+            const emp = await queryOne<{ id: string }>(
+                "SELECT id FROM hr_employees WHERE user_id = ?",
+                [user.id]
+            );
+            if (!emp) {
+                return NextResponse.json({ error: "لا يوجد سجل موظف مرتبط بحسابك" }, { status: 404 });
+            }
+            
+            // If they provided an ID but aren't a manager, or didn't provide one, use their own
+            if (employee_id && employee_id !== emp.id && !isManager) {
+                return NextResponse.json({ error: "غير مصرح لك بتسجيل الحضور لموظف آخر" }, { status: 403 });
+            }
+            
+            employee_id = emp.id;
         }
 
         if (type !== "check_in" && type !== "check_out") {
@@ -34,10 +57,22 @@ export async function POST(request: Request) {
         const localMinutes = localNow.getUTCMinutes();
 
         // Check if attendance record exists for today
-        const existing = await queryOne<Attendance>(
+        let existing = await queryOne<Attendance>(
             `SELECT * FROM hr_attendance WHERE employee_id = ? AND date = ?`,
             [employee_id, today]
         );
+
+        // Overnight Shift Support: If no record for today, check yesterday for an open check-in
+        if (!existing && type === "check_out") {
+            const yesterdayDate = new Date(localNow);
+            yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+            const yesterday = yesterdayDate.toISOString().split("T")[0];
+            
+            existing = await queryOne<Attendance>(
+                "SELECT * FROM hr_attendance WHERE employee_id = ? AND date = ? AND check_out IS NULL",
+                [employee_id, yesterday]
+            );
+        }
 
         // Get Employee Shift Info
         const employee = await queryOne<Employee>(
@@ -137,10 +172,12 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: "تم تسجيل الانصراف مسبقاً" }, { status: 400 });
             }
 
-            // Calculate overtime
+            // Calculate overtime using LOCAL time
             let overtimeMinutes = 0;
             const workEndMinutes = timeToMinutes(workEndTimeStr);
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const localHours = localNow.getUTCHours();
+            const localMinutes = localNow.getUTCMinutes();
+            const currentMinutes = localHours * 60 + localMinutes;
 
             if (currentMinutes > workEndMinutes) {
                 overtimeMinutes = currentMinutes - workEndMinutes;

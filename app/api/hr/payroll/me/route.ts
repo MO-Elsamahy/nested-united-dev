@@ -1,17 +1,17 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne } from "@/lib/db";
 
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getCurrentUser();
+    if (!user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
         // 1. Get Employee ID for current user
-        const employee = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE user_id = ?", [session.user.id]);
+        const employee = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE user_id = ?", [user.id]);
         if (!employee) {
             return NextResponse.json({ error: "Employee record not found" }, { status: 404 });
         }

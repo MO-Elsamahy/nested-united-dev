@@ -162,3 +162,18 @@ export async function logActivityInServer(data: {
     console.error("Failed to log activity:", error);
   }
 }
+
+/**
+ * Check if a role has access to a specific system module (e.g., 'hr', 'accounting')
+ * Uses the role_system_permissions table.
+ */
+export async function hasSystemAccess(role: string, systemId: string): Promise<boolean> {
+  if (role === "super_admin") return true;
+
+  const perm = await queryOne<{ can_access: number }>(
+    "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = ?",
+    [role, systemId]
+  );
+
+  return !!perm?.can_access;
+}

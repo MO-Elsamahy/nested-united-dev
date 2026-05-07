@@ -1,14 +1,20 @@
 
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // GET: List Customers (filters: search, type, active_deals, deals_total bucket, tag_id)
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "crm");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: No access to CRM" }, { status: 403 });
+    }
 
     try {
         const { searchParams } = new URL(request.url);
@@ -80,8 +86,13 @@ export async function GET(request: Request) {
 
 // POST: Create Customer
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "crm");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: No access to CRM" }, { status: 403 });
+    }
 
     try {
         const body = await request.json();

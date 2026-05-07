@@ -6,8 +6,8 @@ import { query } from "@/lib/db";
 export async function GET() {
   const user = await getCurrentUser();
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || (user.role !== "super_admin" && user.role !== "admin")) {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
   }
 
   try {
@@ -27,6 +27,6 @@ export async function GET() {
 
     return NextResponse.json(unlinkedAccounts);
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error instanceof Error ? error.message : 'Internal Server Error' : 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });
   }
 }

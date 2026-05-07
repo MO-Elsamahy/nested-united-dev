@@ -1,14 +1,19 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
 
 // GET all accounts
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const accounts = await query(
-      "SELECT * FROM platform_accounts ORDER BY created_at DESC"
+      "SELECT id, platform, account_name, notes, created_at FROM platform_accounts ORDER BY created_at DESC"
     );
     return NextResponse.json(accounts);
   } catch (error: unknown) {
@@ -18,14 +23,14 @@ export async function GET() {
 
 // POST create new account
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check permission
-  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/accounts", "edit");
+  const hasPermission = await checkUserPermission(user.id, "/dashboard/accounts", "edit");
   if (!hasPermission) {
     return NextResponse.json({ error: "Forbidden: لا تملك صلاحية الإنشاء" }, { status: 403 });
   }
@@ -43,7 +48,7 @@ export async function POST(request: NextRequest) {
     await execute(
       `INSERT INTO platform_accounts (id, platform, account_name, notes, created_by)
        VALUES (?, ?, ?, ?, ?)`,
-      [accountId, platform, account_name, notes || null, session.user.id]
+      [accountId, platform, account_name, notes || null, user.id]
     );
 
     const account = await queryOne(
@@ -53,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "create",
       page_path: "/dashboard/accounts",
       resource_type: "account",

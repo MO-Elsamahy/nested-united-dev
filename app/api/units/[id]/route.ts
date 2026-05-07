@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { Unit, UnitCalendar } from "@/lib/types/pms";
 import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
+import { getCurrentUser } from "@/lib/auth";
 
 // GET single unit with all related data
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
 
@@ -59,14 +64,14 @@ export async function GET(
 
 // POST Create Unit
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check permission
-  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/units", "edit");
+  const hasPermission = await checkUserPermission(user.id, "/dashboard/units", "edit");
   if (!hasPermission) {
     return NextResponse.json({ error: "Forbidden: لا تملك صلاحية إضافة وحدات" }, { status: 403 });
   }
@@ -120,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "create",
       page_path: "/dashboard/units",
       resource_type: "unit",
@@ -141,14 +146,14 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check permission
-  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/units", "edit");
+  const hasPermission = await checkUserPermission(user.id, "/dashboard/units", "edit");
   if (!hasPermission) {
     return NextResponse.json({ error: "Forbidden: لا تملك صلاحية تعديل الوحدات" }, { status: 403 });
   }
@@ -191,7 +196,7 @@ export async function PUT(
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "update",
       page_path: "/dashboard/units",
       resource_type: "unit",
@@ -212,14 +217,14 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check permission
-  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/units", "edit");
+  const hasPermission = await checkUserPermission(user.id, "/dashboard/units", "edit");
   if (!hasPermission) {
     return NextResponse.json({ error: "Forbidden: لا تملك صلاحية حذف الوحدات" }, { status: 403 });
   }
@@ -237,27 +242,22 @@ export async function DELETE(
       return NextResponse.json({ error: "الوحدة غير موجودة" }, { status: 404 });
     }
 
-    // Delete related data (CASCADE should handle this, but being explicit)
-    await execute("DELETE FROM unit_calendars WHERE unit_id = ?", [id]);
-    await execute("DELETE FROM reservations WHERE unit_id = ?", [id]);
-    await execute("DELETE FROM bookings WHERE unit_id = ?", [id]);
-    await execute("DELETE FROM maintenance_tickets WHERE unit_id = ?", [id]);
-
-    // Delete the unit
-    await execute("DELETE FROM units WHERE id = ?", [id]);
+    // Soft Delete: Archive the unit instead of deleting it
+    // This preserves historical bookings, revenue, and maintenance logs.
+    await execute("UPDATE units SET status = 'archived' WHERE id = ?", [id]);
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "delete",
       page_path: "/dashboard/units",
       resource_type: "unit",
       resource_id: id,
-      description: `حذف الوحدة: ${unit.unit_name}`,
+      description: `أرشفة الوحدة: ${unit.unit_name} (إخفاء من القائمة النشطة)`,
       metadata: { unit_name: unit.unit_name, unit_id: id },
     });
 
-    return NextResponse.json({ success: true, message: "تم حذف الوحدة بنجاح" });
+    return NextResponse.json({ success: true, message: "تمت أرشفة الوحدة بنجاح وحفظ تاريخها" });
   } catch (error) {
     console.error("Delete Unit Error:", error);
     return NextResponse.json({ error: "حدث خطأ أثناء حذف الوحدة" }, { status: 500 });

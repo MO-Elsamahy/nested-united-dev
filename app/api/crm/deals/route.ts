@@ -1,13 +1,19 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute, queryOne } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // GET: List deals (with optional filters)
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "crm");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: No access to CRM deals" }, { status: 403 });
+    }
 
     try {
         const { searchParams } = new URL(request.url);
@@ -30,8 +36,13 @@ export async function GET(request: Request) {
 
 // POST: Create Deal
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "crm");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: Cannot create CRM deals" }, { status: 403 });
+    }
 
     try {
         const body = await request.json();
@@ -96,8 +107,13 @@ export async function POST(request: Request) {
 
 // PUT: Update Deal Stage or Status
 export async function PUT(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "crm");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: Cannot update CRM deals" }, { status: 403 });
+    }
 
     try {
         const body = await request.json();
@@ -145,7 +161,7 @@ export async function PUT(request: Request) {
             await execute(`
                 INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
                 VALUES (?, ?, ?, 'status_change', 'تغيير مرحلة', ?, ?)
-            `, [actId, oldDeal.customer_id, id, `تم تغيير حالة الصفقة من ${oldDeal.stage} إلى ${stage}`, session.user.id]);
+            `, [actId, oldDeal.customer_id, id, `تم تغيير حالة الصفقة من ${oldDeal.stage} إلى ${stage}`, user.id]);
         }
 
         if (status && oldDeal && oldDeal.status !== status) {
@@ -154,7 +170,7 @@ export async function PUT(request: Request) {
             await execute(`
                INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
                VALUES (?, ?, ?, 'status_change', ?, ?, ?)
-           `, [actId, oldDeal.customer_id, id, desc, desc, session.user.id]);
+           `, [actId, oldDeal.customer_id, id, desc, desc, user.id]);
         }
 
         return NextResponse.json({ success: true });
@@ -166,8 +182,13 @@ export async function PUT(request: Request) {
 
 // DELETE: Remove Deal
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "crm");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: Cannot delete CRM deals" }, { status: 403 });
+    }
 
     try {
         const { searchParams } = new URL(request.url);

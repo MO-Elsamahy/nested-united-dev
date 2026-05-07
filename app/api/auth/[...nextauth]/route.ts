@@ -45,7 +45,7 @@ export const authOptions: NextAuthOptions = {
                     throw new Error("البريد الإلكتروني وكلمة المرور مطلوبان");
                 }
 
-                console.log('[NextAuth] Attempting login for:', credentials.email);
+
 
                 // Find user by email
                 const user = await queryOne<DBUser>(
@@ -53,7 +53,7 @@ export const authOptions: NextAuthOptions = {
                     [credentials.email]
                 );
 
-                console.log('[NextAuth] User found:', user ? 'Yes' : 'No');
+
 
                 if (!user) {
                     throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
@@ -61,14 +61,13 @@ export const authOptions: NextAuthOptions = {
 
                 // MySQL returns is_active as 0 or 1
                 const isActive = user.is_active === 1 || user.is_active === true;
-                console.log('[NextAuth] User is_active:', isActive);
+
 
                 if (!isActive) {
                     throw new Error("حسابك معطل. يرجى التواصل مع المسؤول");
                 }
 
-                console.log('[NextAuth] Password hash exists:', !!user.password_hash);
-                console.log('[NextAuth] Password hash length:', user.password_hash?.length);
+
 
                 // Verify password
                 const isValid = await bcrypt.compare(
@@ -76,7 +75,7 @@ export const authOptions: NextAuthOptions = {
                     user.password_hash
                 );
 
-                console.log('[NextAuth] Password valid:', isValid);
+
 
                 if (!isValid) {
                     throw new Error("البريد الإلكتروني أو كلمة المرور غير صحيحة");
@@ -93,7 +92,7 @@ export const authOptions: NextAuthOptions = {
     ],
     session: {
         strategy: "jwt",
-        maxAge: 400 * 24 * 60 * 60, // 400 days — effective max (browser cookie limit)
+        maxAge: 30 * 24 * 60 * 60, // 30 days
     },
     callbacks: {
         async jwt({ token, user }) {
@@ -116,7 +115,7 @@ export const authOptions: NextAuthOptions = {
         error: "/login",
     },
     secret: process.env.NEXTAUTH_SECRET,
-    debug: true,
+    debug: false,
 };
 
 const handler = NextAuth(authOptions);

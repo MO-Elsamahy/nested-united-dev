@@ -283,6 +283,33 @@ export async function POST(request: NextRequest) {
   const bookingId = generateUUID();
 
   try {
+    // Overlap Check: Ensure unit is not already booked
+    const overlap = await queryOne(
+      `SELECT id FROM bookings 
+       WHERE unit_id = ? 
+       AND (
+         (checkin_date <= ? AND checkout_date > ?) OR
+         (checkin_date < ? AND checkout_date >= ?) OR
+         (checkin_date >= ? AND checkout_date <= ?)
+       )`,
+      [unit_id, checkin_date, checkin_date, checkout_date, checkout_date, checkin_date, checkout_date]
+    );
+
+    const reservationOverlap = await queryOne(
+      `SELECT id FROM reservations 
+       WHERE unit_id = ? 
+       AND (
+         (start_date <= ? AND end_date > ?) OR
+         (start_date < ? AND end_date >= ?) OR
+         (start_date >= ? AND end_date <= ?)
+       )`,
+      [unit_id, checkin_date, checkin_date, checkout_date, checkout_date, checkin_date, checkout_date]
+    );
+
+    if (overlap || reservationOverlap) {
+      return NextResponse.json({ error: "الوحدة محجوزة بالفعل في هذه التواريخ" }, { status: 409 });
+    }
+
     await execute(
       `INSERT INTO bookings (id, unit_id, platform_account_id, platform, guest_name, phone, checkin_date, checkout_date, amount, currency, notes, created_by)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,

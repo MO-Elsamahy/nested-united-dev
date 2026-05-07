@@ -5,7 +5,7 @@ import { X, Globe, Maximize2, RefreshCw } from "lucide-react";
 
 interface Tab {
   id: string;
-  platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+  platform: "airbnb" | "gathern" | "whatsapp";
   accountName: string;
   title: string;
   url: string;
@@ -16,14 +16,12 @@ const platformIcons = {
   airbnb: "🏠",
   gathern: "💬",
   whatsapp: "💚",
-  zomrahub: "🏘️",
 };
 
 const platformColors = {
   airbnb: "bg-red-500",
   gathern: "bg-green-500",
   whatsapp: "bg-emerald-500",
-  zomrahub: "bg-purple-500",
 };
 
 export function TabBar() {
@@ -295,13 +293,6 @@ export function TabBar() {
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <span className="font-medium text-emerald-700">
                   WhatsApp: {tabs.filter((t) => t.platform === "whatsapp").length}
-                </span>
-              </span>
-            )}\n            {tabs.filter((t) => t.platform === "zomrahub").length > 0 && (
-              <span className="flex items-center gap-1.5 px-2 py-1 bg-purple-50 rounded-md border border-purple-200">
-                <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                <span className="font-medium text-purple-700">
-                  Zomrahub: {tabs.filter((t) => t.platform === "zomrahub").length}
                 </span>
               </span>
             )}

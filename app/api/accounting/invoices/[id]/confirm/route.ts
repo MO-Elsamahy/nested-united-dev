@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 
@@ -40,8 +40,8 @@ interface AccountRow {
 // POST /api/accounting/invoices/[id]/confirm - Confirm invoice and create journal entry
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                 invoice.notes || `Confirmed invoice ${invoice.invoice_number}`,
                 invoice.partner_id,
                 invoice.total_amount,
-                session.user.id,
+                user.id,
             ]
         );
 

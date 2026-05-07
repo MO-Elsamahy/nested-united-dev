@@ -18,6 +18,7 @@ const mockExecuteTransaction = vi.fn(async (callback) => {
     return await callback(connection);
 });
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -26,15 +27,15 @@ vi.mock('@/lib/db', () => ({
     generateUUID: () => mockGenerateUUID(),
 }));
 
-vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { GET, POST } from '@/app/api/hr/evaluations/route';
 
 describe('Evaluations API', () => {
     beforeEach(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'admin-001' },
         } as { user: { id: string } });
     });

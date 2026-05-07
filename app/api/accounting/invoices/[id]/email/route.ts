@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query } from "@/lib/db";
 import nodemailer from "nodemailer";
 import { AccountingInvoice, CompanySettings } from "@/lib/types/accounting";
@@ -12,8 +12,8 @@ interface _RouteParams {
 // POST /api/accounting/invoices/[id]/email - Send invoice via email
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user?.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

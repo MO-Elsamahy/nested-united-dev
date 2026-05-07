@@ -1,12 +1,12 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute, generateUUID, queryOne } from "@/lib/db";
 
 // GET: List messages (Admin sees all, Employee sees own)
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
         if (isEmployeePortal) {
             const currentEmployee = await queryOne<{ id: string }>(
                 "SELECT id FROM hr_employees WHERE user_id = ?",
-                [session.user.id]
+                [user.id]
             );
             
             if (!currentEmployee) {
@@ -57,8 +57,8 @@ export async function GET(request: Request) {
 
 // POST: Admin sends a message to an employee
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         await execute(
             `INSERT INTO hr_employee_messages (id, employee_id, msg_type, title, content, sent_by)
              VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, employee_id, msg_type, title, content, session.user.id]
+            [id, employee_id, msg_type, title, content, user.id]
         );
 
         return NextResponse.json({ success: true, id });

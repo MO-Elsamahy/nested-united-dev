@@ -7,9 +7,30 @@ import { SidebarHeader } from "./SidebarHeader";
 import { SidebarFooter } from "./SidebarFooter";
 import { NavSection, NavItem } from "@/lib/navigation-config";
 import { LucideIcon } from "lucide-react";
+import { AppFeatures } from "@/lib/features";
 
-function isNavItemVisibleForUser(item: NavItem, userRole: string): boolean {
+function isNavItemVisibleForUser(
+    item: NavItem, 
+    userRole: string, 
+    permissions: { page_path: string; can_view: boolean }[],
+    features?: AppFeatures
+): boolean {
+    // 1. Feature flag check
+    if (features) {
+        if (item.href.startsWith("/accounting") && !features.accounting) return false;
+        if (item.href.startsWith("/hr") && !features.hr) return false;
+        if (item.href.startsWith("/crm") && !features.crm) return false;
+        if (item.href.startsWith("/dashboard") && !features.rentals) return false;
+    }
+
+    // 2. Super Admin check
     if (item.requiresSuperAdmin && userRole !== "super_admin") return false;
+    
+    // 3. Database permissions override
+    const permission = permissions.find((p) => p.page_path === item.href);
+    if (permission) return !!permission.can_view;
+
+    // 4. Fallback to static allowedRoles
     if (item.allowedRoles?.length) return item.allowedRoles.includes(userRole);
     return true;
 }
@@ -17,6 +38,8 @@ function isNavItemVisibleForUser(item: NavItem, userRole: string): boolean {
 interface AppSidebarProps {
     user: User | { name: string; role: string; email?: string; id?: string };
     sections: NavSection[];
+    permissions?: { page_path: string; can_view: boolean }[];
+    features?: AppFeatures;
     header: {
         title: string;
         subtitle: string;
@@ -30,6 +53,8 @@ interface AppSidebarProps {
 export function UnifiedSidebar({
     user,
     sections,
+    permissions,
+    features,
     header,
     isLoading = false,
     className,
@@ -63,7 +88,7 @@ export function UnifiedSidebar({
                 ) : (
                     sections.map((section, sectionIdx) => {
                         const visibleItems = section.items.filter((item) =>
-                            isNavItemVisibleForUser(item, user.role)
+                            isNavItemVisibleForUser(item, user.role, permissions || [], features)
                         );
                         if (visibleItems.length === 0) return null;
 

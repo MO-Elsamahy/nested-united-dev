@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { getCurrentUser } from '@/lib/auth';
 
 /**
  * can show a green/red indicator next to each account.
@@ -15,6 +16,11 @@ interface SessionHealthRow {
 }
 
 export async function GET() {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     // Latest health log per browser_account_id
     const rows = await query<SessionHealthRow>(`

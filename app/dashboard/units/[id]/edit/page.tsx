@@ -214,12 +214,10 @@ export default function EditUnitPage({
                           <span
                             className={`px-2 py-1 rounded text-xs ${cal.platform === "airbnb"
                               ? "bg-red-100 text-red-600"
-                              : cal.platform === "gathern"
-                                ? "bg-green-100 text-green-600"
-                                : "bg-purple-100 text-purple-600"
+                                : "bg-green-100 text-green-600"
                               }`}
                           >
-                            {cal.platform === "airbnb" ? "🏠 Airbnb" : cal.platform === "gathern" ? "💬 Gathern" : "🏘️ Zomrahub"}
+                            {cal.platform === "airbnb" ? "🏠 Airbnb" : "💬 Gathern"}
                           </span>
                           {cal.is_primary && (
                             <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-600">

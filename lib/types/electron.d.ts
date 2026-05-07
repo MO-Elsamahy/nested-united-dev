@@ -3,20 +3,20 @@ interface ElectronAPI {
   getBrowserAccounts: () => Promise<
     Array<{
       id: string;
-      platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+      platform: "airbnb" | "gathern" | "whatsapp";
       accountName: string;
       partition: string;
       isOpen?: boolean;
     }>
   >;
   openAuthWindow: (data: {
-    platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+    platform: "airbnb" | "gathern" | "whatsapp";
     accountId: string;
     partition: string;
   }) => Promise<{ success: boolean; error?: string }>;
   addBrowserAccount: (account: {
     id: string;
-    platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+    platform: "airbnb" | "gathern" | "whatsapp";
     accountName: string;
     partition: string;
   }) => Promise<{ success: boolean }>;
@@ -37,13 +37,13 @@ interface ElectronAPI {
   testNotification: (data: {
     accountId: string;
     accountName: string;
-    platform: "airbnb" | "gathern" | "zomrahub";
+    platform: "airbnb" | "gathern";
     count: number;
   }) => Promise<{ success: boolean }>;
   getOpenTabs: () => Promise<
     Array<{
       id: string;
-      platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+      platform: "airbnb" | "gathern" | "whatsapp";
       accountName: string;
       title: string;
       url: string;
@@ -58,7 +58,7 @@ interface ElectronAPI {
   getPlatformMessages: (params: { accountId?: string; platform?: string; limit?: number }) => Promise<{ success: boolean; messages: Array<{
     id: string;
     platform_account_id: string;
-    platform: "airbnb" | "gathern" | "whatsapp" | "zomrahub";
+    platform: "airbnb" | "gathern" | "whatsapp";
     thread_id: string;
     platform_msg_id: string;
     guest_name: string;

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, executeTransaction } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { AccountingPayment, AccountingPaymentAllocation } from "@/lib/types/accounting";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // DELETE /api/accounting/payments/[id] - Soft delete a payment and update invoice balances
 export async function DELETE(
@@ -10,8 +10,8 @@ export async function DELETE(
     context: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -29,11 +29,11 @@ export async function DELETE(
 
         const payment = payments[0];
 
-        // Permission check: Only super admins can delete posted payments? 
-        // For now, let's check roles
-        if (payment.state !== "draft" && session.user.role !== "super_admin") {
+        // Permission check: Only authorized staff can delete posted payments
+        const hasAccess = await hasSystemAccess(user.role, "accounting");
+        if (payment.state !== "draft" && !hasAccess) {
             return NextResponse.json(
-                { error: "Forbidden. Only super admins can delete posted payments." },
+                { error: "Forbidden. Only authorized staff can delete posted payments." },
                 { status: 403 }
             );
         }
@@ -75,7 +75,7 @@ export async function DELETE(
             await conn.execute(
                 `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
                  VALUES (UUID(), ?, 'delete', 'payment', ?, ?)`,
-                [session.user.id, paymentId, JSON.stringify({ 
+                [user.id, paymentId, JSON.stringify({ 
                     payment_number: payment.payment_number, 
                     amount: payment.amount,
                     affected_invoices: allocations.map((a: AccountingPaymentAllocation) => a.invoice_id)

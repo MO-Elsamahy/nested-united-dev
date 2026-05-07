@@ -18,9 +18,10 @@ export function AppSwitcher({ features, user }: AppSwitcherProps) {
 
     const role = user?.role;
     const isSuperAdmin = role === "super_admin";
-    const isHRAdmin = isSuperAdmin; // HR management: super_admin only
-    const isAccountant = isSuperAdmin || role === "admin" || role === "accountant";
-    const isCRMUser = isSuperAdmin || role === "admin";
+    const isAdmin = role === "admin" || isSuperAdmin;
+    const isHRAdmin = isSuperAdmin || role === "hr_manager"; 
+    const isAccountant = isAdmin || role === "accountant";
+    const isCRMUser = isAdmin || role === "hr_manager"; // HR managers often handle CRM data too
 
     const apps = [
         { id: "rentals",    name: "إدارة التأجير",         icon: Building2, href: "/dashboard", color: "text-blue-600",    show: true },

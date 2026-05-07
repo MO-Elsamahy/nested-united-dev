@@ -1,12 +1,12 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne } from "@/lib/db";
 import { Employee } from "@/lib/types/hr";
 
 export async function GET() {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -14,7 +14,7 @@ export async function GET() {
         // 1. Get Employee ID
         const employee = await queryOne<Employee>(
             "SELECT id FROM hr_employees WHERE user_id = ? AND status = 'active'",
-            [session.user.id]
+            [user.id]
         );
 
         if (!employee) {

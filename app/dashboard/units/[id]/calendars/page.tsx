@@ -131,12 +131,10 @@ export default function UnitCalendarsPage({
                       <span
                         className={`px-2 py-1 rounded text-xs ${cal.platform === "airbnb"
                           ? "bg-red-100 text-red-600"
-                          : cal.platform === "gathern"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-purple-100 text-purple-600"
+                            : "bg-green-100 text-green-600"
                           }`}
                       >
-                        {cal.platform === "airbnb" ? "Airbnb" : cal.platform === "gathern" ? "Gathern" : "Zomrahub"}
+                        {cal.platform === "airbnb" ? "Airbnb" : "Gathern"}
                       </span>
                       {cal.is_primary && (
                         <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-600">
@@ -186,7 +184,6 @@ export default function UnitCalendarsPage({
                 <option value="">اختر المنصة</option>
                 <option value="airbnb">Airbnb</option>
                 <option value="gathern">Gathern</option>
-                <option value="zomrahub">Zomrahub</option>
               </select>
             </div>
 
@@ -205,7 +202,7 @@ export default function UnitCalendarsPage({
                   })
                   .map((acc) => (
                     <option key={acc.id} value={acc.id}>
-                      {acc.account_name} ({acc.platform === "airbnb" ? "Airbnb" : acc.platform === "gathern" ? "Gathern" : "Zomrahub"})
+                      {acc.account_name} ({acc.platform === "airbnb" ? "Airbnb" : "Gathern"})
                     </option>
                   ))}
               </select>

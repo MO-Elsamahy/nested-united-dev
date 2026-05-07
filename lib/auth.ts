@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { queryOne } from "./db";
 
-export type UserRole = "super_admin" | "admin" | "maintenance_worker";
+export type UserRole = "super_admin" | "admin" | "maintenance_worker" | "accountant" | "hr_manager" | "employee";
 
 export interface AppUser {
   id: string;

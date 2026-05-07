@@ -20,6 +20,7 @@ const mockQueryOne = vi.fn();
 const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'run-uuid');
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -27,10 +28,10 @@ vi.mock('@/lib/db', () => ({
     generateUUID: () => mockGenerateUUID(),
 }));
 
-vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { POST } from '@/app/api/hr/payroll/route';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -91,7 +92,7 @@ const getDetailInsertParams = (): unknown[] | undefined => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 describe('Payroll Engine — Salary Calculations', () => {
     beforeAll(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'user-001' },
         } as { user: { id: string } });
     });

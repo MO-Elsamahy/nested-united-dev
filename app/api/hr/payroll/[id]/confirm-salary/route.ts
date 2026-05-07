@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { queryOne, execute, generateUUID } from "@/lib/db";
 
 export async function POST(
@@ -8,14 +8,14 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id: payrollRunId } = await params;
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    const user = await getCurrentUser();
+    if (!user?.id) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
         // 1. Get Employee ID for current user
-        const employee = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE user_id = ?", [session.user.id]);
+        const employee = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE user_id = ?", [user.id]);
         if (!employee) {
             return NextResponse.json({ error: "Employee record not found for this user" }, { status: 404 });
         }
@@ -43,14 +43,14 @@ export async function POST(
         // 4. Update confirmation
         await execute(
             "UPDATE hr_payroll_details SET salary_confirmed_at = NOW(), salary_confirmed_by = ? WHERE id = ?",
-            [session.user.id, detail.id]
+            [user.id, detail.id]
         );
 
         // 5. Audit Log
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
              VALUES (?, ?, 'confirm_salary', 'payroll_detail', ?, ?)`,
-            [generateUUID(), session.user.id, detail.id, JSON.stringify({ payroll_run_id: payrollRunId })]
+            [generateUUID(), user.id, detail.id, JSON.stringify({ payroll_run_id: payrollRunId })]
         );
 
         return NextResponse.json({ success: true, message: "تم تأكيد استلام الراتب بنجاح" });

@@ -17,12 +17,16 @@ export default async function HRLayout({ children }: { children: React.ReactNode
     // Redirect if no user
     if (!user) redirect("/login");
 
-    // Check permissions — HR management is super_admin only
-    const isHRAdmin = user.role === 'super_admin';
-    
-    if (!isHRAdmin) {
-        // If they are not super_admin, redirect them to their personal portal
-        redirect("/employee");
+    // Check permissions — Use database permissions if not super_admin
+    if (user.role !== 'super_admin') {
+        const perm = await queryOne<{ can_access: number }>(
+            "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'hr'",
+            [user.role]
+        );
+        if (!perm || !perm.can_access) {
+            // If no permission, redirect to their personal portal (employee)
+            redirect("/employee");
+        }
     }
 
     const features = await getAppFeatures();

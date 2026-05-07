@@ -31,7 +31,8 @@ interface Shift {
 export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
     const { data: session } = useSession();
     const router = useRouter();
-    const isSuperAdmin = session?.user && (session.user as { role?: string }).role === "super_admin";
+    const userRole = session?.user ? (session.user as { role?: string }).role : "";
+    const canDeletePermanently = ["super_admin", "admin", "hr_manager", "accountant"].includes(userRole || "");
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [users, setUsers] = useState<AuthUser[]>([]);
@@ -216,7 +217,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                     >
                         إنهاء الخدمة
                     </button>
-                    {isSuperAdmin && (
+                    {canDeletePermanently && (
                         <button
                             type="button"
                             onClick={handlePermanentDelete}

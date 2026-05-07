@@ -1,28 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
 // Get activity logs (super admin only)
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const currentUser = await queryOne<{ role: string }>(
-    "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
-  );
-
-  const isSuperAdmin = currentUser?.role === "super_admin";
+  const isSuperAdmin = user.role === "super_admin";
 
   const { searchParams } = new URL(request.url);
   // Non-super-admins can only see their own logs
   let userId = searchParams.get("user_id");
   if (!isSuperAdmin) {
-    userId = session.user.id;
+    userId = user.id;
   }
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "50");
@@ -98,9 +92,9 @@ export async function GET(request: NextRequest) {
 
 // Create activity log
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -127,7 +121,7 @@ export async function POST(request: NextRequest) {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         generateUUID(),
-        session.user.id,
+        user.id,
         action_type,
         page_path || null,
         resource_type || null,

@@ -1,16 +1,13 @@
+import { getCurrentUser, AppUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import type { Session } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
-// أنظمة البوابة — يجب أن تبقى متوافقة مع `app/portal/page.tsx` و `lib/features`
-const SYSTEMS = ["rentals", "accounting", "hr", "crm"] as const;
-const ROLES = ["super_admin", "admin", "accountant", "hr_manager", "maintenance_worker", "employee"] as const;
+const ROLES = ["super_admin", "admin", "accountant", "hr_manager", "maintenance_worker", "employee"];
+const SYSTEMS = ["rentals", "accounting", "hr", "crm"];
 
-function assertSuperAdmin(session: Session | null) {
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const role = (session.user as { role?: string }).role;
+function assertSuperAdmin(user: AppUser | null) {
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const role = (user as { role?: string }).role;
     if (role !== "super_admin") {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -19,8 +16,8 @@ function assertSuperAdmin(session: Session | null) {
 
 // GET: Fetch all role-system permissions
 export async function GET() {
-    const session = await getServerSession(authOptions);
-    const denied = assertSuperAdmin(session);
+    const user = await getCurrentUser();
+    const denied = assertSuperAdmin(user);
     if (denied) return denied;
 
     try {
@@ -55,8 +52,8 @@ export async function GET() {
 
 // POST: Update permissions
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    const denied = assertSuperAdmin(session);
+    const user = await getCurrentUser();
+    const denied = assertSuperAdmin(user);
     if (denied) return denied;
 
     try {

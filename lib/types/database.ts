@@ -1,8 +1,8 @@
 // Database types for the rentals dashboard
 
 export type UserRole = "super_admin" | "admin" | "accountant" | "hr_manager" | "maintenance_worker" | "employee";
-export type Platform = "airbnb" | "gathern" | "whatsapp" | "zomrahub";
-export type PlatformExtended = "airbnb" | "gathern" | "whatsapp" | "zomrahub" | "general" | "manual" | "unknown";
+export type Platform = "airbnb" | "gathern" | "whatsapp";
+export type PlatformExtended = "airbnb" | "gathern" | "whatsapp" | "general" | "manual" | "unknown";
 export type UnitStatus = "active" | "inactive";
 
 export type UnitReadinessStatus =
@@ -67,7 +67,7 @@ export interface Unit {
 export interface UnitPlatform {
   id: string;
   unit_id: string;
-  platform: "airbnb" | "gathern" | "zomrahub";
+  platform: "airbnb" | "gathern";
   listing_code?: string | null;
   notes?: string | null;
   created_at: string;

@@ -15,6 +15,7 @@ const mockExecuteTransaction = vi.fn(async (cb: (conn: { execute: typeof mockCon
 let uuidCounter = 0;
 const mockGenerateUUID = vi.fn(() => `uuid-${++uuidCounter}`);
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -28,10 +29,10 @@ vi.mock('@/lib/hr-payroll-run-logs', () => ({
     ensureHrPayrollRunLogsTable: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { PUT } from '@/app/api/hr/payroll/[id]/route';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -73,7 +74,7 @@ const mockGosiAggregate = (gosiBase: number) =>
 
 describe('HR Payroll Approval — Accounting Integration', () => {
     beforeAll(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'user-001', name: 'محمد' },
         } as { user: { id: string; name: string } });
     });

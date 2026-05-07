@@ -7,8 +7,8 @@ import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
 export async function GET() {
   const user = await getCurrentUser();
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || (user.role !== "super_admin" && user.role !== "admin")) {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
   }
 
   try {
@@ -25,8 +25,8 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
 
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!user || (user.role !== "super_admin" && user.role !== "admin")) {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
   }
 
   // Check permission

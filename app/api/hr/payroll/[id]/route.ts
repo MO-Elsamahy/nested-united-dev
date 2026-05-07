@@ -1,7 +1,7 @@
+import { getCurrentUser } from "@/lib/auth";
 import type { ResultSetHeader } from "mysql2";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne, execute, generateUUID, executeTransaction } from "@/lib/db";
 import { resolvePayrollAccountingIntegration } from "@/lib/hr-payroll-accounting-defaults";
 import { loadHrSettingsMap } from "@/lib/hr-settings";
@@ -14,8 +14,8 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const run = await queryOne<PayrollRun>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
@@ -52,8 +52,8 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const { id } = await params;
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const body = await request.json().catch(() => ({}));
@@ -108,7 +108,7 @@ export async function PUT(
                 // Update payroll status
                 await execute(
                     "UPDATE hr_payroll_runs SET status = 'approved', approved_by = ?, approved_at = NOW() WHERE id = ?",
-                    [session.user.id, id]
+                    [user.id, id]
                 );
 
                 // Create Accounting Journal Entry
@@ -131,7 +131,7 @@ export async function PUT(
                         periodRef,
                         `يومية SAL — مسير رواتب ${run.period_month}/${run.period_year} (${run.total_employees} موظف)`,
                         totalLiability,
-                        session.user.id
+                        user.id
                     ]
                 );
 
@@ -188,7 +188,7 @@ export async function PUT(
                      VALUES (?, ?, 'create', 'move', ?, ?)`,
                     [
                         generateUUID(),
-                        session.user.id,
+                        user.id,
                         moveId,
                         JSON.stringify({
                             source: 'payroll_approval',
@@ -203,7 +203,7 @@ export async function PUT(
                 try {
                     await insertHrPayrollRunLog({
                         payrollRunId: id,
-                        userId: session.user.id,
+                        userId: user.id,
                         action: "approved",
                         meta: {
                             accounting_move_id: moveId,
@@ -283,7 +283,7 @@ export async function PUT(
                     await insertHrPayrollRunLog(
                         {
                             payrollRunId: id,
-                            userId: session.user.id,
+                            userId: user.id,
                             action: "reverted_approval",
                             note: revertNote || null,
                             meta: {
@@ -301,7 +301,7 @@ export async function PUT(
                              VALUES (?, ?, 'delete', 'move', ?, ?)`,
                             [
                                 generateUUID(),
-                                session.user.id,
+                                user.id,
                                 moveId,
                                 JSON.stringify({
                                     source: "payroll_revert_approval",

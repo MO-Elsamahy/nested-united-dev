@@ -1,9 +1,10 @@
 
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { loadHrSettingsMap } from "@/lib/hr-settings";
+import { hasSystemAccess } from "@/lib/permissions";
 
 interface PayrollRunRow {
     id: string;
@@ -45,8 +46,8 @@ interface RequestRow {
 
 // GET: List all payroll runs
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
         const runs = await query<PayrollRunRow>(`
@@ -64,8 +65,13 @@ export async function GET(_request: Request) {
 
 // POST: Generate a NEW Payroll Run
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "ليس لديك صلاحية لإصدار مسير الرواتب" }, { status: 403 });
+    }
 
     try {
         const { month, year } = await request.json();
@@ -103,7 +109,7 @@ export async function POST(request: Request) {
         const runId = generateUUID();
         await execute(
             `INSERT INTO hr_payroll_runs (id, period_month, period_year, status, created_by) VALUES (?, ?, ?, 'draft', ?)`,
-            [runId, month, year, session.user.id]
+            [runId, month, year, user.id]
         );
 
         let totalAmount = 0;

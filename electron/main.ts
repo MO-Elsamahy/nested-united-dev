@@ -993,7 +993,6 @@ ipcMain.handle("open-auth-window", async (_, { platform, accountId, partition })
     airbnb: "https://www.airbnb.com/login",
     gathern: "https://business.gathern.co/login",
     whatsapp: "https://web.whatsapp.com",
-    zomrahub: "https://login.zomrahub.com",
   };
 
   const url = loginUrls[platform as keyof typeof loginUrls] || account.window.webContents.getURL();

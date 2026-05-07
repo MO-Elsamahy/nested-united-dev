@@ -1,13 +1,13 @@
+import { getCurrentUser, AppUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
 
-function assertCrmSettingsRole(session: { user: { role?: string } } | null) {
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const role = session.user.role;
+function assertCrmSettingsRole(user: AppUser | null) {
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const role = user.role;
     if (!canAccessCrmReportsAndSettings(role)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -16,8 +16,8 @@ function assertCrmSettingsRole(session: { user: { role?: string } } | null) {
 
 // GET: List custom stages
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    const denied = assertCrmSettingsRole(session);
+    const user = await getCurrentUser();
+    const denied = assertCrmSettingsRole(user);
     if (denied) return denied;
 
     try {
@@ -30,8 +30,8 @@ export async function GET(_request: Request) {
 
 // POST: Create custom stage
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    const denied = assertCrmSettingsRole(session);
+    const user = await getCurrentUser();
+    const denied = assertCrmSettingsRole(user);
     if (denied) return denied;
 
     try {
@@ -56,8 +56,8 @@ export async function POST(request: Request) {
 
 // PUT: Update stage
 export async function PUT(request: Request) {
-    const session = await getServerSession(authOptions);
-    const denied = assertCrmSettingsRole(session);
+    const user = await getCurrentUser();
+    const denied = assertCrmSettingsRole(user);
     if (denied) return denied;
 
     try {
@@ -81,8 +81,8 @@ export async function PUT(request: Request) {
 
 // DELETE: Deactivate stage
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    const denied = assertCrmSettingsRole(session);
+    const user = await getCurrentUser();
+    const denied = assertCrmSettingsRole(user);
     if (denied) return denied;
 
     try {

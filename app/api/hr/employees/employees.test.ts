@@ -10,6 +10,7 @@ const mockQueryOne = vi.fn();
 const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'emp-uuid-123');
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -17,16 +18,16 @@ vi.mock('@/lib/db', () => ({
     generateUUID: () => mockGenerateUUID(),
 }));
 
-vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { GET, POST } from '@/app/api/hr/employees/route';
 import { GET as GET_DETAIL, PUT, DELETE } from '@/app/api/hr/employees/[id]/route';
 
 describe('Employees CRUD API', () => {
     beforeEach(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'admin-001' },
         } as { user: { id: string } });
     });
@@ -150,7 +151,7 @@ describe('Employees CRUD API', () => {
         it('PUT updates fields successfully', async () => {
             mockQueryOne.mockResolvedValue({ id: empId }); // Exists
             mockExecute.mockResolvedValue({});
-            
+
             const res = await PUT(new Request('http://localhost/api/hr/employees/123', {
                 method: 'PUT',
                 body: JSON.stringify({ full_name: 'Updated Name', status: 'active' })
@@ -181,7 +182,7 @@ describe('Employees CRUD API', () => {
 
         it('DELETE with permanent=1 returns 403 for non-super_admin', async () => {
             mockQueryOne.mockResolvedValueOnce({ id: empId });
-            vi.mocked(getServerSession).mockResolvedValueOnce({
+            vi.mocked(getCurrentUser).mockResolvedValueOnce({
                 user: { id: 'admin-001', role: 'hr_manager' },
             } as { user: { id: string; role: string } });
             const res = await DELETE(
@@ -193,7 +194,7 @@ describe('Employees CRUD API', () => {
         });
 
         it('DELETE with permanent=1 deletes row when super_admin and no blocking rows', async () => {
-            vi.mocked(getServerSession).mockResolvedValueOnce({
+            vi.mocked(getCurrentUser).mockResolvedValueOnce({
                 user: { id: 'admin-001', role: 'super_admin' },
             } as { user: { id: string; role: string } });
             mockQueryOne
@@ -220,7 +221,7 @@ describe('Employees CRUD API', () => {
         });
 
         it('DELETE with permanent=1 returns 409 when payroll lines exist', async () => {
-            vi.mocked(getServerSession).mockResolvedValueOnce({
+            vi.mocked(getCurrentUser).mockResolvedValueOnce({
                 user: { id: 'admin-001', role: 'super_admin' },
             } as { user: { id: string; role: string } });
             mockQueryOne

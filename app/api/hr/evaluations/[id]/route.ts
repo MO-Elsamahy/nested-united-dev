@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne } from "@/lib/db";
 import { Evaluation, Employee, EvaluationScore } from "@/lib/types/hr";
 
@@ -9,8 +9,8 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const resolvedParams = await params;
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -35,7 +35,7 @@ export async function GET(
         if (isEmployeePortal) {
             const currentEmployee = await queryOne<Employee>(
                 "SELECT id FROM hr_employees WHERE user_id = ?",
-                [session.user.id]
+                [user.id]
             );
             if (!currentEmployee || currentEmployee.id !== evaluation.employee_id) {
                 return NextResponse.json({ error: "غير مصرح" }, { status: 403 });

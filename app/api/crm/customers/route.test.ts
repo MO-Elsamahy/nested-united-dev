@@ -10,6 +10,7 @@ const mockQueryOne = vi.fn();
 const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'cust-uuid');
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -17,10 +18,10 @@ vi.mock('@/lib/db', () => ({
     generateUUID: () => mockGenerateUUID(),
 }));
 
-vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { POST, GET } from '@/app/api/crm/customers/route';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -43,7 +44,7 @@ const postCustomer = (payload: object) =>
 
 describe('CRM Customers API', () => {
     beforeAll(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'user-001' },
         } as { user: { id: string } });
     });
@@ -146,7 +147,7 @@ describe('CRM Customers API', () => {
     // ── Unauthorized ──────────────────────────────────────────────────────────
 
     it('returns 401 if user is not authenticated', async () => {
-        vi.mocked(getServerSession).mockResolvedValueOnce(null);
+        vi.mocked(getCurrentUser).mockResolvedValueOnce(null);
 
         const res = await POST(postCustomer(makeCustomerPayload()));
         expect(res.status).toBe(401);

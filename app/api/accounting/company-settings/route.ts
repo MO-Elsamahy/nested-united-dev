@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { CompanySettings } from "@/lib/types/accounting";
-import { User } from "@/lib/types/database";
 
-// GET /api/accounting/company-settings - Get company settings
 export async function GET(_req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
+        // Only Admin, Accountant, or Super Admin can view full company settings
+        const hasAccess = user.role === "super_admin" || 
+                          user.role === "admin" || 
+                          user.role === "accountant";
+
+        if (!hasAccess) {
+            return NextResponse.json({ error: "Forbidden: الوصول للمحاسبين والمدراء فقط" }, { status: 403 });
         }
 
         const settings = await query<CompanySettings>("SELECT * FROM company_settings LIMIT 1");
@@ -36,14 +42,13 @@ export async function GET(_req: NextRequest) {
 // PUT /api/accounting/company-settings - Update company settings
 export async function PUT(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
+ 
         // Check if user is super admin
-        const users = await query<User>("SELECT role FROM users WHERE id = ?", [session.user.id]);
-        if (!users || users.length === 0 || users[0].role !== "super_admin") {
+        if (user.role !== "super_admin") {
             return NextResponse.json(
                 { error: "Forbidden. Only super admins can update company settings." },
                 { status: 403 }

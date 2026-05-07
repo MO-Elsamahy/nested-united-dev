@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { AccountingInvoice, CompanySettings, AccountingInvoiceLine } from "@/lib/types/accounting";
 import { v4 as uuidv4 } from "uuid";
 
 // GET /api/accounting/invoices - List all invoices with filters
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -71,8 +70,8 @@ export async function GET(req: NextRequest) {
 // POST /api/accounting/invoices - Create new invoice (draft)
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+        const user = await getCurrentUser();
+        if (!user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -175,7 +174,7 @@ export async function POST(req: NextRequest) {
                 notes,
                 payment_terms,
                 attachment_url || null,
-                session.user.id,
+                user.id,
             ]
         );
 

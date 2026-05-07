@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
+import { getCurrentUser, isAdmin } from "@/lib/auth";
 
 interface UnitCalendar {
   id: string;
@@ -19,6 +20,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   try {
@@ -52,6 +58,11 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getCurrentUser();
+  if (!user || !isAdmin(user)) {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  }
+
   const { id } = await params;
 
   const body = await request.json();
@@ -109,6 +120,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getCurrentUser();
+  if (!user || !isAdmin(user)) {
+    return NextResponse.json({ error: "Forbidden: Admin access required" }, { status: 403 });
+  }
+
   const { id } = await params;
   const { searchParams } = new URL(request.url);
   const calendarId = searchParams.get("calendarId");

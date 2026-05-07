@@ -10,6 +10,7 @@ const mockQueryOne = vi.fn();
 const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'req-uuid-123');
 
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -17,16 +18,16 @@ vi.mock('@/lib/db', () => ({
     generateUUID: () => mockGenerateUUID(),
 }));
 
-vi.mock('next-auth', () => ({ getServerSession: vi.fn() }));
-vi.mock('@/app/api/auth/[...nextauth]/route', () => ({ authOptions: {} }));
 
-import { getServerSession } from 'next-auth';
+
+
+import { getCurrentUser } from '@/lib/auth';
 import { GET, POST } from '@/app/api/hr/requests/route';
 import { PUT } from '@/app/api/hr/requests/[id]/route';
 
 describe('HR Requests API', () => {
     beforeEach(() => {
-        vi.mocked(getServerSession).mockResolvedValue({
+        vi.mocked(getCurrentUser).mockResolvedValue({
             user: { id: 'user-001', role: 'employee' },
         } as { user: { id: string; role: string } });
     });
@@ -111,11 +112,11 @@ describe('HR Requests API', () => {
 
         it('deducts annual_leave_balance on approval', async () => {
             mockExecute.mockResolvedValueOnce({}); // Update request status
-            mockQueryOne.mockResolvedValueOnce({ 
-                id: reqId, 
-                employee_id: 'emp-1', 
-                request_type: 'annual_leave', 
-                days_count: 5 
+            mockQueryOne.mockResolvedValueOnce({
+                id: reqId,
+                employee_id: 'emp-1',
+                request_type: 'annual_leave',
+                days_count: 5
             });
             mockExecute.mockResolvedValueOnce({}); // Deduct balance
 

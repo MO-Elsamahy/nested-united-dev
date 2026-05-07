@@ -13,9 +13,12 @@ export async function POST(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Only admins can assign
-  if (user.role !== "admin" && user.role !== "super_admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  // Only users with maintenance system access can assign tickets
+  const { hasSystemAccess } = await import("@/lib/permissions");
+  const hasAccess = await hasSystemAccess(user.role, "maintenance");
+  
+  if (!hasAccess) {
+    return NextResponse.json({ error: "Forbidden: Maintenance access required" }, { status: 403 });
   }
 
   const body = await request.json();

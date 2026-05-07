@@ -35,9 +35,7 @@ export function CalendarView({ year: initialYear, month: initialMonth, initialBo
   const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState<string | null>(null);
 
-  // Debug: Log initial bookings
-  console.log('🔍 CalendarView initialized with', initialBookings.length, 'bookings');
-  console.log('📅 Year:', initialYear, 'Month:', initialMonth);
+
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -70,7 +68,6 @@ export function CalendarView({ year: initialYear, month: initialMonth, initialBo
 
   // Sync bookings state when initialBookings change
   useEffect(() => {
-    console.log('📦 Updating bookings state with', initialBookings.length, 'items');
     setBookings(initialBookings);
   }, [initialBookings]);
 
@@ -81,7 +78,6 @@ export function CalendarView({ year: initialYear, month: initialMonth, initialBo
       try {
         const res = await fetch(`/api/bookings?year=${year}&month=${month + 1}`);
         const data = await res.json();
-        console.log('🌐 Fetched', data.length, 'bookings from API');
         setBookings(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error("Error fetching bookings:", error);
@@ -116,14 +112,6 @@ export function CalendarView({ year: initialYear, month: initialMonth, initialBo
       const isMatch = b.checkin_date <= dateStr && b.checkout_date >= dateStr;
       return isMatch;
     });
-
-    // Debug for day 27 (should have bookings)
-    if (date === 27) {
-      console.log(`📅 Day 27 (${dateStr}): Found ${filtered.length} bookings out of ${bookings.length} total`);
-      if (bookings.length > 0 && filtered.length === 0) {
-        console.log('Sample booking:', bookings[0]);
-      }
-    }
 
     return filtered;
   }

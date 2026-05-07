@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { query, execute, generateUUID } from "@/lib/db";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { getCurrentUser } from "@/lib/auth";
 import { AccountingJournal } from "@/lib/types/accounting";
 
 // GET: List all journals
 export async function GET(_request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -21,11 +20,11 @@ export async function GET(_request: Request) {
 
 // DELETE: Soft Delete Journal
 export async function DELETE(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
-        const isAdmin = session.user.role === "super_admin" || session.user.role === "admin" || session.user.role === "accountant";
+        const isAdmin = user.role === "super_admin" || user.role === "admin" || user.role === "accountant";
         
         if (!isAdmin) {
             return NextResponse.json({ error: "Forbidden. Only admins and accountants can delete journals." }, { status: 403 });
@@ -40,7 +39,7 @@ export async function DELETE(request: Request) {
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
              VALUES (?, ?, ?, ?, ?, ?)`,
-            [generateUUID(), session.user.id, 'delete', 'journal', id, JSON.stringify({})]
+            [generateUUID(), user.id, 'delete', 'journal', id, JSON.stringify({})]
         );
 
         return NextResponse.json({ success: true });
@@ -51,10 +50,15 @@ export async function DELETE(request: Request) {
 
 // PUT: Update a journal
 export async function PUT(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     try {
+        const isAdmin = user.role === "super_admin" || user.role === "admin" || user.role === "accountant";
+        if (!isAdmin) {
+            return NextResponse.json({ error: "Forbidden: Accounting access required" }, { status: 403 });
+        }
+
         const body = await request.json();
         const { id, name, code, type, default_account_id } = body;
 
@@ -75,12 +79,17 @@ export async function PUT(request: Request) {
 
 // POST: Create a new journal
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     try {
+        const isAdmin = user.role === "super_admin" || user.role === "admin" || user.role === "accountant";
+        if (!isAdmin) {
+            return NextResponse.json({ error: "Forbidden: Accounting access required" }, { status: 403 });
+        }
+
         const body = await request.json();
         const { name, code, type, default_account_id } = body;
 

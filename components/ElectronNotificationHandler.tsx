@@ -145,9 +145,7 @@ export function ElectronNotificationHandler() {
             <div
               className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${notification.platform === "airbnb"
                 ? "bg-gradient-to-br from-red-500 to-rose-600"
-                : notification.platform === "gathern"
-                  ? "bg-gradient-to-br from-green-500 to-emerald-600"
-                  : "bg-gradient-to-br from-purple-500 to-purple-600"
+                : "bg-gradient-to-br from-green-500 to-emerald-600"
                 }`}
             >
               <Bell className="w-6 h-6 text-white animate-pulse" />
@@ -162,12 +160,10 @@ export function ElectronNotificationHandler() {
                 <span
                   className={`px-2 py-0.5 rounded-md text-xs font-medium ${notification.platform === "airbnb"
                     ? "bg-red-100 text-red-700"
-                    : notification.platform === "gathern"
-                      ? "bg-green-100 text-green-700"
-                      : "bg-purple-100 text-purple-700"
+                    : "bg-green-100 text-green-700"
                     }`}
                 >
-                  {notification.platform === "airbnb" ? "Airbnb" : notification.platform === "gathern" ? "Gathern" : "Zomrahub"}
+                  {notification.platform === "airbnb" ? "Airbnb" : "Gathern"}
                 </span>
               </div>
               <p className="text-gray-700 font-medium">
@@ -193,9 +189,7 @@ export function ElectronNotificationHandler() {
             <div
               className={`h-full ${notification.platform === "airbnb"
                 ? "bg-gradient-to-l from-red-500 to-rose-600"
-                : notification.platform === "gathern"
-                  ? "bg-gradient-to-l from-green-500 to-emerald-600"
-                  : "bg-gradient-to-l from-purple-500 to-purple-600"
+                  : "bg-gradient-to-l from-green-500 to-emerald-600"
                 }`}
               style={{
                 animation: "shrink 10s linear forwards",

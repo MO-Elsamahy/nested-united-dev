@@ -1,14 +1,20 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { Employee } from "@/lib/types/hr";
+import { hasSystemAccess } from "@/lib/permissions";
 
 // GET: قائمة الموظفين
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: لا تملك صلاحية الوصول للموارد البشرية" }, { status: 403 });
     }
 
     try {
@@ -49,9 +55,14 @@ export async function GET(request: Request) {
 
 // POST: إضافة موظف جديد
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
+    }
+
+    const hasAccess = await hasSystemAccess(user.role, "hr");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: لا تملك صلاحية إضافة موظفين" }, { status: 403 });
     }
 
     try {

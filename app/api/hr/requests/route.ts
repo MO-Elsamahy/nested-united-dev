@@ -1,14 +1,14 @@
 
+import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { query, execute, generateUUID, queryOne } from "@/lib/db";
 import { HRRequest, Employee } from "@/lib/types/hr";
 
 // GET: List requests (Employee sees own, Admin/HR sees all or filtered)
 export async function GET(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
         // For now, let's look up the employee record for the current user
         const currentEmployee = await queryOne<Employee>(
             "SELECT id FROM hr_employees WHERE user_id = ?",
-            [session.user.id]
+            [user.id]
         );
 
         // If user is NOT admin and IS an employee, strictly show own requests
@@ -72,8 +72,8 @@ export async function GET(request: Request) {
 
 // POST: Create a new request
 export async function POST(request: Request) {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
+    const user = await getCurrentUser();
+    if (!user) {
         return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
         // Get Employee ID
         const employee = await queryOne<Employee>(
             "SELECT id FROM hr_employees WHERE user_id = ?",
-            [session.user.id]
+            [user.id]
         );
 
         if (!employee) {

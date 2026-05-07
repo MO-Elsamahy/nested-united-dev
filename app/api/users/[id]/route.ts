@@ -1,41 +1,34 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { queryOne, execute } from "@/lib/db";
 import { logActivityInServer } from "@/lib/permissions";
 
-// GET single user
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const authUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check if current user is super admin
-  const currentUser = await queryOne<{ role: string }>(
-    "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
-  );
-
-  if (currentUser?.role !== "super_admin") {
+  if (authUser.role !== "super_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const user = await queryOne(
+  const targetUser = await queryOne(
     "SELECT * FROM users WHERE id = ?",
     [id]
   );
 
-  if (!user) {
+  if (!targetUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  return NextResponse.json(user);
+  return NextResponse.json(targetUser);
 }
 
 // PUT update user (name, email, role)
@@ -44,19 +37,13 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const authUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check if current user is super admin
-  const currentUser = await queryOne<{ role: string }>(
-    "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
-  );
-
-  if (currentUser?.role !== "super_admin") {
+  if (authUser.role !== "super_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -115,7 +102,7 @@ export async function PUT(
     if (role && role !== oldUser.role) changes.push(`الدور: ${oldUser.role} → ${role}`);
 
     await logActivityInServer({
-      userId: session.user.id,
+      userId: authUser.id,
       action_type: "update",
       page_path: "/dashboard/users",
       resource_type: "user",
@@ -136,34 +123,28 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const authUser = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!authUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Check if current user is super admin
-  const currentUser = await queryOne<{ role: string }>(
-    "SELECT role FROM users WHERE id = ?",
-    [session.user.id]
-  );
-
-  if (currentUser?.role !== "super_admin") {
+  if (authUser.role !== "super_admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   // Prevent deleting yourself
-  if (id === session.user.id) {
+  if (id === authUser.id) {
     return NextResponse.json({ error: "لا يمكنك حذف نفسك" }, { status: 400 });
   }
 
   // Get user data before delete for logging
-  const user = await queryOne<{ name: string; email: string }>(
+  const targetUser = await queryOne<{ name: string; email: string }>(
     "SELECT name, email FROM users WHERE id = ?",
     [id]
   );
 
-  if (!user) {
+  if (!targetUser) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
@@ -186,13 +167,13 @@ export async function DELETE(
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: authUser.id,
       action_type: "delete",
       page_path: "/dashboard/users",
       resource_type: "user",
       resource_id: id,
-      description: `حذف (أرشفة) مستخدم: ${user.name} (${user.email}) وتغيير حالة الموظف المرتبط إلى منتهي`,
-      metadata: { user_id: id, user_name: user.name },
+      description: `حذف (أرشفة) مستخدم: ${targetUser.name} (${targetUser.email}) وتغيير حالة الموظف المرتبط إلى منتهي`,
+      metadata: { user_id: id, user_name: targetUser.name },
     });
 
     return NextResponse.json({ success: true });

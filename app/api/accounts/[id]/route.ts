@@ -1,6 +1,6 @@
+import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
 import { queryOne, execute } from "@/lib/db";
 import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
 
@@ -33,14 +33,14 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check permission
-  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/accounts", "edit");
+  const hasPermission = await checkUserPermission(user.id, "/dashboard/accounts", "edit");
   if (!hasPermission) {
     return NextResponse.json({ error: "Forbidden: لا تملك صلاحية التعديل" }, { status: 403 });
   }
@@ -67,7 +67,7 @@ export async function PUT(
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "update",
       page_path: "/dashboard/accounts",
       resource_type: "account",
@@ -88,14 +88,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const session = await getServerSession(authOptions);
+  const user = await getCurrentUser();
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   // Check permission
-  const hasPermission = await checkUserPermission(session.user.id, "/dashboard/accounts", "edit");
+  const hasPermission = await checkUserPermission(user.id, "/dashboard/accounts", "edit");
   if (!hasPermission) {
     return NextResponse.json({ error: "Forbidden: لا تملك صلاحية الحذف" }, { status: 403 });
   }
@@ -111,7 +111,7 @@ export async function DELETE(
 
     // Log activity
     await logActivityInServer({
-      userId: session.user.id,
+      userId: user.id,
       action_type: "delete",
       page_path: "/dashboard/accounts",
       resource_type: "account",

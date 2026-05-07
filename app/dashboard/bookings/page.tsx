@@ -363,8 +363,6 @@ export default async function BookingsPage({
   const session = await getServerSession(authOptions);
   const resolvedParams = searchParams instanceof Promise ? await searchParams : (searchParams || {});
   
-  console.log("[BookingsPage] Rendering with params:", JSON.stringify(resolvedParams));
-
 
 
   // Check Edit Permission
