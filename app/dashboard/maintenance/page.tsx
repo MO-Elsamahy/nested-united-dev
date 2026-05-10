@@ -4,11 +4,12 @@ import { query } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { checkUserPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { Plus, AlertCircle, Clock, CheckCircle2, UserCheck } from "lucide-react";
+import { Plus, AlertCircle, Clock, CheckCircle2, UserCheck, Pencil } from "lucide-react";
 import Link from "next/link";
 import { UpdateStatusButton } from "./UpdateStatusButton";
 import { AcceptTicketButton } from "./AcceptTicketButton";
 import { AssignWorkerButton } from "./AssignWorkerButton";
+import { DeleteTicketButton } from "./DeleteTicketButton";
 
 interface MaintenanceTicket {
   id: string;
@@ -222,6 +223,18 @@ export default async function MaintenancePage() {
                     )}
                   {(isAdmin || (isWorker && ticket.assigned_to === currentUser.id && ticket.accepted_at)) && (
                     <UpdateStatusButton id={ticket.id} currentStatus={ticket.status} />
+                  )}
+                  {isAdmin && (
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/dashboard/maintenance/${ticket.id}/edit`}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="تعديل التذكرة"
+                      >
+                        <Pencil className="w-5 h-5" />
+                      </Link>
+                      <DeleteTicketButton id={ticket.id} />
+                    </div>
                   )}
                 </div>
               </div>

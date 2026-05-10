@@ -125,7 +125,7 @@ export async function DELETE(
   }
 
   if (!isAdmin(user)) {
-    return NextResponse.json({ error: "Forbidden: Admin only" }, { status: 403 });
+    return NextResponse.json({ error: "عذراً، هذه الصلاحية للمدراء فقط" }, { status: 403 });
   }
 
   try {
