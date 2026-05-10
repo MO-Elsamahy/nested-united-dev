@@ -8,7 +8,7 @@ import { checkUserPermission, logActivityInServer } from "@/lib/permissions";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   try {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
 
   if (!user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   // Check permission
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   const { platform, account_name, notes } = body;
 
   if (!platform || !account_name) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
   }
 
   const accountId = generateUUID();

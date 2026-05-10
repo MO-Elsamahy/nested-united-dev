@@ -12,7 +12,7 @@ export async function POST(
     const currentUser = await getCurrentUser();
 
     if (!currentUser || !isSuperAdmin(currentUser)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     const body = await request.json();

@@ -7,7 +7,7 @@ import { AccountingJournal } from "@/lib/types/accounting";
 export async function GET(_request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     try {
@@ -21,7 +21,7 @@ export async function GET(_request: Request) {
 // DELETE: Soft Delete Journal
 export async function DELETE(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const isAdmin = user.role === "super_admin" || user.role === "admin" || user.role === "accountant";
@@ -51,7 +51,7 @@ export async function DELETE(request: Request) {
 // PUT: Update a journal
 export async function PUT(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const isAdmin = user.role === "super_admin" || user.role === "admin" || user.role === "accountant";
@@ -63,7 +63,7 @@ export async function PUT(request: Request) {
         const { id, name, code, type, default_account_id } = body;
 
         if (!id || !name || !code || !type) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+            return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
         }
 
         await execute(
@@ -81,7 +81,7 @@ export async function PUT(request: Request) {
 export async function POST(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     try {

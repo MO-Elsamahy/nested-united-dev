@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     try {
         const user = await getCurrentUser();
         if (!user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id: invoiceId } = await context.params;
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         );
 
         if (!invoices || invoices.length === 0) {
-            return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ error: "الفاتورة غير موجودة" }, { status: 404 });
         }
 
         const invoice = invoices[0];
@@ -309,7 +309,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         console.error("Error confirming invoice:", error);
         const errorMessage = error instanceof Error ? error.message : String(error);
         return NextResponse.json(
-            { error: "Failed to confirm invoice", details: errorMessage },
+            { error: "فشل في تأكيد الفاتورة", details: errorMessage },
             { status: 500 }
         );
     }

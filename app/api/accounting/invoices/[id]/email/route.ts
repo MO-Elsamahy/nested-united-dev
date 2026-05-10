@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     try {
         const user = await getCurrentUser();
         if (!user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id: invoiceId } = await context.params;
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         );
 
         if (!invoices || invoices.length === 0) {
-            return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ error: "الفاتورة غير موجودة" }, { status: 404 });
         }
 
         const invoice = invoices[0];
@@ -121,7 +121,7 @@ ${company.company_name}
     } catch (error: unknown) {
         console.error("Error sending email:", error);
         return NextResponse.json(
-            { error: "Failed to send email", details: error instanceof Error ? error.message : "Internal Server Error" },
+            { error: "فشل في إرسال البريد الإلكتروني", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

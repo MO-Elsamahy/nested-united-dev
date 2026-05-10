@@ -8,7 +8,7 @@ import { hasSystemAccess } from "@/lib/permissions";
 // GET: List all announcements
 export async function GET(_request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         // Admins see all. Employees see only active.
@@ -31,7 +31,7 @@ export async function GET(_request: Request) {
 // POST: Create a new announcement
 export async function POST(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "hr");
     if (!hasAccess) {
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
 // PUT: Update an announcement
 export async function PUT(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "hr");
     if (!hasAccess) {
@@ -76,7 +76,7 @@ export async function PUT(request: Request) {
         const { id, title, content, priority, is_pinned, expires_at } = body;
 
         if (!id || !title || !content) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+            return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
         }
 
         await execute(
@@ -95,7 +95,7 @@ export async function PUT(request: Request) {
 // DELETE: Delete an announcement
 export async function DELETE(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "hr");
     if (!hasAccess) {

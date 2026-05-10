@@ -20,7 +20,7 @@ export async function GET(
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   // Allow users to fetch their own permissions OR super_admin to fetch anyone's
@@ -28,7 +28,7 @@ export async function GET(
   const isSuperAdmin = user.role === "super_admin";
 
   if (!isOwnPermissions && !isSuperAdmin) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
   }
 
   // Get user permissions

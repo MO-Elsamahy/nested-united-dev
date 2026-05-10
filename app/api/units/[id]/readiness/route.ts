@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   try {
@@ -23,7 +23,7 @@ export async function GET(
     );
 
     if (!unit) {
-      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
+      return NextResponse.json({ error: "الوحدة غير موجودة" }, { status: 404 });
     }
 
     return NextResponse.json(unit);
@@ -50,7 +50,7 @@ export async function PUT(
       !currentUser ||
       !(isAdmin(currentUser) || currentUser.role === "maintenance_worker")
     ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     const body = await request.json();
@@ -69,7 +69,7 @@ export async function PUT(
     ];
 
     if (!status || !validStatuses.includes(status)) {
-      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      return NextResponse.json({ error: "حالة غير صالحة" }, { status: 400 });
     }
 
     // Check if unit exists and get readiness_group_id
@@ -79,7 +79,7 @@ export async function PUT(
     );
 
     if (!unit) {
-      return NextResponse.json({ error: "Unit not found" }, { status: 404 });
+      return NextResponse.json({ error: "الوحدة غير موجودة" }, { status: 404 });
     }
 
     if (unit.readiness_group_id) {

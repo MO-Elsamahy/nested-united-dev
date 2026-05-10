@@ -6,10 +6,10 @@ import { v4 as uuidv4 } from "uuid";
 import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
 
 function assertCrmSettingsRole(user: AppUser | null) {
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     const role = user.role;
     if (!canAccessCrmReportsAndSettings(role)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
     }
     return null;
 }

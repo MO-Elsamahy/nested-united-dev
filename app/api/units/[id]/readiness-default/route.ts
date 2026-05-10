@@ -16,7 +16,7 @@ export async function GET(
       !currentUser ||
       !(isAdmin(currentUser) || currentUser.role === "maintenance_worker")
     ) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     // Local today based on server/local system time (e.g. Saudi/Egypt)

@@ -491,7 +491,7 @@ export async function GET(req: NextRequest, params: { params: Promise<{ id: stri
     try {
         const user = await getCurrentUser();
         if (!user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id: invoiceId } = await params.params;
@@ -508,7 +508,7 @@ export async function GET(req: NextRequest, params: { params: Promise<{ id: stri
         );
 
         if (!invoices || invoices.length === 0) {
-            return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ error: "الفاتورة غير موجودة" }, { status: 404 });
         }
 
         const invoiceData = invoices[0];
@@ -553,7 +553,7 @@ export async function GET(req: NextRequest, params: { params: Promise<{ id: stri
     } catch (error) {
         console.error("Error generating PDF:", error);
         return NextResponse.json(
-            { error: "Failed to generate PDF", details: error instanceof Error ? error.message : "Internal Server Error" },
+            { error: "فشل في إنشاء ملف PDF", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

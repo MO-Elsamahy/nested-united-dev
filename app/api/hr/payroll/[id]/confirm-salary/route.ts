@@ -10,7 +10,7 @@ export async function POST(
     const { id: payrollRunId } = await params;
     const user = await getCurrentUser();
     if (!user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     try {
@@ -22,7 +22,7 @@ export async function POST(
 
         // 2. Check if payroll run exists and is approved
         const run = await queryOne<{ status: string }>("SELECT status FROM hr_payroll_runs WHERE id = ?", [payrollRunId]);
-        if (!run) return NextResponse.json({ error: "Payroll run not found" }, { status: 404 });
+        if (!run) return NextResponse.json({ error: "دورة الرواتب غير موجودة" }, { status: 404 });
         if (run.status !== 'approved' && run.status !== 'paid') {
             return NextResponse.json({ error: "Can only confirm salaries for approved payroll runs" }, { status: 400 });
         }

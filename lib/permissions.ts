@@ -175,5 +175,17 @@ export async function hasSystemAccess(role: string, systemId: string): Promise<b
     [role, systemId]
   );
 
-  return !!perm?.can_access;
+  if (perm) return !!perm.can_access;
+
+  // Fallback: if no specific maintenance permission is set, use rentals permission
+  // as maintenance is currently a submodule of the rentals dashboard.
+  if (systemId === "maintenance") {
+    const rentalsPerm = await queryOne<{ can_access: number }>(
+      "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'rentals'",
+      [role]
+    );
+    return !!rentalsPerm?.can_access;
+  }
+
+  return false;
 }

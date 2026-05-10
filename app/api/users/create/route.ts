@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
   const { email, password, name, role } = body;
 
   if (!email || !password || !name || !role) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
   }
 
   // Check if email already exists

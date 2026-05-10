@@ -5,7 +5,7 @@ import { AccountingAuditLog } from "@/lib/types/accounting";
 
 export async function GET(_request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const logs = await query<AccountingAuditLog>(`

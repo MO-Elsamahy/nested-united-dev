@@ -8,7 +8,7 @@ import { hasSystemAccess } from "@/lib/permissions";
 export async function GET(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     const hasAccess = await hasSystemAccess(user.role, "accounting");
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 // DELETE: Soft Delete Account
 export async function DELETE(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "accounting");
     if (!hasAccess) {
@@ -75,7 +75,7 @@ export async function DELETE(request: Request) {
 export async function POST(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     const hasAccess = await hasSystemAccess(user.role, "accounting");
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
         // Check strict code uniqueness
         const existing = await query("SELECT id FROM accounting_accounts WHERE code = ?", [code]);
         if (existing.length > 0) {
-            return NextResponse.json({ error: "Account code already exists" }, { status: 409 });
+            return NextResponse.json({ error: "رمز الحساب موجود مسبقاً" }, { status: 409 });
         }
 
         const id = generateUUID();

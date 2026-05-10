@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
 
 const ROLES = ["super_admin", "admin", "accountant", "hr_manager", "maintenance_worker", "employee"];
-const SYSTEMS = ["rentals", "accounting", "hr", "crm"];
+const SYSTEMS = ["rentals", "maintenance", "accounting", "hr", "crm"];
 
 function assertSuperAdmin(user: AppUser | null) {
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     const role = (user as { role?: string }).role;
     if (role !== "super_admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
     }
     return null;
 }
@@ -66,7 +66,7 @@ export async function POST(request: Request) {
         }
 
         if (!ROLES.includes(role) || !SYSTEMS.includes(system_id)) {
-            return NextResponse.json({ error: "Invalid role or system" }, { status: 400 });
+            return NextResponse.json({ error: "دور أو نظام غير صالح" }, { status: 400 });
         }
 
         if (typeof can_access !== "boolean") {

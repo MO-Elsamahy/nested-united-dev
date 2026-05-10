@@ -10,7 +10,7 @@ export async function GET(
 ) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const { id } = await params;
@@ -26,7 +26,7 @@ export async function GET(
     );
 
     if (!ticket) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+      return NextResponse.json({ error: "تذكرة الصيانة غير موجودة" }, { status: 404 });
     }
 
     // Transform to match expected format
@@ -51,11 +51,11 @@ export async function PUT(
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   if (!isAdmin(user)) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
   }
 
   const body = await request.json();
@@ -121,7 +121,7 @@ export async function DELETE(
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   if (!isAdmin(user)) {

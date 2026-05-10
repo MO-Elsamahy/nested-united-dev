@@ -8,12 +8,12 @@ import { getCurrentUser } from "@/lib/auth";
 export async function GET() {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const hasAccess = await hasSystemAccess(user.role, "maintenance");
   if (!hasAccess) {
-    return NextResponse.json({ error: "Forbidden: No access to maintenance" }, { status: 403 });
+    return NextResponse.json({ error: "عذراً، لا تملك صلاحية الوصول لنظام الصيانة" }, { status: 403 });
   }
 
   try {
@@ -46,19 +46,19 @@ export async function POST(request: NextRequest) {
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const hasAccess = await hasSystemAccess(user.role, "maintenance");
   if (!hasAccess) {
-    return NextResponse.json({ error: "Forbidden: Cannot create maintenance tickets" }, { status: 403 });
+    return NextResponse.json({ error: "عذراً، لا تملك صلاحية إنشاء تذاكر الصيانة. يرجى مراجعة مدير النظام." }, { status: 403 });
   }
 
   const body = await request.json();
   const { unit_id, title, description, priority } = body;
 
   if (!unit_id || !title) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
   }
 
   // Get unit name for notification

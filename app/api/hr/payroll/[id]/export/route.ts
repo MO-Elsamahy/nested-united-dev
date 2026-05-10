@@ -11,7 +11,7 @@ export async function GET(
     try {
         const user = await getCurrentUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id } = await context.params;
@@ -19,7 +19,7 @@ export async function GET(
 
         const run = await queryOne<{ period_month: number; period_year: number }>("SELECT period_month, period_year FROM hr_payroll_runs WHERE id = ?", [id]);
         if (!run) {
-            return NextResponse.json({ error: "Payroll run not found" }, { status: 404 });
+            return NextResponse.json({ error: "دورة الرواتب غير موجودة" }, { status: 404 });
         }
 
         const details = await query<Record<string, unknown>>(`

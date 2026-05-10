@@ -247,11 +247,11 @@ async function getBookings(searchParams?: {
       platform_account_id: b.platform_account_id,
       platform_account: b.platform_account_id ? {
         id: b.platform_account_id,
-        account_name: b.account_name || "Unknown",
+        account_name: b.account_name || "غير معروف",
         platform: b.platform || "manual"
       } : null,
       notes: b.notes,
-      unit: b.unit_id_ref ? { id: b.unit_id_ref, unit_name: b.unit_name || "Unknown", unit_code: b.unit_code } : null,
+      unit: b.unit_id_ref ? { id: b.unit_id_ref, unit_name: b.unit_name || "غير معروف", unit_code: b.unit_code } : null,
     }));
 
     const reservations: UnifiedBooking[] = reservationsRows.map((r) => ({
@@ -267,11 +267,11 @@ async function getBookings(searchParams?: {
       platform_account_id: r.platform_account_id,
       platform_account: r.platform_account_id ? {
         id: r.platform_account_id,
-        account_name: r.account_name || "Unknown",
+        account_name: r.account_name || "غير معروف",
         platform: r.platform || "ical"
       } : null,
       notes: r.description,
-      unit: r.unit_id_ref ? { id: r.unit_id_ref, unit_name: r.unit_name || "Unknown", unit_code: r.unit_code } : null,
+      unit: r.unit_id_ref ? { id: r.unit_id_ref, unit_name: r.unit_name || "غير معروف", unit_code: r.unit_code } : null,
     }));
 
     // Combine and filter

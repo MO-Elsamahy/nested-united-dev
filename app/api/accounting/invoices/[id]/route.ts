@@ -13,7 +13,7 @@ export async function GET(
     try {
         const user = await getCurrentUser();
         if (!user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id: invoiceId } = await context.params;
@@ -29,7 +29,7 @@ export async function GET(
         );
 
         if (!invoices || invoices.length === 0) {
-            return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ error: "الفاتورة غير موجودة" }, { status: 404 });
         }
 
         const invoice = invoices[0];
@@ -63,7 +63,7 @@ export async function GET(
     } catch (error) {
         console.error("Error fetching invoice:", error);
         return NextResponse.json(
-            { error: "Failed to fetch invoice", details: error instanceof Error ? error.message : "Internal Server Error" },
+            { error: "فشل في جلب الفاتورة", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }
@@ -77,7 +77,7 @@ export async function PUT(
     try {
         const user = await getCurrentUser();
         if (!user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id: invoiceId } = await context.params;
@@ -90,7 +90,7 @@ export async function PUT(
         );
 
         if (!existing || existing.length === 0) {
-            return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ error: "الفاتورة غير موجودة" }, { status: 404 });
         }
 
         const invoice = existing[0];
@@ -298,7 +298,7 @@ export async function DELETE(
     try {
         const user = await getCurrentUser();
         if (!user?.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id: invoiceId } = await context.params;
@@ -310,7 +310,7 @@ export async function DELETE(
         );
 
         if (!existing || existing.length === 0) {
-            return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+            return NextResponse.json({ error: "الفاتورة غير موجودة" }, { status: 404 });
         }
 
         const invoice = existing[0];

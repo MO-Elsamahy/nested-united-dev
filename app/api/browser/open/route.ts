@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     try {
         const user = await getCurrentUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const body = await req.json();

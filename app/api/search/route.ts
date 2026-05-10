@@ -6,7 +6,7 @@ import { hasSystemAccess } from "@/lib/permissions";
 
 export async function GET(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q")?.trim();

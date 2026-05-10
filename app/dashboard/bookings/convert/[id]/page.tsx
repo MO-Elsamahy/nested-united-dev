@@ -226,8 +226,8 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
                 <option value="airbnb">Airbnb</option>
                 <option value="gathern">Gathern</option>
                 <option value="whatsapp">WhatsApp</option>
-                <option value="manual">Manual</option>
-                <option value="unknown">Unknown</option>
+                <option value="manual">يدوي</option>
+                <option value="unknown">غير معروف</option>
               </select>
             </div>
             <div>

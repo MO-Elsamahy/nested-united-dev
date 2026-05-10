@@ -52,7 +52,7 @@ interface UnifiedBooking {
 // GET /api/bookings - list bookings with optional filters
 export async function GET(request: NextRequest) {
   const currentUser = await getCurrentUser();
-  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!currentUser) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const platformAccountIds = searchParams.getAll("platform_account_id");
@@ -254,7 +254,7 @@ export async function GET(request: NextRequest) {
 // POST /api/bookings - create booking
 export async function POST(request: NextRequest) {
   const currentUser = await getCurrentUser();
-  if (!currentUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!currentUser) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
   // Check permission
   const hasPermission = await checkUserPermission(currentUser.id, "/dashboard/bookings", "edit");

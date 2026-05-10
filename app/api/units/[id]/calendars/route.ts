@@ -22,7 +22,7 @@ export async function GET(
 ) {
   const user = await getCurrentUser();
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const { id } = await params;
@@ -69,7 +69,7 @@ export async function POST(
   const { platform, ical_url, is_primary, platform_account_id } = body;
 
   if (!platform || !ical_url) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
   }
 
   try {

@@ -8,7 +8,7 @@ import { hasSystemAccess } from "@/lib/permissions";
 // GET: List deals (with optional filters)
 export async function GET(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "crm");
     if (!hasAccess) {
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
 // POST: Create Deal
 export async function POST(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "crm");
     if (!hasAccess) {
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
 // PUT: Update Deal Stage or Status
 export async function PUT(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "crm");
     if (!hasAccess) {
@@ -183,7 +183,7 @@ export async function PUT(request: Request) {
 // DELETE: Remove Deal
 export async function DELETE(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "crm");
     if (!hasAccess) {

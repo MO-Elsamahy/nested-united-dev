@@ -12,7 +12,7 @@ export async function DELETE(
     try {
         const user = await getCurrentUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { id: paymentId } = await context.params;
@@ -24,7 +24,7 @@ export async function DELETE(
         );
 
         if (!payments || payments.length === 0) {
-            return NextResponse.json({ error: "Payment not found" }, { status: 404 });
+            return NextResponse.json({ error: "الدفعة غير موجودة" }, { status: 404 });
         }
 
         const payment = payments[0];
@@ -87,7 +87,7 @@ export async function DELETE(
     } catch (error: unknown) {
         console.error("Error deleting payment:", error);
         return NextResponse.json(
-            { error: "Failed to delete payment", details: error instanceof Error ? error.message : "Internal Server Error" },
+            { error: "فشل في حذف الدفعة", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

@@ -6,14 +6,14 @@ import { query, queryOne } from "@/lib/db";
 export async function GET(_request: Request) {
     const user = await getCurrentUser();
     if (!user?.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     try {
         // 1. Get Employee ID for current user
         const employee = await queryOne<{ id: string }>("SELECT id FROM hr_employees WHERE user_id = ?", [user.id]);
         if (!employee) {
-            return NextResponse.json({ error: "Employee record not found" }, { status: 404 });
+            return NextResponse.json({ error: "سجل الموظف غير موجود" }, { status: 404 });
         }
 
         // 2. Fetch approved/paid payroll details for this employee

@@ -10,7 +10,7 @@ export async function GET(
 ) {
     const { id } = await params;
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         // 1. Get Customer Details
@@ -62,7 +62,7 @@ export async function PUT(
 ) {
     const { id } = await params;
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const body = await request.json();
@@ -88,7 +88,7 @@ export async function DELETE(
 ) {
     const { id } = await params;
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const customer = await queryOne<{ id: string }>("SELECT id FROM customers WHERE id = ?", [id]);

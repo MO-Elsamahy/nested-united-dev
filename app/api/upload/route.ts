@@ -11,7 +11,7 @@ const ALLOWED_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx", 
 export async function POST(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     try {
@@ -19,18 +19,18 @@ export async function POST(request: Request) {
         const file: File | null = data.get("file") as unknown as File;
 
         if (!file) {
-            return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
+            return NextResponse.json({ error: "لم يتم رفع أي ملف" }, { status: 400 });
         }
 
         // 1. Check file size
         if (file.size > MAX_FILE_SIZE) {
-            return NextResponse.json({ error: "File too large (Max 10MB)" }, { status: 400 });
+            return NextResponse.json({ error: "الملف كبير جداً (الحد الأقصى 10 ميجابايت)" }, { status: 400 });
         }
 
         // 2. Check file extension
         const ext = file.name.split(".").pop()?.toLowerCase();
         if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
-            return NextResponse.json({ error: "File type not allowed" }, { status: 400 });
+            return NextResponse.json({ error: "نوع الملف غير مسموح به" }, { status: 400 });
         }
 
         const bytes = await file.arrayBuffer();
@@ -54,6 +54,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ url: `/uploads/${filename}` });
     } catch (error: unknown) {
         console.error("Upload error:", error instanceof Error ? error.message : error);
-        return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+        return NextResponse.json({ error: "فشل رفع الملف" }, { status: 500 });
     }
 }

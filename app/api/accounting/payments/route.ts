@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     try {
         const user = await getCurrentUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         const { searchParams } = new URL(req.url);
@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
     } catch (error) {
         console.error("Error fetching payments:", error);
         return NextResponse.json(
-            { error: "Failed to fetch payments", details: error instanceof Error ? error.message : "Internal Server Error" },
+            { error: "فشل في جلب الدفعات", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

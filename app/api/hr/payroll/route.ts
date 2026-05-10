@@ -47,7 +47,7 @@ interface RequestRow {
 // GET: List all payroll runs
 export async function GET(_request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const runs = await query<PayrollRunRow>(`
@@ -66,7 +66,7 @@ export async function GET(_request: Request) {
 // POST: Generate a NEW Payroll Run
 export async function POST(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "hr");
     if (!hasAccess) {

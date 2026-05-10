@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const currentUser = await getCurrentUser();
   if (!currentUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const resolvedParams = params instanceof Promise ? await params : params;
@@ -24,7 +24,7 @@ export async function GET(
     );
 
     if (!reservation) {
-      return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
+      return NextResponse.json({ error: "الحجز المسبق غير موجود" }, { status: 404 });
     }
 
     // Transform to expected format
@@ -47,7 +47,7 @@ export async function PUT(
 ) {
   const currentUser = await getCurrentUser();
   if (!currentUser || !isAdmin(currentUser)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const resolvedParams = params instanceof Promise ? await params : params;
@@ -78,7 +78,7 @@ export async function DELETE(
 ) {
   const currentUser = await getCurrentUser();
   if (!currentUser || !isAdmin(currentUser)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const resolvedParams = params instanceof Promise ? await params : params;

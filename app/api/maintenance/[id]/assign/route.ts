@@ -10,7 +10,7 @@ export async function POST(
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   // Only users with maintenance system access can assign tickets
@@ -36,7 +36,7 @@ export async function POST(
     );
 
     if (!worker) {
-      return NextResponse.json({ error: "Invalid worker" }, { status: 400 });
+      return NextResponse.json({ error: "عامل صيانة غير صالح" }, { status: 400 });
     }
 
     // Get ticket info

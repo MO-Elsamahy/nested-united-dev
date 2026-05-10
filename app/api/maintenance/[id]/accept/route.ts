@@ -10,7 +10,7 @@ export async function POST(
   const user = await getCurrentUser();
 
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   // Verify user is a maintenance worker
@@ -32,7 +32,7 @@ export async function POST(
     );
 
     if (!ticket) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
+      return NextResponse.json({ error: "تذكرة الصيانة غير موجودة" }, { status: 404 });
     }
 
     // Ticket must be open

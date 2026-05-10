@@ -11,7 +11,7 @@ export async function GET(
 ) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     const { id } = await params;
@@ -29,7 +29,7 @@ export async function GET(
         );
 
         if (!move) {
-            return NextResponse.json({ error: "Not found" }, { status: 404 });
+            return NextResponse.json({ error: "غير موجود" }, { status: 404 });
         }
 
         const lines = await query(

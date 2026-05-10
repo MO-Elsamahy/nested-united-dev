@@ -7,7 +7,7 @@ export async function GET(_req: NextRequest) {
     try {
         const user = await getCurrentUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
 
         // Only Admin, Accountant, or Super Admin can view full company settings
@@ -33,7 +33,7 @@ export async function GET(_req: NextRequest) {
     } catch (error: unknown) {
         console.error("Error fetching company settings:", error);
         return NextResponse.json(
-            { error: "Failed to fetch company settings", details: error instanceof Error ? error.message : "Internal Server Error" },
+            { error: "فشل في جلب إعدادات الشركة", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }
@@ -44,7 +44,7 @@ export async function PUT(req: NextRequest) {
     try {
         const user = await getCurrentUser();
         if (!user) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+            return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
         }
  
         // Check if user is super admin
@@ -155,7 +155,7 @@ export async function PUT(req: NextRequest) {
     } catch (error: unknown) {
         console.error("Error updating company settings:", error);
         return NextResponse.json(
-            { error: "Failed to update company settings", details: error instanceof Error ? error.message : "Internal Server Error" },
+            { error: "فشل في تحديث إعدادات الشركة", details: error instanceof Error ? error.message : "Internal Server Error" },
             { status: 500 }
         );
     }

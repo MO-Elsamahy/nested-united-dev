@@ -6,10 +6,10 @@ import { canAccessCrmReportsAndSettings } from "@/lib/crm-admin";
 
 export async function GET(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     const role = (user as { role?: string }).role;
     if (!canAccessCrmReportsAndSettings(role)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -9,7 +9,7 @@ import { CrmTag } from "@/lib/types/crm";
 // GET: List all tags
 export async function GET(_request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const tags = await query<CrmTag>("SELECT * FROM crm_tags ORDER BY name");
@@ -22,7 +22,7 @@ export async function GET(_request: Request) {
 // POST: Create new tag
 export async function POST(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const body = await request.json();
@@ -47,10 +47,10 @@ export async function POST(request: Request) {
 // DELETE: Remove tag
 export async function DELETE(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     const role = (user as { role?: string }).role;
     if (!canAccessCrmReportsAndSettings(role)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
     }
 
     try {

@@ -8,7 +8,7 @@ import { hasSystemAccess } from "@/lib/permissions";
 export async function GET(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     try {
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 // DELETE: Soft Delete a Move
 export async function DELETE(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const hasAccess = await hasSystemAccess(user.role, "accounting");
@@ -150,7 +150,7 @@ export async function DELETE(request: Request) {
 
         // Check if exists
         const move = await queryOne<AccountingMove>("SELECT * FROM accounting_moves WHERE id = ?", [id]);
-        if (!move) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (!move) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
 
         // Soft Delete
         await execute("UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?", [id]);

@@ -15,11 +15,11 @@ export async function GET(
 ) {
     const { id } = await params;
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const run = await queryOne<PayrollRun>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
-        if (!run) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (!run) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
 
         const details = await query<PayrollDetail>(`
             SELECT d.*, e.full_name, e.department, e.job_title, e.bank_name, e.iban 
@@ -53,14 +53,14 @@ export async function PUT(
 ) {
     const { id } = await params;
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const body = await request.json().catch(() => ({}));
         const action = body?.action;
 
         const run = await queryOne<PayrollRun>("SELECT * FROM hr_payroll_runs WHERE id = ?", [id]);
-        if (!run) return NextResponse.json({ error: "Not found" }, { status: 404 });
+        if (!run) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
 
         if (action === "approve") {
             if (run.status !== 'draft') {
@@ -401,7 +401,7 @@ export async function PUT(
             return NextResponse.json({ success: true });
         }
 
-        return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+        return NextResponse.json({ error: "إجراء غير صالح" }, { status: 400 });
 
     } catch (error: unknown) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });

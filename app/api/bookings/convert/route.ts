@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 export async function POST(request: Request) {
     const user = await getCurrentUser();
     if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
     }
 
     try {
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
         );
 
         if (!reservation) {
-            return NextResponse.json({ error: "Reservation not found" }, { status: 404 });
+            return NextResponse.json({ error: "الحجز المسبق غير موجود" }, { status: 404 });
         }
 
         // Create a new booking with the reservation data

@@ -6,7 +6,7 @@ import { AccountingPartner } from "@/lib/types/accounting";
 export async function GET(_request: Request) {
     try {
         const user = await getCurrentUser();
-        if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
         // Filter by deleted_at IS NULL
         const rows = await query<AccountingPartner>("SELECT * FROM accounting_partners WHERE deleted_at IS NULL ORDER BY name ASC");
@@ -18,7 +18,7 @@ export async function GET(_request: Request) {
 
 export async function POST(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const body = await request.json();
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     try {
         const { searchParams } = new URL(request.url);

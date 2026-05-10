@@ -9,7 +9,7 @@ import { hasSystemAccess } from "@/lib/permissions";
 // GET: List Customers (filters: search, type, active_deals, deals_total bucket, tag_id)
 export async function GET(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "crm");
     if (!hasAccess) {
@@ -87,7 +87,7 @@ export async function GET(request: Request) {
 // POST: Create Customer
 export async function POST(request: Request) {
     const user = await getCurrentUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
 
     const hasAccess = await hasSystemAccess(user.role, "crm");
     if (!hasAccess) {

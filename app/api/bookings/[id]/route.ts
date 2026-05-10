@@ -10,7 +10,7 @@ export async function GET(
 ) {
   const currentUser = await getCurrentUser();
   if (!currentUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   const resolvedParams = params instanceof Promise ? await params : params;
@@ -22,7 +22,7 @@ export async function GET(
     );
 
     if (!booking) {
-      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      return NextResponse.json({ error: "الحجز غير موجود" }, { status: 404 });
     }
 
     return NextResponse.json(booking);
@@ -38,7 +38,7 @@ export async function PUT(
 ) {
   const currentUser = await getCurrentUser();
   if (!currentUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   // Check permission
@@ -64,7 +64,7 @@ export async function PUT(
 
   if (!guest_name || !checkin_date || !checkout_date || !unit_id) {
     return NextResponse.json(
-      { error: "Missing required fields" },
+      { error: "يرجى تعبئة جميع الحقول المطلوبة" },
       { status: 400 }
     );
   }
@@ -125,7 +125,7 @@ export async function DELETE(
 ) {
   const currentUser = await getCurrentUser();
   if (!currentUser) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   // Check permission

@@ -8,7 +8,7 @@ export async function GET() {
   const user = await getCurrentUser();
 
   if (!user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
   // Check if current user is super admin
@@ -18,7 +18,7 @@ export async function GET() {
   );
 
   if (currentUser?.role !== "super_admin") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
   }
 
   const users = await query(
