@@ -221,19 +221,21 @@ export default async function MaintenancePage() {
                     (ticket.assigned_to === null || ticket.assigned_to === currentUser.id) && (
                       <AcceptTicketButton ticketId={ticket.id} />
                     )}
-                  {(isAdmin || (isWorker && ticket.assigned_to === currentUser.id && ticket.accepted_at)) && (
+                  {(isAdmin || (isWorker && (ticket.assigned_to === currentUser.id || ticket.created_by === currentUser.id))) && (
                     <UpdateStatusButton id={ticket.id} currentStatus={ticket.status} />
                   )}
-                  {isAdmin && (
+                  {(isAdmin || isWorker) && (
                     <div className="flex gap-2">
-                      <Link
-                        href={`/dashboard/maintenance/${ticket.id}/edit`}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="تعديل التذكرة"
-                      >
-                        <Pencil className="w-5 h-5" />
-                      </Link>
-                      <DeleteTicketButton id={ticket.id} />
+                      {(isAdmin || (isWorker && (ticket.assigned_to === currentUser.id || ticket.created_by === currentUser.id))) && (
+                        <Link
+                          href={`/dashboard/maintenance/${ticket.id}/edit`}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="تعديل التذكرة"
+                        >
+                          <Pencil className="w-5 h-5" />
+                        </Link>
+                      )}
+                      {isAdmin && <DeleteTicketButton id={ticket.id} />}
                     </div>
                   )}
                 </div>

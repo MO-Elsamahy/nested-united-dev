@@ -54,8 +54,23 @@ export async function PUT(
     return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
   }
 
+  const currentTicket = await queryOne<{ created_by: string; assigned_to: string }>(
+    "SELECT created_by, assigned_to FROM maintenance_tickets WHERE id = ?",
+    [id]
+  );
+
+  if (!currentTicket) {
+    return NextResponse.json({ error: "تذكرة الصيانة غير موجودة" }, { status: 404 });
+  }
+
   if (!isAdmin(user)) {
-    return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
+    if (user.role !== "maintenance_worker") {
+      return NextResponse.json({ error: "عذراً، لا تملك الصلاحية للقيام بهذا الإجراء" }, { status: 403 });
+    }
+    
+    if (currentTicket.created_by !== user.id && currentTicket.assigned_to !== user.id) {
+      return NextResponse.json({ error: "لا تملك صلاحية تعديل هذه التذكرة" }, { status: 403 });
+    }
   }
 
   const body = await request.json();
