@@ -15,6 +15,9 @@ export default function NewMaintenancePage() {
   const [error, setError] = useState("");
   const [units, setUnits] = useState<Unit[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>(unitIdFromUrl || "");
+  const [otherLocation, setOtherLocation] = useState("");
+
+  const isOther = selectedUnitId === "other";
 
   useEffect(() => {
     fetch("/api/units")
@@ -37,11 +40,18 @@ export default function NewMaintenancePage() {
 
     const formData = new FormData(e.currentTarget);
     const data = {
-      unit_id: formData.get("unit_id"),
+      unit_id: isOther ? null : formData.get("unit_id"),
+      other_location: isOther ? otherLocation : null,
       title: formData.get("title"),
       description: formData.get("description") || null,
       priority: formData.get("priority") || null,
     };
+
+    if (isOther && !otherLocation.trim()) {
+      setError("يرجى تحديد المكان أو وصفه");
+      setLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/maintenance", {
@@ -91,16 +101,35 @@ export default function NewMaintenancePage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">اختر الوحدة</option>
-              {units.map((unit) => (
-                <option key={unit.id} value={unit.id}>
-                  {unit.unit_name} {unit.unit_code && `(${unit.unit_code})`}
-                </option>
-              ))}
+              <optgroup label="الوحدات">
+                {units.map((unit) => (
+                  <option key={unit.id} value={unit.id}>
+                    {unit.unit_name} {unit.unit_code && `(${unit.unit_code})`}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="──────────────">
+                <option value="other">أخرى (ليست وحدة)</option>
+              </optgroup>
             </select>
-            {unitIdFromUrl && selectedUnitId && (
+            {unitIdFromUrl && selectedUnitId && !isOther && (
               <p className="text-sm text-blue-600 mt-1">
                 ✓ تم تحديد الوحدة تلقائياً من صفحة التفاصيل
               </p>
+            )}
+            {isOther && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  تحديد المكان *
+                </label>
+                <input
+                  type="text"
+                  value={otherLocation}
+                  onChange={(e) => setOtherLocation(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="مثال: المستودع، السيارة، الحديقة..."
+                />
+              </div>
             )}
           </div>
 

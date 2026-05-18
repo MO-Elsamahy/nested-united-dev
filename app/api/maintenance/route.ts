@@ -55,11 +55,20 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { unit_id, title, description, priority } = body;
+  const { unit_id, other_location, title, description, priority } = body;
 
-  if (!unit_id || !title) {
-    return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
+  // unit_id is required unless "other" was selected (other_location provided instead)
+  if (!title) {
+    return NextResponse.json({ error: "يرجى إدخال عنوان التذكرة" }, { status: 400 });
   }
+  if (!unit_id && !other_location) {
+    return NextResponse.json({ error: "يرجى تحديد الوحدة أو وصف المكان" }, { status: 400 });
+  }
+
+  // Compose final description: prepend location if 'other'
+  const finalDescription = other_location
+    ? `المكان: ${other_location}${description ? `\n${description}` : ""}`
+    : (description || null);
 
   // Get unit name for notification
   const unit = await queryOne<{ unit_name: string }>(
@@ -70,11 +79,11 @@ export async function POST(request: NextRequest) {
   const ticketId = generateUUID();
 
   try {
-    // Create ticket
+    // Create ticket — unit_id may be null for 'other' location tickets
     await execute(
       `INSERT INTO maintenance_tickets (id, unit_id, title, description, priority, status, created_by)
        VALUES (?, ?, ?, ?, ?, 'open', ?)`,
-      [ticketId, unit_id, title, description || null, priority || null, user.id]
+      [ticketId, unit_id || null, title, finalDescription, priority || null, user.id]
     );
 
     const ticket = await queryOne(
@@ -89,16 +98,17 @@ export async function POST(request: NextRequest) {
 
     // Create notifications for all maintenance workers
     if (workers.length > 0) {
+      const locationLabel = unit?.unit_name || other_location || "غير محدد";
       for (const worker of workers) {
         await execute(
           `INSERT INTO notifications (id, type, unit_id, maintenance_ticket_id, title, body, audience, recipient_user_id, is_read)
            VALUES (?, 'maintenance_created', ?, ?, ?, ?, 'all_users', ?, 0)`,
           [
             generateUUID(),
-            unit_id,
+            unit_id || null,
             ticketId,
             "تذكرة صيانة جديدة لك",
-            `تم إنشاء تذكرة صيانة جديدة: ${title} - الوحدة: ${unit?.unit_name || "غير محدد"}. يمكنك قبولها من صفحة الصيانة.`,
+            `تم إنشاء تذكرة صيانة جديدة: ${title} - المكان: ${locationLabel}. يمكنك قبولها من صفحة الصيانة.`,
             worker.id,
           ]
         );
@@ -112,16 +122,17 @@ export async function POST(request: NextRequest) {
     );
 
     if (admins.length > 0) {
+      const locationLabel = unit?.unit_name || other_location || "غير محدد";
       for (const admin of admins) {
         await execute(
           `INSERT INTO notifications (id, type, unit_id, maintenance_ticket_id, title, body, audience, recipient_user_id, is_read)
            VALUES (?, 'maintenance_created', ?, ?, ?, ?, 'all_admins', ?, 0)`,
           [
             generateUUID(),
-            unit_id,
+            unit_id || null,
             ticketId,
             "تذكرة صيانة جديدة",
-            `تم إنشاء تذكرة صيانة جديدة: ${title} - الوحدة: ${unit?.unit_name || "غير محدد"}`,
+            `تم إنشاء تذكرة صيانة جديدة: ${title} - المكان: ${locationLabel}`,
             admin.id,
           ]
         );
