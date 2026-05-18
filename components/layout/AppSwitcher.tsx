@@ -19,7 +19,7 @@ export function AppSwitcher({ features, user }: AppSwitcherProps) {
     const role = user?.role;
     const isSuperAdmin = role === "super_admin";
     const isAdmin = role === "admin" || isSuperAdmin;
-    const isHRAdmin = isSuperAdmin || role === "hr_manager"; 
+    const isHRAdmin = isSuperAdmin || role === "hr_manager" || role === "admin" || role === "accountant"; 
     const isAccountant = isAdmin || role === "accountant";
     const isCRMUser = isAdmin || role === "hr_manager"; // HR managers often handle CRM data too
 

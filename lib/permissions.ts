@@ -33,7 +33,7 @@ interface UserWithRole {
 const ROLE_DEFAULT_PATHS: Record<string, string[]> = {
   super_admin: ["/"], // Everything
   admin: ["/dashboard", "/accounting", "/hr", "/crm"], // Most things
-  accountant: ["/accounting", "/dashboard", "/about"],
+  accountant: ["/accounting", "/dashboard", "/about", "/hr"],
   hr_manager: ["/hr", "/dashboard", "/about"],
   maintenance_worker: ["/dashboard/maintenance", "/dashboard/unit-readiness", "/dashboard", "/about"],
   employee: ["/dashboard", "/about"],

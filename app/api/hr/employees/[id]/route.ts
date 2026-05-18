@@ -177,59 +177,21 @@ export async function DELETE(
                 );
             }
 
-            const blocks: { key: string; label: string; count: number }[] = [];
-            const checks: { sql: string; label: string; key: string }[] = [
-                {
-                    key: "payroll",
-                    label: "سطور مسيرات رواتب",
-                    sql: "SELECT COUNT(*) AS c FROM hr_payroll_details WHERE employee_id = ?",
-                },
-                {
-                    key: "attendance",
-                    label: "سجلات حضور وانصراف",
-                    sql: "SELECT COUNT(*) AS c FROM hr_attendance WHERE employee_id = ?",
-                },
-                {
-                    key: "requests",
-                    label: "طلبات الموارد البشرية",
-                    sql: "SELECT COUNT(*) AS c FROM hr_requests WHERE employee_id = ?",
-                },
-                {
-                    key: "evaluations",
-                    label: "تقييمات الأداء",
-                    sql: "SELECT COUNT(*) AS c FROM hr_evaluations WHERE employee_id = ?",
-                },
-                {
-                    key: "eval_config",
-                    label: "إعدادات التقييم",
-                    sql: "SELECT COUNT(*) AS c FROM hr_employee_eval_config WHERE employee_id = ?",
-                },
-                {
-                    key: "messages",
-                    label: "رسائل HR للموظف",
-                    sql: "SELECT COUNT(*) AS c FROM hr_employee_messages WHERE employee_id = ?",
-                },
+            const deleteQueries = [
+                "DELETE FROM hr_payroll_details WHERE employee_id = ?",
+                "DELETE FROM hr_attendance WHERE employee_id = ?",
+                "DELETE FROM hr_requests WHERE employee_id = ?",
+                "DELETE FROM hr_evaluations WHERE employee_id = ?",
+                "DELETE FROM hr_employee_eval_config WHERE employee_id = ?",
+                "DELETE FROM hr_employee_messages WHERE employee_id = ?"
             ];
 
-            for (const { sql, label, key } of checks) {
+            for (const sql of deleteQueries) {
                 try {
-                    const row = await queryOne<{ c: number }>(sql, [id]);
-                    const c = Number(row?.c ?? 0);
-                    if (c > 0) blocks.push({ key, label, count: c });
+                    await execute(sql, [id]);
                 } catch {
-                    // جدول غير موجود في بعض النسخ — نتجاهل
+                    // تجاهل الخطأ في حال لم يكن الجدول موجودًا
                 }
-            }
-
-            if (blocks.length > 0) {
-                return NextResponse.json(
-                    {
-                        error:
-                            "لا يمكن الحذف النهائي لوجود بيانات مرتبطة بهذا الموظف. احذف أو انقل السجلات أولاً، أو استخدم «إنهاء الخدمة» فقط.",
-                        blocks,
-                    },
-                    { status: 409 }
-                );
             }
 
             await execute("DELETE FROM hr_employees WHERE id = ?", [id]);

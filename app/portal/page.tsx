@@ -29,6 +29,14 @@ async function canAccessSystem(role: string, systemId: string): Promise<boolean>
     // Employee portal is accessible to everyone (self-service)
     if (systemId === 'employee') return true;
 
+    // Explicit role-based grants (no DB lookup needed for these)
+    const ROLE_SYSTEM_GRANTS: Record<string, string[]> = {
+        admin:      ['rentals', 'accounting', 'hr', 'crm'],
+        accountant: ['accounting', 'hr'],
+        hr_manager: ['hr'],
+    };
+    if (ROLE_SYSTEM_GRANTS[role]?.includes(systemId)) return true;
+
     // Check database for permission
     const perm = await queryOne<{ can_access: number }>(
         "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = ?",
@@ -119,6 +127,8 @@ export default async function PortalPage() {
             accessibleSystems.push(sys);
         }
     }
+
+    // DEBUG: log what systems are shown for this user
 
     const quotes = [
         "صباح الإنجاز والعمل الجاد",

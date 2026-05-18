@@ -4,7 +4,7 @@ import { query } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { checkUserPermission } from "@/lib/permissions";
 import { redirect } from "next/navigation";
-import { Plus, AlertCircle, Clock, CheckCircle2, UserCheck, Pencil } from "lucide-react";
+import { Plus, AlertCircle, Clock, CheckCircle2, UserCheck, Pencil, Layers } from "lucide-react";
 import Link from "next/link";
 import { UpdateStatusButton } from "./UpdateStatusButton";
 import { AcceptTicketButton } from "./AcceptTicketButton";
@@ -61,7 +61,9 @@ async function getMaintenanceWorkers() {
   return workers;
 }
 
-export default async function MaintenancePage() {
+export default async function MaintenancePage(props: { searchParams: any }) {
+  const searchParams = await Promise.resolve(props.searchParams);
+  const statusFilter = typeof searchParams?.status === "string" ? searchParams.status : null;
   const currentUser = await getCurrentUser();
 
   if (!currentUser) {
@@ -83,7 +85,7 @@ export default async function MaintenancePage() {
   const isAdmin = currentUser.role === "admin" || currentUser.role === "super_admin";
 
   // For workers, filter tickets
-  const filteredTickets = isWorker
+  const baseFilteredTickets = isWorker
     ? tickets.filter((t) => {
       if (t.assigned_to === currentUser.id) return true;
       if (t.status === "open" && !t.assigned_to && !t.accepted_at) return true;
@@ -91,9 +93,13 @@ export default async function MaintenancePage() {
     })
     : tickets;
 
-  const open = filteredTickets.filter((t) => t.status === "open");
-  const inProgress = filteredTickets.filter((t) => t.status === "in_progress");
-  const resolved = filteredTickets.filter((t) => t.status === "resolved");
+  const open = baseFilteredTickets.filter((t) => t.status === "open");
+  const inProgress = baseFilteredTickets.filter((t) => t.status === "in_progress");
+  const resolved = baseFilteredTickets.filter((t) => t.status === "resolved");
+
+  const filteredTickets = statusFilter
+    ? baseFilteredTickets.filter(t => t.status === statusFilter)
+    : baseFilteredTickets;
 
   const priorityLabels: Record<string, string> = {
     low: "منخفضة",
@@ -144,28 +150,47 @@ export default async function MaintenancePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow p-4 border-r-4 border-red-500 flex items-center gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Link 
+          href="/dashboard/maintenance"
+          className={`bg-white rounded-lg shadow p-4 border-r-4 border-blue-500 flex items-center gap-3 hover:bg-gray-50 transition-colors ${!statusFilter ? 'ring-2 ring-blue-500' : ''}`}
+        >
+          <Layers className="w-8 h-8 text-blue-500" />
+          <div>
+            <p className="text-gray-600 text-sm">الكل</p>
+            <p className="text-3xl font-bold">{baseFilteredTickets.length}</p>
+          </div>
+        </Link>
+        <Link 
+          href="/dashboard/maintenance?status=open"
+          className={`bg-white rounded-lg shadow p-4 border-r-4 border-red-500 flex items-center gap-3 hover:bg-gray-50 transition-colors ${statusFilter === 'open' ? 'ring-2 ring-red-500' : ''}`}
+        >
           <AlertCircle className="w-8 h-8 text-red-500" />
           <div>
             <p className="text-gray-600 text-sm">مفتوحة</p>
             <p className="text-3xl font-bold">{open.length}</p>
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-r-4 border-yellow-500 flex items-center gap-3">
+        </Link>
+        <Link 
+          href="/dashboard/maintenance?status=in_progress"
+          className={`bg-white rounded-lg shadow p-4 border-r-4 border-yellow-500 flex items-center gap-3 hover:bg-gray-50 transition-colors ${statusFilter === 'in_progress' ? 'ring-2 ring-yellow-500' : ''}`}
+        >
           <Clock className="w-8 h-8 text-yellow-500" />
           <div>
             <p className="text-gray-600 text-sm">قيد التنفيذ</p>
             <p className="text-3xl font-bold">{inProgress.length}</p>
           </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-4 border-r-4 border-green-500 flex items-center gap-3">
+        </Link>
+        <Link 
+          href="/dashboard/maintenance?status=resolved"
+          className={`bg-white rounded-lg shadow p-4 border-r-4 border-green-500 flex items-center gap-3 hover:bg-gray-50 transition-colors ${statusFilter === 'resolved' ? 'ring-2 ring-green-500' : ''}`}
+        >
           <CheckCircle2 className="w-8 h-8 text-green-500" />
           <div>
             <p className="text-gray-600 text-sm">محلولة</p>
             <p className="text-3xl font-bold">{resolved.length}</p>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Tickets List */}

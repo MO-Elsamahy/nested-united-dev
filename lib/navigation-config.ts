@@ -22,6 +22,7 @@ import {
     PieChart,
     Shield,
     MessageSquare,
+    Pencil,
     LucideIcon
 } from "lucide-react";
 
@@ -107,6 +108,7 @@ export const HR_NAV: NavSection[] = [
             { label: "الموظفين", href: "/hr/employees", icon: Users },
             { label: "الحضور والانصراف", href: "/hr/attendance", icon: Clock },
             { label: "تقارير الحضور", href: "/hr/attendance/reports", icon: FileBarChart },
+            { label: "تعديل يدوي للحضور", href: "/hr/attendance/manual", icon: Pencil, allowedRoles: ["super_admin", "admin", "hr_manager", "accountant"] },
             { label: "الطلبات والاجازات", href: "/hr/requests", icon: FileText }
         ]
     },
