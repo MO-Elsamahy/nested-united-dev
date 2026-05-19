@@ -192,7 +192,7 @@ export async function POST() {
           } else {
             const newId = generateUUID();
             await execute(
-              `INSERT INTO reservations (id, unit_id, platform, platform_account_id, start_date, end_date, summary, raw_event, last_synced_at, is_manually_edited)
+              `INSERT IGNORE INTO reservations (id, unit_id, platform, platform_account_id, start_date, end_date, summary, raw_event, last_synced_at, is_manually_edited)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0)`,
               [newId, calendar.unit_id, calendar.platform, calendar.platform_account_id || null, event.start, event.end, event.summary, JSON.stringify(event)]
             );

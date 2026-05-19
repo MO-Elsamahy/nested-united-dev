@@ -150,19 +150,38 @@ export async function DELETE(
 
   try {
     const { executeTransaction } = await import("@/lib/db");
-    
-    await executeTransaction(async (conn) => {
-      // 1. Mark user as deleted and inactive
-      await conn.execute(
-        "UPDATE users SET deleted_at = NOW(), is_active = 0 WHERE id = ?",
-        [id]
-      );
 
-      // 2. Mark linked employee as terminated
-      await conn.execute(
-        "UPDATE hr_employees SET status = 'terminated' WHERE user_id = ?",
+    await executeTransaction(async (conn) => {
+      // 1. Get linked employee id (if any)
+      const emp = await queryOne<{ id: string }>(
+        "SELECT id FROM hr_employees WHERE user_id = ?",
         [id]
       );
+      const empId = emp?.id || null;
+
+      if (empId) {
+        // 2. Delete all HR sub-records for this employee
+        await conn.execute("DELETE FROM hr_payroll_details WHERE employee_id = ?", [empId]);
+        await conn.execute("DELETE FROM hr_attendance WHERE employee_id = ?", [empId]);
+        await conn.execute("DELETE FROM hr_requests WHERE employee_id = ?", [empId]);
+        await conn.execute("DELETE FROM hr_evaluations WHERE employee_id = ?", [empId]);
+        // hr_messages: try both possible column name patterns
+        try {
+          await conn.execute(
+            "DELETE FROM hr_messages WHERE recipient_employee_id = ? OR sender_employee_id = ?",
+            [empId, empId]
+          );
+        } catch {
+          // Table or column may not exist — skip silently
+        }
+        await conn.execute("DELETE FROM hr_employees WHERE id = ?", [empId]);
+      }
+
+      // 3. Delete notifications linked to this user
+      await conn.execute("DELETE FROM notifications WHERE recipient_user_id = ?", [id]);
+
+      // 4. Hard delete the user record
+      await conn.execute("DELETE FROM users WHERE id = ?", [id]);
     });
 
     // Log activity
@@ -172,7 +191,7 @@ export async function DELETE(
       page_path: "/dashboard/users",
       resource_type: "user",
       resource_id: id,
-      description: `حذف (أرشفة) مستخدم: ${targetUser.name} (${targetUser.email}) وتغيير حالة الموظف المرتبط إلى منتهي`,
+      description: `حذف نهائي للمستخدم: ${targetUser.name} (${targetUser.email})`,
       metadata: { user_id: id, user_name: targetUser.name },
     });
 
