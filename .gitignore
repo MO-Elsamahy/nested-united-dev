@@ -56,7 +56,6 @@ next-env.d.ts
 repair_mysql.ps1
 deploy.bat
 db_check_v2.js
-proxy.ts
 check_user.ts
 deprecated.txt
 sync_results.json
