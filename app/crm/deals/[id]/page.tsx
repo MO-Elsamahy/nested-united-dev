@@ -108,6 +108,9 @@ export default function DealDetailPage() {
     const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
     const [archiving, setArchiving] = useState(false);
 
+    const [noteText, setNoteText] = useState("");
+    const [addingNote, setAddingNote] = useState(false);
+
     const loadDeal = useCallback((opts?: { silent?: boolean }) => {
         if (!id) return;
         const silent = Boolean(opts?.silent);
@@ -131,6 +134,35 @@ export default function DealDetailPage() {
     useEffect(() => {
         loadDeal();
     }, [loadDeal]);
+
+    const handleAddNote = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!noteText.trim() || !deal) return;
+        setAddingNote(true);
+        try {
+            const res = await fetch("/api/crm/activities", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customer_id: deal.customer_id,
+                    deal_id: deal.id,
+                    type: "note",
+                    title: "إضافة ملاحظة",
+                    description: noteText.trim(),
+                }),
+            });
+            if (res.ok) {
+                setNoteText("");
+                loadDeal({ silent: true });
+            } else {
+                alert("فشل إضافة الملاحظة");
+            }
+        } catch {
+            alert("خطأ في الاتصال");
+        } finally {
+            setAddingNote(false);
+        }
+    };
 
     const handleArchiveOrReopen = async (nextStatus: "open" | "closed") => {
         setArchiving(true);
@@ -415,6 +447,27 @@ export default function DealDetailPage() {
                                 </h2>
                                 <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{activities.length} نشاط</span>
                             </div>
+                        </div>
+
+                        {/* Add Note Form */}
+                        <div className="px-6 py-4 border-b bg-white">
+                            <form onSubmit={handleAddNote} className="flex gap-3">
+                                <input
+                                    type="text"
+                                    value={noteText}
+                                    onChange={e => setNoteText(e.target.value)}
+                                    placeholder="أضف ملاحظة أو سجل حدثاً للصفقة..."
+                                    className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                    disabled={addingNote}
+                                />
+                                <button
+                                    type="submit"
+                                    disabled={addingNote || !noteText.trim()}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                                >
+                                    {addingNote ? 'جاري الإضافة...' : 'إضافة ملاحظة'}
+                                </button>
+                            </form>
                         </div>
 
                         {activities.length > 0 ? (
