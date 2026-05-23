@@ -91,7 +91,10 @@ export default function CRMReportsPage() {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/crm/reports?period=${period}`);
+            const res = await fetch(`/api/crm/reports?period=${period}&_t=${Date.now()}`, {
+                cache: 'no-store',
+                headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+            });
             if (res.ok) {
                 const json = await res.json() as CRMReportData;
                 setData(json);
