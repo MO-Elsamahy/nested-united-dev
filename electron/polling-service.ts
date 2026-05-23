@@ -1,6 +1,6 @@
 import { BrowserWindow } from 'electron';
 import mysql from 'mysql2/promise';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { RowDataPacket } from 'mysql2';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -499,7 +499,7 @@ export class PollingService {
            sent_at       = VALUES(sent_at),
            raw_data      = VALUES(raw_data)`,
         [
-          uuidv4(),
+          randomUUID(),
           opts.accountId,
           platformAccountId,
           opts.platform,
@@ -546,7 +546,7 @@ export class PollingService {
            reservation_id = COALESCE(VALUES(reservation_id), reservation_id),
            guest_name     = COALESCE(NULLIF(VALUES(guest_name), ''), guest_name)`,
         [
-          uuidv4(),
+          randomUUID(),
           browserAccountId,
           threadId,
           platform,
@@ -574,7 +574,7 @@ export class PollingService {
            (id, browser_account_id, platform, status, error_message, checked_at)
          VALUES (?, ?, ?, ?, ?, NOW())`,
         [
-          uuidv4(),
+          randomUUID(),
           browserAccountId,
           platform,
           status,
