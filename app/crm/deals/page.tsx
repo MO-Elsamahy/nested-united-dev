@@ -38,19 +38,32 @@ export default function DealsPage() {
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const [dragOverStage, setDragOverStage] = useState<string | null>(null);
 
-    const fetchDeals = useCallback(async () => {
-        setLoading(true);
+    const fetchDeals = useCallback(async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
-            const res = await fetch(`/api/crm/deals?status=${statusFilter}`);
+            // Prevent caching and ensure fresh data for real-time updates
+            const res = await fetch(`/api/crm/deals?status=${statusFilter}&_t=${Date.now()}`, {
+                cache: 'no-store',
+                headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' }
+            });
             const data = await res.json() as CrmDeal[] | { error: string };
             setDeals(res.ok && Array.isArray(data) ? data : []);
         } catch (e: unknown) {
             console.error(e instanceof Error ? e.message : String(e));
         }
-        finally { setLoading(false); }
+        finally { if (!silent) setLoading(false); }
     }, [statusFilter]);
 
+    // Initial fetch
     useEffect(() => { fetchDeals(); }, [fetchDeals]);
+
+    // Real-time polling every 10 seconds
+    useEffect(() => {
+        const interval = setInterval(() => {
+            fetchDeals(true);
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [fetchDeals]);
 
     const openCount = deals.length;
     const totalVal = deals.reduce((s, d) => s + (Number(d.value) || 0), 0);
@@ -85,17 +98,17 @@ export default function DealsPage() {
     const handleArchive = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === 'open' ? 'closed' : 'open';
         if (!confirm(newStatus === 'closed' ? "أرشفة هذه الصفقة؟" : "إعادة فتح الصفقة؟")) return;
-        setDeals(prev => prev.filter(d => d.id !== id));
         try {
-            await fetch("/api/crm/deals", {
+            const res = await fetch("/api/crm/deals", {
                 method: "PUT", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, status: newStatus }),
             });
-            // Switch to the target tab so the user can see the deal in its new state
+            if (!res.ok) { alert("فشل تحديث الصفقة"); return; }
+            // Remove from current list then switch tab — deal is safe in DB first
+            setDeals(prev => prev.filter(d => d.id !== id));
             setStatusFilter(newStatus as 'open' | 'closed');
-        } catch { await fetchDeals(); }
+        } catch { alert("خطأ في الاتصال"); }
     };
-
 
     return (
         <div style={{ height: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -351,7 +364,7 @@ export default function DealsPage() {
                                                         )}
 
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-                                                            {/* Quick Stage Change */}
+                                                            {/* Quick Stage Change — only on open tab */}
                                                             {statusFilter === 'open' && (
                                                                 <div style={{ position: 'relative' }}>
                                                                     <select
@@ -389,6 +402,7 @@ export default function DealsPage() {
                                                                     </select>
                                                                 </div>
                                                             )}
+                                                            {/* View Details */}
                                                             <Link
                                                                 href={`/crm/deals/${deal.id}`}
                                                                 onClick={(e) => e.stopPropagation()}
@@ -404,20 +418,42 @@ export default function DealsPage() {
                                                             >
                                                                 <Eye size={13} />
                                                             </Link>
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); handleArchive(deal.id, statusFilter); }}
-                                                                style={{
-                                                                    width: '24px', height: '24px', borderRadius: '6px',
-                                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                    color: '#94a3b8', transition: 'all 0.15s', background: 'transparent',
-                                                                    border: 'none', cursor: 'pointer', padding: 0,
-                                                                }}
-                                                                title={statusFilter === 'open' ? "أرشفة" : "إعادة فتح"}
-                                                                onMouseEnter={e => { (e.currentTarget).style.background = '#fef2f2'; (e.currentTarget).style.color = '#ef4444'; }}
-                                                                onMouseLeave={e => { (e.currentTarget).style.background = 'transparent'; (e.currentTarget).style.color = '#94a3b8'; }}
-                                                            >
-                                                                {statusFilter === 'open' ? <Archive size={12} /> : <RotateCcw size={12} />}
-                                                            </button>
+                                                            {/* Archive (open tab) / Restore button (closed tab) */}
+                                                            {statusFilter === 'open' ? (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleArchive(deal.id, statusFilter); }}
+                                                                    style={{
+                                                                        width: '24px', height: '24px', borderRadius: '6px',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        color: '#94a3b8', transition: 'all 0.15s', background: 'transparent',
+                                                                        border: 'none', cursor: 'pointer', padding: 0,
+                                                                    }}
+                                                                    title="أرشفة"
+                                                                    onMouseEnter={e => { (e.currentTarget).style.background = '#fef2f2'; (e.currentTarget).style.color = '#ef4444'; }}
+                                                                    onMouseLeave={e => { (e.currentTarget).style.background = 'transparent'; (e.currentTarget).style.color = '#94a3b8'; }}
+                                                                >
+                                                                    <Archive size={12} />
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    onClick={(e) => { e.stopPropagation(); handleArchive(deal.id, statusFilter); }}
+                                                                    style={{
+                                                                        display: 'flex', alignItems: 'center', gap: '4px',
+                                                                        padding: '3px 8px', borderRadius: '6px',
+                                                                        background: '#eff6ff', color: '#2563eb',
+                                                                        border: '1px solid #bfdbfe',
+                                                                        cursor: 'pointer', fontSize: '10px', fontWeight: 600,
+                                                                        transition: 'all 0.15s', whiteSpace: 'nowrap',
+                                                                    }}
+                                                                    title="إعادة فتح الصفقة"
+                                                                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#dbeafe'; }}
+                                                                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#eff6ff'; }}
+                                                                >
+                                                                    <RotateCcw size={10} />
+                                                                    استرداد
+                                                                </button>
+                                                            )}
+
                                                         </div>
                                                     </div>
                                                 </div>
