@@ -20,9 +20,10 @@ export async function GET(request: Request) {
         const status = searchParams.get('status') || 'open';
 
         const deals = await query(
-            `SELECT d.*, c.full_name as customer_name 
+            `SELECT d.*, c.full_name as customer_name, u.unit_name
              FROM crm_deals d 
              LEFT JOIN customers c ON d.customer_id = c.id
+             LEFT JOIN units u ON d.unit_id = u.id
              WHERE d.status = ?
              ORDER BY d.created_at DESC`,
             [status]
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
             value,
             priority,
             expected_close_date,
+            unit_id,
         } = body;
 
         if (!customer_id || !title) {
@@ -83,13 +85,19 @@ export async function POST(request: Request) {
                 ? expected_close_date.trim().slice(0, 10)
                 : null;
 
+        const unitIdValue =
+            unit_id && typeof unit_id === "string" && unit_id.trim() !== ""
+                ? unit_id.trim()
+                : null;
+
         const id = uuidv4();
         await execute(
-            `INSERT INTO crm_deals (id, customer_id, title, notes, stage, value, status, priority, expected_close_date)
-             VALUES (?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
+            `INSERT INTO crm_deals (id, customer_id, unit_id, title, notes, stage, value, status, priority, expected_close_date)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 'open', ?, ?)`,
             [
                 id,
                 customer_id,
+                unitIdValue,
                 title,
                 notesValue,
                 stage || "new",
@@ -117,7 +125,7 @@ export async function PUT(request: Request) {
 
     try {
         const body = await request.json();
-        const { id, stage, status } = body;
+        const { id, stage, status, unit_id } = body;
 
         if (!id) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
@@ -142,6 +150,10 @@ export async function PUT(request: Request) {
         if (status !== undefined && status !== null && status !== "") {
             updates.push("status = ?");
             params.push(status);
+        }
+        if (unit_id !== undefined) {
+            updates.push("unit_id = ?");
+            params.push(unit_id === "" ? null : unit_id);
         }
 
         if (updates.length === 0) {

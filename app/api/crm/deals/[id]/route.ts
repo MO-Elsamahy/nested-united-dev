@@ -16,9 +16,11 @@ export async function GET(
 
         // Get deal with customer info
         const deal = await queryOne<Record<string, unknown>>(
-            `SELECT d.*, c.full_name as customer_name, c.phone as customer_phone, c.email as customer_email
+            `SELECT d.*, c.full_name as customer_name, c.phone as customer_phone, c.email as customer_email,
+                    u.unit_name
              FROM crm_deals d
              LEFT JOIN customers c ON d.customer_id = c.id
+             LEFT JOIN units u ON d.unit_id = u.id
              WHERE d.id = ?`,
             [id]
         );

@@ -9,7 +9,7 @@ import {
     CheckCircle2, XCircle, Handshake, CreditCard, PackageCheck,
     BadgeCheck, MessagesSquare, History,
     PhoneCall, CalendarDays, MailIcon, RefreshCw,
-    StickyNote, Activity, Trash2, Archive, RotateCcw
+    StickyNote, Activity, Trash2, Archive, RotateCcw, Building2
 } from "lucide-react";
 
 import type { CrmDeal, CrmActivity } from "@/lib/types/crm";
@@ -530,6 +530,26 @@ export default function DealDetailPage() {
                                         <User className="w-5 h-5 text-violet-600" />
                                     </div>
                                     <span className="font-medium text-gray-900">{deal.assigned_to_name}</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Linked Unit */}
+                    {deal.unit_name && (
+                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                            <div className="px-5 py-3.5 border-b bg-gray-50/50">
+                                <h3 className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
+                                    <Building2 className="w-4 h-4 text-gray-500" />
+                                    الوحدة المرتبطة
+                                </h3>
+                            </div>
+                            <div className="p-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center">
+                                        <Building2 className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <span className="font-semibold text-gray-900">{deal.unit_name}</span>
                                 </div>
                             </div>
                         </div>

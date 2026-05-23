@@ -91,9 +91,11 @@ export default function DealsPage() {
                 method: "PUT", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, status: newStatus }),
             });
-            await fetchDeals();
+            // Switch to the target tab so the user can see the deal in its new state
+            setStatusFilter(newStatus as 'open' | 'closed');
         } catch { await fetchDeals(); }
     };
+
 
     return (
         <div style={{ height: 'calc(100vh - 90px)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -303,7 +305,7 @@ export default function DealsPage() {
 
                                                     {/* Customer */}
                                                     {deal.customer_name && (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
                                                             <div style={{
                                                                 width: '20px', height: '20px', borderRadius: '50%',
                                                                 background: `linear-gradient(135deg, ${stage.light}, ${stage.color}22)`,
@@ -314,6 +316,23 @@ export default function DealsPage() {
                                                             </div>
                                                             <span style={{ fontSize: '11px', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                                 {deal.customer_name}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Unit */}
+                                                    {deal.unit_name && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                                                            <div style={{
+                                                                width: '20px', height: '20px', borderRadius: '6px',
+                                                                background: '#ecfdf5',
+                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                flexShrink: 0,
+                                                            }}>
+                                                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                                            </div>
+                                                            <span style={{ fontSize: '11px', color: '#059669', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>
+                                                                {deal.unit_name}
                                                             </span>
                                                         </div>
                                                     )}

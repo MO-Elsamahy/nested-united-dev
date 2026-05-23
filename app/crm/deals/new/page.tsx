@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Save, Loader2, DollarSign, UserPlus, Search, Check, X, User } from "lucide-react";
+import { ArrowRight, Save, Loader2, DollarSign, UserPlus, Search, Check, X, User, Building2 } from "lucide-react";
 import type { CRMCustomer } from "@/lib/types/crm";
+
+type Unit = { id: string; unit_name: string; unit_code: string | null };
 
 /* ─────────────── Customer Autocomplete Combobox ─────────────── */
 function CustomerCombobox({
@@ -301,9 +303,11 @@ function NewDealForm() {
 
     const [loading, setLoading] = useState(false);
     const [customers, setCustomers] = useState<CRMCustomer[]>([]);
+    const [units, setUnits] = useState<Unit[]>([]);
 
     const [formData, setFormData] = useState({
         customer_id: preSelectedCustomerId || "",
+        unit_id: "",
         title: "",
         value: "",
         stage: "new",
@@ -322,7 +326,17 @@ function NewDealForm() {
                 setCustomers([]);
             }
         };
+        const loadUnits = async () => {
+            try {
+                const res = await fetch("/api/units");
+                const data = await res.json();
+                if (res.ok && Array.isArray(data)) setUnits(data);
+            } catch {
+                setUnits([]);
+            }
+        };
         void loadCustomers();
+        void loadUnits();
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -433,6 +447,26 @@ function NewDealForm() {
                         <option value="low">منخفضة</option>
                         <option value="medium">متوسطة</option>
                         <option value="high">عالية</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                        <Building2 className="w-4 h-4 text-gray-400" />
+                        الوحدة المرتبطة
+                    </label>
+                    <select
+                        name="unit_id"
+                        value={formData.unit_id}
+                        onChange={handleChange}
+                        className="w-full px-4 py-2 border rounded-lg bg-white"
+                    >
+                        <option value="">— بدون وحدة —</option>
+                        {units.map(u => (
+                            <option key={u.id} value={u.id}>
+                                {u.unit_name}{u.unit_code ? ` (${u.unit_code})` : ""}
+                            </option>
+                        ))}
                     </select>
                 </div>
 

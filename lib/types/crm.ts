@@ -53,6 +53,8 @@ export interface CrmDeal {
     created_at?: string | null;
     updated_at?: string | null;
     notes?: string | null;
+    unit_id?: string | null;
+    unit_name?: string | null;
 }
 
 export interface CustomerDetailResponse {
