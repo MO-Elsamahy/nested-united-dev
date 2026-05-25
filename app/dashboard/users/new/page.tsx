@@ -106,14 +106,15 @@ export default function NewUserPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             >
               <option value="">اختر الدور</option>
-              <option value="admin">موظف (Admin)</option>
-              <option value="super_admin">مدير عام (Super Admin)</option>
-              <option value="accountant">محاسب (Accountant)</option>
-              <option value="hr_manager">مدير موارد بشرية (HR Manager)</option>
-              <option value="maintenance_worker">عامل صيانة (Maintenance Worker)</option>
+              <option value="employee">موظف</option>
+              <option value="admin">مشرف</option>
+              <option value="accountant">محاسب</option>
+              <option value="hr_manager">مدير موارد بشرية</option>
+              <option value="maintenance_worker">فني صيانة</option>
+              <option value="super_admin">مدير عام</option>
             </select>
             <p className="text-gray-500 text-xs mt-1">
-              المحاسب يرى النظام المالي فقط. عامل الصيانة يرى التذاكر فقط.
+              الصلاحيات التفصيلية لكل دور يمكن تعديلها من الإعدادات &gt; صلاحيات الأدوار
             </p>
           </div>
 
