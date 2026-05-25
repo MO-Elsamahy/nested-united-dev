@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowRight, Calendar, User, FileText, Download, Loader2 } from "lucide-react";
-import { useParams } from "next/navigation";
+import { ArrowRight, Calendar, User, FileText, Download, Loader2, Pencil, Trash2 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { Evaluation, EvaluationScore } from "@/lib/types/hr";
+import { useSession } from "next-auth/react";
 
 interface EvaluationDetail extends Evaluation {
     employee_name: string;
@@ -17,8 +18,33 @@ interface EvaluationDetail extends Evaluation {
 
 export default function ViewEvaluationPage() {
     const params = useParams();
+    const router = useRouter();
+    const { data: session } = useSession();
     const [evaluation, setEvaluation] = useState<EvaluationDetail | null>(null);
     const [loading, setLoading] = useState(true);
+    const [deleting, setDeleting] = useState(false);
+
+    const userRole = session?.user ? (session.user as { role?: string }).role : "";
+    const canEditOrDelete = ["super_admin", "admin", "hr_manager"].includes(userRole || "");
+
+    const handleDelete = async () => {
+        if (!confirm("هل أنت متأكد من رغبتك في حذف هذا التقييم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+        setDeleting(true);
+        try {
+            const res = await fetch(`/api/hr/evaluations/${params.id}`, { method: "DELETE" });
+            if (res.ok) {
+                router.push("/hr/evaluations");
+                router.refresh();
+            } else {
+                const data = await res.json();
+                alert(data.error || "حدث خطأ أثناء حذف التقييم");
+                setDeleting(false);
+            }
+        } catch (error) {
+            alert("حدث خطأ في الاتصال");
+            setDeleting(false);
+        }
+    };
 
     useEffect(() => {
         const fetchEval = async () => {
@@ -75,13 +101,34 @@ export default function ViewEvaluationPage() {
                         <p className="text-gray-500">تقييم الأداء المفصل للموظف</p>
                     </div>
                 </div>
-                <button 
-                    onClick={() => window.print()} 
-                    className="flex items-center justify-center gap-2 bg-white border hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl transition"
-                >
-                    <Download className="w-5 h-5" />
-                    <span>طباعة</span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2 justify-end">
+                    {canEditOrDelete && (
+                        <>
+                            <Link 
+                                href={`/hr/evaluations/${params.id}/edit`}
+                                className="flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-4 py-2.5 rounded-xl transition shadow-md shadow-violet-100"
+                            >
+                                <Pencil className="w-4 h-4" />
+                                <span>تعديل التقييم</span>
+                            </Link>
+                            <button 
+                                onClick={handleDelete} 
+                                disabled={deleting}
+                                className="flex items-center justify-center gap-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-700 px-4 py-2.5 rounded-xl transition disabled:opacity-50"
+                            >
+                                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                                <span>حذف</span>
+                            </button>
+                        </>
+                    )}
+                    <button 
+                        onClick={() => window.print()} 
+                        className="flex items-center justify-center gap-2 bg-white border hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl transition"
+                    >
+                        <Download className="w-5 h-5" />
+                        <span>طباعة</span>
+                    </button>
+                </div>
             </div>
 
             {/* Header / Summary Card */}
