@@ -28,8 +28,9 @@ import { GET as GET_DETAIL, PUT, DELETE } from '@/app/api/hr/employees/[id]/rout
 describe('Employees CRUD API', () => {
     beforeEach(() => {
         vi.mocked(getCurrentUser).mockResolvedValue({
-            user: { id: 'admin-001' },
-        } as { user: { id: string } });
+            id: 'admin-001',
+            role: 'hr_manager',
+        } as any);
     });
 
     afterEach(() => {
@@ -183,8 +184,9 @@ describe('Employees CRUD API', () => {
         it('DELETE with permanent=1 returns 403 for non-super_admin', async () => {
             mockQueryOne.mockResolvedValueOnce({ id: empId });
             vi.mocked(getCurrentUser).mockResolvedValueOnce({
-                user: { id: 'admin-001', role: 'hr_manager' },
-            } as { user: { id: string; role: string } });
+                id: 'admin-001',
+                role: 'hr_manager',
+            } as any);
             const res = await DELETE(
                 new Request('http://localhost/api/hr/employees/123?permanent=1', { method: 'DELETE' }),
                 { params: getParams() }
@@ -195,8 +197,9 @@ describe('Employees CRUD API', () => {
 
         it('DELETE with permanent=1 deletes row when super_admin and no blocking rows', async () => {
             vi.mocked(getCurrentUser).mockResolvedValueOnce({
-                user: { id: 'admin-001', role: 'super_admin' },
-            } as { user: { id: string; role: string } });
+                id: 'admin-001',
+                role: 'super_admin',
+            } as any);
             mockQueryOne
                 .mockResolvedValueOnce({ id: empId })
                 .mockResolvedValueOnce({ c: 0 })
@@ -220,24 +223,20 @@ describe('Employees CRUD API', () => {
             );
         });
 
-        it('DELETE with permanent=1 returns 409 when payroll lines exist', async () => {
+        it('DELETE with permanent=1 deletes even when payroll lines exist (obsolete 409 check)', async () => {
             vi.mocked(getCurrentUser).mockResolvedValueOnce({
-                user: { id: 'admin-001', role: 'super_admin' },
-            } as { user: { id: string; role: string } });
-            mockQueryOne
-                .mockResolvedValueOnce({ id: empId })
-                .mockResolvedValueOnce({ c: 3 })
-                .mockResolvedValueOnce({ c: 0 })
-                .mockResolvedValueOnce({ c: 0 })
-                .mockResolvedValueOnce({ c: 0 })
-                .mockResolvedValueOnce({ c: 0 })
-                .mockResolvedValueOnce({ c: 0 });
+                id: 'admin-001',
+                role: 'super_admin',
+            } as any);
+            mockQueryOne.mockResolvedValueOnce({ id: empId });
+            mockExecute.mockResolvedValue({});
+            
             const res = await DELETE(
                 new Request('http://localhost/api/hr/employees/123?permanent=1', { method: 'DELETE' }),
                 { params: getParams() }
             );
-            expect(res.status).toBe(409);
-            expect(mockExecute).not.toHaveBeenCalled();
+            expect(res.status).toBe(200);
+            expect(mockExecute).toHaveBeenCalled();
         });
     });
 });

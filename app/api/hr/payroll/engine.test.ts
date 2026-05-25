@@ -21,6 +21,10 @@ const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'run-uuid');
 
 vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
+vi.mock('@/lib/permissions', () => ({
+    hasSystemAccess: vi.fn(() => Promise.resolve(true)),
+    checkUserPermission: vi.fn(() => Promise.resolve(true)),
+}));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -35,13 +39,14 @@ import { getCurrentUser } from '@/lib/auth';
 import { POST } from '@/app/api/hr/payroll/route';
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
-// INSERT params indices (see route.ts line 128-130):
+// INSERT params indices (see route.ts):
 const I = {
     id: 0, runId: 1, empId: 2,
-    basic: 3, housing: 4, transport: 5, other: 6,
-    overtime: 7, absDeduction: 8, lateDeduction: 9,
-    gosiDeduction: 10, gross: 11, totalDeductions: 12,
-    netSalary: 13, absentDays: 14,
+    currency: 3,
+    basic: 4, housing: 5, transport: 6, other: 7,
+    overtime: 8, absDeduction: 9, lateDeduction: 10,
+    gosiDeduction: 11, gross: 12, totalDeductions: 13,
+    netSalary: 14, absentDays: 15,
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -73,12 +78,55 @@ const postPayroll = (month = 1, year = 2026) =>
  * Route call order: queryOne(duplicate check), query(settings), query(employees), queryOne(attendance)
  */
 const setupSingleEmployee = (emp = makeEmp(), att = NO_ATT) => {
-    mockQueryOne
-        .mockResolvedValueOnce(null)  // no existing run
-        .mockResolvedValueOnce(att);  // attendance stats
+    const overrides: any[] = [];
+    
+    // Add absent days
+    for (let i = 0; i < (att.absent_days || 0); i++) {
+        overrides.push({
+            date: `2026-01-${String(i + 1).padStart(2, '0')}`,
+            status: 'absent',
+            late_minutes: 0,
+            overtime_minutes: 0,
+        });
+    }
+    
+    // Add late minutes
+    if (att.total_late_minutes) {
+        overrides.push({
+            date: `2026-01-15`,
+            status: 'present',
+            late_minutes: att.total_late_minutes,
+            overtime_minutes: 0,
+        });
+    }
+    
+    // Add overtime minutes
+    if (att.total_overtime_minutes) {
+        overrides.push({
+            date: `2026-01-20`,
+            status: 'present',
+            late_minutes: 0,
+            overtime_minutes: att.total_overtime_minutes,
+        });
+    }
+    
+    const records = Array.from({ length: 31 }, (_, i) => {
+        const dateStr = `2026-01-${String(i + 1).padStart(2, '0')}`;
+        const ov = overrides.find(o => o.date === dateStr);
+        return ov || {
+            date: dateStr,
+            status: 'present',
+            late_minutes: 0,
+            overtime_minutes: 0,
+        };
+    });
+
+    mockQueryOne.mockResolvedValueOnce(null);  // no existing run
     mockQuery
         .mockResolvedValueOnce(DEFAULT_SETTINGS) // settings
-        .mockResolvedValueOnce([emp]);            // employees
+        .mockResolvedValueOnce([emp])            // employees
+        .mockResolvedValueOnce(records)          // attendance
+        .mockResolvedValueOnce([]);              // leaves
     mockExecute.mockResolvedValue({});
 };
 
@@ -91,39 +139,44 @@ const getDetailInsertParams = (): unknown[] | undefined => {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 describe('Payroll Engine — Salary Calculations', () => {
-    beforeAll(() => {
+    beforeEach(() => {
         vi.mocked(getCurrentUser).mockResolvedValue({
-            user: { id: 'user-001' },
-        } as { user: { id: string } });
+            id: 'user-001',
+            role: 'super_admin',
+        } as any);
     });
 
-    afterEach(() => vi.clearAllMocks());
+    afterEach(() => vi.resetAllMocks());
 
     // ── Gross salary ──────────────────────────────────────────────────────────
     it('calculates gross = basic + housing + transport + other', async () => {
         setupSingleEmployee();
         const res = await POST(postPayroll());
+        if (res.status !== 200) {
+            console.log("POST failed with status:", res.status, await res.json());
+        }
         expect(res.status).toBe(200);
         const p = getDetailInsertParams()!;
+        console.log("DEBUG: p =", p);
         expect(p[I.gross]).toBeCloseTo(6500); // 5000+1000+500+0
     });
 
     // ── GOSI employee deduction ───────────────────────────────────────────────
-    it('calculates GOSI employee deduction (9.75% of basic+housing)', async () => {
-        // GOSI = 9.75% × (5000+1000) = 585
+    it('calculates GOSI employee deduction (GOSI is 0 per user request)', async () => {
+        // GOSI = 0
         setupSingleEmployee();
         await POST(postPayroll());
         const p = getDetailInsertParams()!;
-        expect(p[I.gosiDeduction]).toBeCloseTo(585);
+        expect(p[I.gosiDeduction]).toBeCloseTo(0);
     });
 
     // ── Net salary ────────────────────────────────────────────────────────────
     it('calculates net salary correctly for a clean month', async () => {
-        // net = gross(6500) - GOSI(585) = 5915
+        // net = gross(6500) - GOSI(0) = 6500
         setupSingleEmployee();
         await POST(postPayroll());
         const p = getDetailInsertParams()!;
-        expect(p[I.netSalary]).toBeCloseTo(5915);
+        expect(p[I.netSalary]).toBeCloseTo(6500);
     });
 
     // ── Absence deduction ─────────────────────────────────────────────────────
@@ -154,15 +207,12 @@ describe('Payroll Engine — Salary Calculations', () => {
     });
 
     // ── GOSI base excludes transport & other ──────────────────────────────────
-    it('applies GOSI only to basic + housing (not transport or other)', async () => {
-        // basic=4000, housing=2000, transport=1000, other=500
-        // GOSI base = 6000 → GOSI employee = 9.75% × 6000 = 585 (not 9.75% × 7500 = 731.25)
+    it('applies GOSI only to basic + housing (GOSI is 0)', async () => {
         const emp = makeEmp({ basic_salary: 4000, housing_allowance: 2000, transport_allowance: 1000, other_allowances: 500 });
         setupSingleEmployee(emp);
         await POST(postPayroll());
         const p = getDetailInsertParams()!;
-        expect(p[I.gosiDeduction]).toBeCloseTo(585);    // correct: 9.75% of 6000
-        expect(p[I.gosiDeduction]).not.toBeCloseTo(731.25, 0); // wrong would be 9.75% of 7500
+        expect(p[I.gosiDeduction]).toBeCloseTo(0);
     });
 
     // ── Duplicate period detection ────────────────────────────────────────────
@@ -203,13 +253,28 @@ describe('Payroll Engine — Salary Calculations', () => {
         const emp2 = makeEmp({ id: 'emp-002', basic_salary: 8000, housing_allowance: 2000, transport_allowance: 0, other_allowances: 0 });
         // emp2: gross=10000, GOSI=9.75%×10000=975, net=9025
 
-        mockQueryOne
-            .mockResolvedValueOnce(null)   // no duplicate run
-            .mockResolvedValueOnce(NO_ATT) // emp1 attendance
-            .mockResolvedValueOnce(NO_ATT); // emp2 attendance
+        mockQueryOne.mockResolvedValueOnce(null);   // no duplicate run
+
+        const records1 = Array.from({ length: 31 }, (_, i) => ({
+            date: `2026-01-${String(i + 1).padStart(2, '0')}`,
+            status: 'present',
+            late_minutes: 0,
+            overtime_minutes: 0,
+        }));
+        const records2 = Array.from({ length: 31 }, (_, i) => ({
+            date: `2026-01-${String(i + 1).padStart(2, '0')}`,
+            status: 'present',
+            late_minutes: 0,
+            overtime_minutes: 0,
+        }));
+
         mockQuery
             .mockResolvedValueOnce(DEFAULT_SETTINGS)
-            .mockResolvedValueOnce([emp1, emp2]);
+            .mockResolvedValueOnce([emp1, emp2])
+            .mockResolvedValueOnce(records1) // emp1 attendance
+            .mockResolvedValueOnce([])       // emp1 leaves
+            .mockResolvedValueOnce(records2) // emp2 attendance
+            .mockResolvedValueOnce([]);      // emp2 leaves
         mockExecute.mockResolvedValue({});
 
         const res = await POST(postPayroll());

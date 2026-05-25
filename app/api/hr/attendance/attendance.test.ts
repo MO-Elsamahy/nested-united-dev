@@ -27,11 +27,11 @@ import { POST } from '@/app/api/hr/attendance/punch/route';
 describe('Attendance Punch API', () => {
     beforeEach(() => {
         vi.mocked(getCurrentUser).mockResolvedValue({
-            user: { id: 'user-001' },
-        } as { user: { id: string } });
-        // Default time: 2026-04-10 08:30:00 (present for 09:00 shift)
-        // Use local time instead of UTC 'Z' to match now.getHours() in route
-        vi.setSystemTime(new Date(2026, 3, 10, 8, 30, 0)); // Month is 0-indexed
+            id: 'user-001',
+            role: 'super_admin',
+        } as any);
+        // Default time: 08:30 Cairo time = 05:30 UTC
+        vi.setSystemTime(new Date(Date.UTC(2026, 3, 10, 5, 30, 0))); // Month is 0-indexed
     });
 
     afterEach(() => {
@@ -75,7 +75,7 @@ describe('Attendance Punch API', () => {
         });
 
         it('marks as PRESENT when arriving within grace period (e.g. 09:10 for 09:00 shift)', async () => {
-            vi.setSystemTime(new Date(2026, 3, 10, 9, 10, 0));
+            vi.setSystemTime(new Date(Date.UTC(2026, 3, 10, 6, 10, 0)));
             mockQueryOne
                 .mockResolvedValueOnce(null)
                 .mockResolvedValueOnce({ shift_id: 'shift-1' })
@@ -88,7 +88,7 @@ describe('Attendance Punch API', () => {
         });
 
         it('marks as LATE when arriving after grace period (e.g. 09:20 for 09:00 shift)', async () => {
-            vi.setSystemTime(new Date(2026, 3, 10, 9, 20, 0));
+            vi.setSystemTime(new Date(Date.UTC(2026, 3, 10, 6, 20, 0)));
             mockQueryOne
                 .mockResolvedValueOnce(null)
                 .mockResolvedValueOnce({ shift_id: 'shift-1' })
@@ -109,7 +109,7 @@ describe('Attendance Punch API', () => {
                 .mockResolvedValueOnce({ setting_value: '16:00:00' }) // work_end_time
                 .mockResolvedValueOnce({ setting_value: '10' });     // late_grace_minutes
 
-            vi.setSystemTime(new Date(2026, 3, 10, 8, 15, 0)); // 15 mins late
+            vi.setSystemTime(new Date(Date.UTC(2026, 3, 10, 5, 15, 0))); // 15 mins late (08:15 Cairo)
 
             const res = await POST(punchInRequest());
             const body = await res?.json();
@@ -135,7 +135,7 @@ describe('Attendance Punch API', () => {
                 .mockResolvedValueOnce({ shift_id: 'shift-1' })
                 .mockResolvedValueOnce({ end_time: '17:00:00' }); // Shift end
 
-            vi.setSystemTime(new Date(2026, 3, 10, 18, 30, 0)); // 1.5 hours OT
+            vi.setSystemTime(new Date(Date.UTC(2026, 3, 10, 15, 30, 0))); // 1.5 hours OT (18:30 Cairo)
 
             const res = await POST(punchOutRequest());
             const body = await res?.json();
@@ -150,7 +150,7 @@ describe('Attendance Punch API', () => {
                 .mockResolvedValueOnce({ shift_id: 'shift-1' })
                 .mockResolvedValueOnce({ end_time: '17:00:00' });
 
-            vi.setSystemTime(new Date(2026, 3, 10, 16, 0, 0)); // Leaving early
+            vi.setSystemTime(new Date(Date.UTC(2026, 3, 10, 13, 0, 0))); // Leaving early (16:00 Cairo)
 
             const res = await POST(punchOutRequest());
             const body = await res?.json();

@@ -11,6 +11,10 @@ const mockExecute = vi.fn();
 const mockGenerateUUID = vi.fn(() => 'req-uuid-123');
 
 vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
+vi.mock('@/lib/permissions', () => ({
+    hasSystemAccess: vi.fn(() => Promise.resolve(true)),
+    checkUserPermission: vi.fn(() => Promise.resolve(true)),
+}));
 vi.mock('@/lib/db', () => ({
     query: (...args: unknown[]) => mockQuery(...args),
     queryOne: (...args: unknown[]) => mockQueryOne(...args),
@@ -79,7 +83,7 @@ describe('HR Requests API', () => {
 
         it('returns 403 if no employee record found for user', async () => {
             mockQueryOne.mockResolvedValueOnce(null);
-            const _res = await POST(new Request('http://localhost/api/hr/requests', {
+            const res = await POST(new Request('http://localhost/api/hr/requests', {
                 method: 'POST',
                 body: JSON.stringify({ request_type: 'annual_leave', start_date: '2026-05-01', reason: 'X' })
             }));

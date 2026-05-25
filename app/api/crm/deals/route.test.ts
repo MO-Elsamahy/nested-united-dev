@@ -14,8 +14,9 @@ vi.mock("@/lib/db", () => ({
     execute: (...args: unknown[]) => mockExecute(...args),
 }));
 
-
-
+vi.mock("@/lib/auth", () => ({
+    getCurrentUser: vi.fn()
+}));
 
 vi.mock("uuid", () => ({ v4: () => "deal-test-uuid" }));
 
@@ -83,7 +84,7 @@ describe("CRM Deals API POST", () => {
         await POST(req);
 
         const args = mockExecute.mock.calls[0][1] as unknown[];
-        expect(args[3]).toBe("From description field");
+        expect(args[4]).toBe("From description field");
     });
 });
 

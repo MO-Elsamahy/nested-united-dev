@@ -154,7 +154,7 @@ export async function PUT(
             // Update parent evaluation
             await connection.execute(
                 `UPDATE hr_evaluations 
-                 SET eval_month = ?, eval_year = ?, total_score = ?, max_possible_score = ?, percentage = ?, notes = ?, updated_at = NOW()
+                 SET eval_month = ?, eval_year = ?, total_score = ?, max_possible_score = ?, percentage = ?, notes = ?
                  WHERE id = ?`,
                 [eval_month, eval_year, totalScore, maxPossibleScore, percentage, notes || null, resolvedParams.id]
             );
