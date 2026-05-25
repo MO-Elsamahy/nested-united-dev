@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import type { User } from "@/lib/types/database";
 import { SidebarItem } from "./SidebarItem";
@@ -53,15 +54,61 @@ interface AppSidebarProps {
 export function UnifiedSidebar({
     user,
     sections,
-    permissions,
+    permissions: passedPermissions,
     features,
     header,
     isLoading = false,
     className,
 }: AppSidebarProps) {
-    // Cast user to the expected type for Footer if needed,
-    // or ensure the types match. accessing props safely.
-    // The SidebarFooter expects a User object, so we might need to conform to that.
+    const [permissions, setPermissions] = useState<{ page_path: string; can_view: boolean }[]>(passedPermissions || []);
+    const [loading, setLoading] = useState(passedPermissions ? isLoading : true);
+    const [refreshKey, setRefreshKey] = useState(0);
+
+    const fetchPermissions = useCallback(async () => {
+        if (!user.id) {
+            setLoading(false);
+            return;
+        }
+        try {
+            // Super admins have all permissions, no need to fetch
+            if (user.role === "super_admin") {
+                setLoading(false);
+                return;
+            }
+
+            const res = await fetch(`/api/users/${user.id}/permissions`, {
+                cache: "no-store",
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setPermissions(data.permissions || []);
+            }
+        } catch (error) {
+            console.error("Error fetching permissions for sidebar:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [user.id, user.role]);
+
+    useEffect(() => {
+        if (passedPermissions) {
+            setPermissions(passedPermissions);
+            setLoading(isLoading);
+            return;
+        }
+        fetchPermissions();
+    }, [fetchPermissions, passedPermissions, isLoading, refreshKey]);
+
+    // Listen for permissions-updated event to refetch
+    useEffect(() => {
+        const handlePermissionsUpdated = () => {
+            setRefreshKey((prev) => prev + 1);
+        };
+        window.addEventListener("permissions-updated", handlePermissionsUpdated);
+        return () => window.removeEventListener("permissions-updated", handlePermissionsUpdated);
+    }, []);
+
+    // Cast user to the expected type for Footer if needed
     const userForFooter = user as User;
 
     return (
@@ -79,7 +126,7 @@ export function UnifiedSidebar({
             />
 
             <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-                {isLoading ? (
+                {loading ? (
                     <div className="space-y-2">
                         {[1, 2, 3, 4, 5].map((i) => (
                             <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />
@@ -88,28 +135,28 @@ export function UnifiedSidebar({
                 ) : (
                     sections.map((section, sectionIdx) => {
                         const visibleItems = section.items.filter((item) =>
-                            isNavItemVisibleForUser(item, user.role, permissions || [], features)
+                            isNavItemVisibleForUser(item, user.role, permissions, features)
                         );
                         if (visibleItems.length === 0) return null;
 
                         return (
-                            <div key={sectionIdx} className="mb-4">
-                                {section.title && (
-                                    <div className="px-3 pt-2 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                                        {section.title}
-                                    </div>
-                                )}
-                                <div className="space-y-1">
-                                    {visibleItems.map((item) => (
-                                        <SidebarItem
-                                            key={item.href}
-                                            label={item.label}
-                                            href={item.href}
-                                            icon={item.icon}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
+                          <div key={sectionIdx} className="mb-4">
+                              {section.title && (
+                                  <div className="px-3 pt-2 pb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                      {section.title}
+                                  </div>
+                              )}
+                              <div className="space-y-1">
+                                  {visibleItems.map((item) => (
+                                      <SidebarItem
+                                          key={item.href}
+                                          label={item.label}
+                                          href={item.href}
+                                          icon={item.icon}
+                                      />
+                                  ))}
+                              </div>
+                          </div>
                         );
                     })
                 )}

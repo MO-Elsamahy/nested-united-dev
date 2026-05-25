@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Check, X, Building2, Calculator, Users, LucideIcon } from "lucide-react";
+import { Check, X, Building2, Calculator, Users, Users2, Wrench, LucideIcon } from "lucide-react";
 
 const systemTabs: { id: string; label: string; icon: LucideIcon }[] = [
     { id: "rentals", label: "نظام التأجير", icon: Building2 },
     { id: "accounting", label: "النظام المالي", icon: Calculator },
     { id: "hr", label: "الموارد البشرية", icon: Users },
+    { id: "crm", label: "إدارة العملاء", icon: Users2 },
+    { id: "maintenance", label: "الصيانة", icon: Wrench },
 ];
 
 interface User {

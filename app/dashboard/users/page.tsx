@@ -226,6 +226,59 @@ export default async function UsersPage() {
           )}
         </div>
       </div>
+
+      {/* Other Staff */}
+      {(() => {
+        const others = users.filter((u) => !["super_admin", "admin", "maintenance_worker"].includes(u.role));
+        const roleLabels: Record<string, string> = {
+          accountant: "محاسب",
+          hr_manager: "موارد بشرية",
+          employee: "موظف",
+        };
+        
+        return others.length > 0 ? (
+          <div className="bg-white rounded-lg shadow">
+            <div className="border-b px-6 py-4">
+              <h2 className="text-xl font-semibold flex items-center gap-2">
+                <UserIcon className="w-5 h-5 text-indigo-600" />
+                الموظفون الماليون والإداريون ({others.length})
+              </h2>
+            </div>
+            <div className="divide-y">
+              {others.map((user) => (
+                <div key={user.id} className="px-6 py-4 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="bg-indigo-100 text-indigo-600 w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm">
+                      {roleLabels[user.role] || user.role}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{user.name}</h3>
+                        {!user.is_active && (
+                          <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-600">معطل</span>
+                        )}
+                      </div>
+                      <p className="text-gray-600 text-sm">{user.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <EditUserButton
+                      userId={user.id}
+                      userName={user.name}
+                      userEmail={user.email}
+                      userRole={user.role}
+                    />
+                    <EditPermissionsButton userId={user.id} userName={user.name} />
+                    <ChangePasswordButton userId={user.id} userEmail={user.email} />
+                    <ToggleUserButton id={user.id} isActive={user.is_active} />
+                    <DeleteUserButton userId={user.id} userName={user.name} userEmail={user.email} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null;
+      })()}
     </div>
   );
 }

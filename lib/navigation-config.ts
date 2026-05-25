@@ -228,3 +228,55 @@ export const PATH_NAME_MAP: Record<string, string> = {
     roles: "صلاحيات الأدوار",
     "page-permissions": "صلاحيات الصفحات"
 };
+
+export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
+    rentals: [
+        { path: "/dashboard", label: "لوحة التحكم الرئيسية" },
+        { path: "/dashboard/inbox", label: "صندوق الوارد" },
+        { path: "/dashboard/units", label: "الوحدات" },
+        { path: "/dashboard/bookings", label: "الحجوزات" },
+        { path: "/dashboard/accounts", label: "حسابات المنصات" },
+        { path: "/dashboard/maintenance", label: "الصيانة" },
+        { path: "/dashboard/browser-accounts", label: "حسابات المتصفح" },
+        { path: "/dashboard/notifications", label: "الإشعارات" },
+        { path: "/dashboard/unit-readiness", label: "جاهزية الوحدات" },
+        { path: "/dashboard/activity-logs", label: "سجل النشاط" },
+    ],
+    accounting: [
+        { path: "/accounting", label: "لوحة المؤشرات" },
+        { path: "/accounting/invoices", label: "الفواتير" },
+        { path: "/accounting/payments", label: "سندات القبض والصرف" },
+        { path: "/accounting/journals", label: "دفاتر اليومية" },
+        { path: "/accounting/moves/create", label: "قيد جديد" },
+        { path: "/accounting/accounts", label: "دليل الحسابات" },
+        { path: "/accounting/partners", label: "الشركاء والموردين" },
+        { path: "/accounting/cost-centers", label: "مراكز التكلفة" },
+        { path: "/accounting/backlog", label: "سجل الأحداث" },
+        { path: "/accounting/reports", label: "مركز التقارير" },
+    ],
+    hr: [
+        { path: "/hr", label: "لوحة التحكم" },
+        { path: "/hr/employees", label: "الموظفين" },
+        { path: "/hr/attendance", label: "الحضور والانصراف" },
+        { path: "/hr/attendance/reports", label: "تقارير الحضور" },
+        { path: "/hr/attendance/manual", label: "تعديل يدوي للحضور" },
+        { path: "/hr/requests", label: "الطلبات والاجازات" },
+        { path: "/hr/evaluations", label: "تقييمات الموظفين" },
+        { path: "/hr/evaluations/templates", label: "قوالب التقييم" },
+        { path: "/hr/payroll", label: "الرواتب" },
+        { path: "/hr/announcements", label: "الإعلانات" },
+        { path: "/hr/messages", label: "المراسلات" },
+        { path: "/hr/settings", label: "إعدادات الموارد البشرية" },
+    ],
+    crm: [
+        { path: "/crm", label: "لوحة التحكم" },
+        { path: "/crm/customers", label: "العملاء" },
+        { path: "/crm/deals", label: "الصفقات (Pipeline)" },
+        { path: "/crm/reports", label: "التقارير" },
+        { path: "/crm/settings", label: "إعدادات العملاء" },
+    ],
+    maintenance: [
+        { path: "/dashboard/maintenance", label: "إدارة الصيانة" },
+    ]
+};
+

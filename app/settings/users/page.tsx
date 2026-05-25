@@ -10,6 +10,7 @@ import { ToggleUserButton } from "@/app/dashboard/users/ToggleUserButton";
 import { ChangePasswordButton } from "@/app/dashboard/users/ChangePasswordButton";
 import { EditUserButton } from "@/app/dashboard/users/EditUserButton";
 import { DeleteUserButton } from "@/app/dashboard/users/DeleteUserButton";
+import { EditPermissionsButton } from "@/app/dashboard/users/EditPermissionsButton";
 
 interface DBUser {
     id: string;
@@ -127,6 +128,7 @@ export default async function SettingsUsersPage() {
                                 <td className="px-6 py-4">
                                     <div className="flex items-center gap-2 justify-end">
                                         <EditUserButton userId={user.id} userName={user.name} userEmail={user.email} userRole={user.role} />
+                                        <EditPermissionsButton userId={user.id} userName={user.name} />
                                         <ChangePasswordButton userId={user.id} userEmail={user.email} />
                                         <ToggleUserButton id={user.id} isActive={user.is_active} />
                                         <DeleteUserButton userId={user.id} userName={user.name} userEmail={user.email} />

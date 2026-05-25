@@ -1,38 +1,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
-
-// Define pages per system
-const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
-    rentals: [
-        { path: "/dashboard", label: "لوحة التحكم الرئيسية" },
-        { path: "/dashboard/units", label: "الوحدات" },
-        { path: "/dashboard/bookings", label: "الحجوزات" },
-        { path: "/dashboard/accounts", label: "الحسابات" },
-        { path: "/dashboard/maintenance", label: "الصيانة" },
-        { path: "/dashboard/browser-accounts", label: "حسابات المتصفح" },
-        { path: "/dashboard/notifications", label: "الإشعارات" },
-        { path: "/dashboard/unit-readiness", label: "جاهزية الوحدات" },
-        { path: "/dashboard/activity-logs", label: "سجل النشاط" },
-    ],
-    accounting: [
-        { path: "/accounting", label: "لوحة المحاسبة" },
-        { path: "/accounting/entries", label: "القيود اليومية" },
-        { path: "/accounting/accounts", label: "دليل الحسابات" },
-        { path: "/accounting/partners", label: "الشركاء" },
-        { path: "/accounting/cost-centers", label: "مراكز التكلفة" },
-        { path: "/accounting/reports/trial-balance", label: "ميزان المراجعة" },
-        { path: "/accounting/reports/partner-ledger", label: "كشف حساب شريك" },
-        { path: "/accounting/backlog", label: "سجل الأحداث" },
-    ],
-    hr: [
-        { path: "/hr", label: "لوحة الموارد البشرية" },
-        { path: "/hr/employees", label: "الموظفين" },
-        { path: "/hr/attendance", label: "الحضور والانصراف" },
-        { path: "/hr/payroll", label: "المرتبات" },
-        { path: "/hr/requests", label: "الطلبات" },
-    ],
-};
+import { SYSTEM_PAGES } from "@/lib/navigation-config";
 
 interface UserRow {
     id: string;

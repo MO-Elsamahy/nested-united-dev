@@ -35,6 +35,7 @@ const systemLabels: Record<string, SystemInfo> = {
     accounting: { label: "النظام المالي", icon: Calculator },
     hr: { label: "الموارد البشرية", icon: Users },
     crm: { label: "إدارة العملاء (CRM)", icon: Users2 },
+    maintenance: { label: "الصيانة", icon: Wrench },
 };
 
 const roleLabels: Record<string, RoleInfo> = {

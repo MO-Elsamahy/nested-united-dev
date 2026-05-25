@@ -108,7 +108,7 @@ export async function POST(request: Request) {
                 // To keep it simple, we just sum up the raw scores and max scores 
                 // Alternatively, we could compute weighted sums. We'll use simple sum of provided max_scores.
                 totalScore += parseFloat(s.score);
-                maxPossibleScore += cDef.max_score;
+                maxPossibleScore += parseFloat(cDef.max_score as any);
             }
         }
 

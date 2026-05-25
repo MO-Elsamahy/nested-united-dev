@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { logActivityInServer, clearPermissionCacheForUser } from "@/lib/permissions";
 import { getCurrentUser } from "@/lib/auth";
+import { SYSTEM_PAGES } from "@/lib/navigation-config";
 
 interface UserPermission {
   id: string;
@@ -44,7 +45,41 @@ export async function GET(
     can_edit: p.can_edit === 1 || p.can_edit === true,
   }));
 
-  return NextResponse.json({ permissions: formattedPermissions });
+  // Fetch the target user's role to determine allowed systems
+  const targetUser = await queryOne<{ role: string }>(
+    "SELECT role FROM users WHERE id = ?",
+    [id]
+  );
+
+  const allowedSystems: string[] = [];
+  if (targetUser) {
+    if (targetUser.role === "super_admin") {
+      allowedSystems.push("rentals", "accounting", "hr", "crm", "maintenance");
+    } else {
+      const perms = await query<{ system_id: string }>(
+        "SELECT system_id FROM role_system_permissions WHERE role = ? AND can_access = TRUE",
+        [targetUser.role]
+      );
+      allowedSystems.push(...perms.map(p => p.system_id));
+      // Fallback for maintenance if rentals is allowed
+      if (allowedSystems.includes("rentals") && !allowedSystems.includes("maintenance")) {
+        allowedSystems.push("maintenance");
+      }
+    }
+  }
+
+  // Build the systems object with page lists
+  const systems: Record<string, { path: string; label: string }[]> = {};
+  for (const sys of allowedSystems) {
+    if (SYSTEM_PAGES[sys]) {
+      systems[sys] = SYSTEM_PAGES[sys];
+    }
+  }
+
+  return NextResponse.json({
+    permissions: formattedPermissions,
+    systems
+  });
 }
 
 // Update user permissions
