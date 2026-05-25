@@ -30,17 +30,20 @@ interface UserWithRole {
 }
 
 // Default allowed paths for each role (prefixes)
-const ROLE_DEFAULT_PATHS: Record<string, string[]> = {
-  super_admin: ["/"], // Everything
-  admin: ["/dashboard", "/accounting", "/hr", "/crm"], // Most things
-  accountant: ["/accounting", "/dashboard", "/about", "/hr"],
-  hr_manager: ["/hr", "/dashboard", "/about"],
-  maintenance_worker: ["/dashboard/maintenance", "/dashboard/unit-readiness", "/dashboard", "/about"],
-  employee: ["/dashboard", "/about"],
-};
+// NOTE: We intentionally have NO hardcoded role defaults here.
+// All permissions are managed via the database (role_system_permissions + user_permissions tables).
+// Only super_admin is hardcoded (has access to everything).
 
-// Paths restricted from regular admins by default
-const ADMIN_RESTRICTED_PATHS = ["/dashboard/users", "/dashboard/activity-logs", "/settings/page-permissions"];
+// Map a page path to its parent system module
+function getSystemForPath(pagePath: string): string | null {
+  if (pagePath.startsWith("/dashboard")) return "rentals";
+  if (pagePath.startsWith("/accounting")) return "accounting";
+  if (pagePath.startsWith("/hr")) return "hr";
+  if (pagePath.startsWith("/crm")) return "crm";
+  if (pagePath.startsWith("/employee")) return "employee";
+  if (pagePath.startsWith("/settings")) return "settings";
+  return null;
+}
 
 export async function checkUserPermission(
   userId: string,
@@ -73,51 +76,52 @@ export async function checkUserPermission(
     return true;
   }
 
-  // Get permission from database
+  // Check explicit user-level permission in database first
   const permission = await queryOne<UserPermission>(
     "SELECT * FROM user_permissions WHERE user_id = ? AND page_path = ?",
     [userId, pagePath]
   );
 
-  // If no explicit permission in DB, check role defaults
-  if (!permission) {
-    // Check if path is restricted for admins
-    if (user.role === "admin" && ADMIN_RESTRICTED_PATHS.some(p => pagePath.startsWith(p))) {
-      serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
-      return false;
+  if (permission) {
+    // MySQL returns boolean as 0/1
+    const canView = permission.can_view === 1 || permission.can_view === true;
+    const canEdit = permission.can_edit === 1 || permission.can_edit === true;
+
+    let result: boolean;
+    if (action === "view") {
+      result = canView;
+    } else {
+      result = canEdit && canView;
     }
 
-    const defaultPaths = ROLE_DEFAULT_PATHS[user.role] || [];
-    const isAllowedByDefault = defaultPaths.some(p => p === "/" || pagePath.startsWith(p));
+    serverPermissionCache.set(cacheKey, { result, timestamp: now });
+    return result;
+  }
 
-    // Dashboard home is always allowed view
-    if (pagePath === "/dashboard" && action === "view") {
-        serverPermissionCache.set(cacheKey, { result: true, timestamp: now });
-        return true;
-    }
+  // No explicit user permission — check role-level system access from DB
+  const system = getSystemForPath(pagePath);
 
-    if (isAllowedByDefault) {
-      serverPermissionCache.set(cacheKey, { result: true, timestamp: now });
-      return true;
-    }
+  // Employee portal is always accessible (self-service)
+  if (system === "employee") {
+    serverPermissionCache.set(cacheKey, { result: true, timestamp: now });
+    return true;
+  }
 
+  // Settings is super_admin only (already handled above, deny for everyone else)
+  if (system === "settings") {
     serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
     return false;
   }
 
-  // MySQL returns boolean as 0/1
-  const canView = permission.can_view === 1 || permission.can_view === true;
-  const canEdit = permission.can_edit === 1 || permission.can_edit === true;
-
-  let result: boolean;
-  if (action === "view") {
-    result = canView;
-  } else {
-    result = canEdit && canView;
+  if (system) {
+    const hasAccess = await hasSystemAccess(user.role, system);
+    serverPermissionCache.set(cacheKey, { result: hasAccess, timestamp: now });
+    return hasAccess;
   }
 
-  serverPermissionCache.set(cacheKey, { result, timestamp: now });
-  return result;
+  // Unknown path — deny by default
+  serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
+  return false;
 }
 
 // Only log important actions, not page views

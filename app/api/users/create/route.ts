@@ -49,6 +49,37 @@ export async function POST(request: NextRequest) {
       [employeeId, userId, name, email, role]
     );
 
+    // Auto-create role_system_permissions if this role doesn't have entries yet
+    const SYSTEMS = ["rentals", "maintenance", "accounting", "hr", "crm"];
+    // Default grants for each role (conservative — admin can customize later)
+    const ROLE_DEFAULTS: Record<string, string[]> = {
+      admin:              ["rentals", "crm"],
+      accountant:         ["accounting"],
+      hr_manager:         ["hr"],
+      maintenance_worker: ["maintenance", "rentals"],
+      employee:           [],
+    };
+    
+    const defaultSystems = ROLE_DEFAULTS[role] || [];
+    
+    // Check if this role already has permission entries
+    const existingPerm = await queryOne<{ cnt: number }>(
+      "SELECT COUNT(*) as cnt FROM role_system_permissions WHERE role = ?",
+      [role]
+    );
+    
+    // Only seed if no entries exist for this role yet
+    if (!existingPerm || existingPerm.cnt === 0) {
+      for (const sys of SYSTEMS) {
+        await execute(
+          `INSERT INTO role_system_permissions (id, role, system_id, can_access)
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE id = id`,
+          [generateUUID(), role, sys, defaultSystems.includes(sys) ? 1 : 0]
+        );
+      }
+    }
+
     return NextResponse.json({ success: true, userId }, { status: 201 });
   } catch (error: unknown) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal Server Error' }, { status: 500 });

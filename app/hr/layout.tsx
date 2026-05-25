@@ -17,10 +17,8 @@ export default async function HRLayout({ children }: { children: React.ReactNode
     // Redirect if no user
     if (!user) redirect("/login");
 
-    // Check permissions — roles with built-in HR access bypass DB check
-    const userRole = user.role.toLowerCase();
-    const HR_ALLOWED_ROLES = ['super_admin', 'admin', 'hr_manager', 'accountant'];
-    if (!HR_ALLOWED_ROLES.includes(userRole)) {
+    // Check permissions — use database only (no hardcoded role bypass)
+    if (user.role !== 'super_admin') {
         const perm = await queryOne<{ can_access: number }>(
             "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'hr'",
             [user.role]

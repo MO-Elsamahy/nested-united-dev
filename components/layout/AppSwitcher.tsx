@@ -4,35 +4,37 @@ import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { LayoutGrid, Building2, Calculator, UserCog, Users2, Settings, Users } from "lucide-react";
 
-import { User } from "@/lib/types/database";
 import { AppFeatures } from "@/lib/features";
 
 interface AppSwitcherProps {
     features?: AppFeatures;
-    user?: User | null;
 }
 
-export function AppSwitcher({ features, user }: AppSwitcherProps) {
+export function AppSwitcher({ features }: AppSwitcherProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [accessMap, setAccessMap] = useState<Record<string, boolean> | null>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
-    const role = user?.role;
-    const isSuperAdmin = role === "super_admin";
-    const isAdmin = role === "admin" || isSuperAdmin;
-    const isHRAdmin = isSuperAdmin || role === "hr_manager" || role === "admin" || role === "accountant"; 
-    const isAccountant = isAdmin || role === "accountant";
-    const isCRMUser = isAdmin || role === "hr_manager"; // HR managers often handle CRM data too
+    // Fetch user's system access from the database
+    useEffect(() => {
+        fetch("/api/user/system-access")
+            .then(res => res.json())
+            .then(data => {
+                if (!data.error) setAccessMap(data);
+            })
+            .catch(() => { /* fail silently */ });
+    }, []);
 
     const apps = [
-        { id: "rentals",    name: "إدارة التأجير",         icon: Building2, href: "/dashboard", color: "text-blue-600",    show: true },
-        { id: "accounting", name: "النظام المالي",          icon: Calculator, href: "/accounting", color: "text-emerald-600", show: isAccountant },
-        { id: "hr",         name: "الموارد البشرية",        icon: UserCog,   href: "/hr",        color: "text-violet-600", show: isHRAdmin },
-        { id: "employee",   name: "بوابة الموظف",           icon: Users,     href: "/employee",  color: "text-orange-600", show: true },
-        { id: "crm",        name: "إدارة العملاء",          icon: Users2,    href: "/crm",       color: "text-indigo-600", show: isCRMUser },
-        { id: "settings",   name: "الإعدادات",              icon: Settings,  href: "/settings",  color: "text-gray-600",   show: isSuperAdmin },
+        { id: "rentals",    name: "إدارة التأجير",         icon: Building2, href: "/dashboard", color: "text-blue-600" },
+        { id: "accounting", name: "النظام المالي",          icon: Calculator, href: "/accounting", color: "text-emerald-600" },
+        { id: "hr",         name: "الموارد البشرية",        icon: UserCog,   href: "/hr",        color: "text-violet-600" },
+        { id: "employee",   name: "بوابة الموظف",           icon: Users,     href: "/employee",  color: "text-orange-600" },
+        { id: "crm",        name: "إدارة العملاء",          icon: Users2,    href: "/crm",       color: "text-indigo-600" },
+        { id: "settings",   name: "الإعدادات",              icon: Settings,  href: "/settings",  color: "text-gray-600" },
     ].filter(app => {
-        // 1. Role-based visibility
-        if (!app.show) return false;
+        // 1. Database permission check (if loaded)
+        if (accessMap && !accessMap[app.id]) return false;
 
         // 2. Feature flag check
         if (!features) return true;

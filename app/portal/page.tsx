@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { LogoutButton } from "./LogoutButton";
 
+import { hasSystemAccess } from "@/lib/permissions";
+
 // Helper to check if user has access to a system
 async function canAccessSystem(role: string, systemId: string): Promise<boolean> {
     // Super admin always has access
@@ -29,21 +31,8 @@ async function canAccessSystem(role: string, systemId: string): Promise<boolean>
     // Employee portal is accessible to everyone (self-service)
     if (systemId === 'employee') return true;
 
-    // Explicit role-based grants (no DB lookup needed for these)
-    const ROLE_SYSTEM_GRANTS: Record<string, string[]> = {
-        admin:      ['rentals', 'accounting', 'hr', 'crm'],
-        accountant: ['accounting', 'hr'],
-        hr_manager: ['hr'],
-    };
-    if (ROLE_SYSTEM_GRANTS[role]?.includes(systemId)) return true;
-
-    // Check database for permission
-    const perm = await queryOne<{ can_access: number }>(
-        "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = ?",
-        [role, systemId]
-    );
-
-    return perm ? Boolean(perm.can_access) : false;
+    // ALL other access is determined by the database only
+    return hasSystemAccess(role, systemId);
 }
 
 export default async function PortalPage() {
