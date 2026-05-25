@@ -1,59 +1,76 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest } from "next/server";
+import { checkUserPermission } from "@/lib/permissions";
 
 export async function proxy(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
   const isAuthenticated = !!token;
+  const { pathname } = request.nextUrl;
 
-  // Redirect home to dashboard or login
-  if (request.nextUrl.pathname === "/") {
+  // Redirect home to portal or login
+  if (pathname === "/") {
     if (isAuthenticated) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/portal", request.url));
     } else {
       return NextResponse.redirect(new URL("/login", request.url));
     }
   }
 
-  // Protect dashboard routes
-  if (request.nextUrl.pathname.startsWith("/dashboard") && !isAuthenticated) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
   // Redirect authenticated users away from login
-  if (request.nextUrl.pathname.startsWith("/login") && isAuthenticated) {
-    if (token?.role === "maintenance_worker") {
-      return NextResponse.redirect(new URL("/employee", request.url));
-    }
-    return NextResponse.redirect(new URL("/hr", request.url));
+  if (pathname.startsWith("/login") && isAuthenticated) {
+    return NextResponse.redirect(new URL("/portal", request.url));
   }
 
-  // RBAC: Protect HR Admin Routes
-  // Allow Admin/SuperAdmin/HR Manager/Accountant to access /hr
-  if (request.nextUrl.pathname.startsWith("/hr")) {
-    const allowedRoles = ["super_admin", "admin", "hr_manager", "accountant"];
-    const userRole = token?.role as string;
+  // Protect all system routes from unauthenticated users
+  const protectedPrefixes = ["/portal", "/dashboard", "/hr", "/crm", "/accounting", "/employee", "/settings"];
+  const isProtected = protectedPrefixes.some(prefix => pathname.startsWith(prefix));
 
-    if (!allowedRoles.includes(userRole)) {
-      return NextResponse.redirect(new URL("/employee", request.url));
+  if (isProtected) {
+    if (!isAuthenticated || !token?.id) {
+      return NextResponse.redirect(new URL("/login", request.url));
+    }
+
+    // Portal and Employee portals are always allowed for authenticated users
+    if (pathname.startsWith("/portal") || pathname.startsWith("/employee")) {
+      return NextResponse.next();
+    }
+
+    // Dynamic database-driven RBAC checks for specific modules
+    if (pathname.startsWith("/hr")) {
+      const hasAccess = await checkUserPermission(token.id as string, "/hr", "view");
+      if (!hasAccess) {
+        return NextResponse.redirect(new URL("/portal", request.url));
+      }
+    }
+
+    if (pathname.startsWith("/crm")) {
+      const hasAccess = await checkUserPermission(token.id as string, "/crm", "view");
+      if (!hasAccess) {
+        return NextResponse.redirect(new URL("/portal", request.url));
+      }
+    }
+
+    if (pathname.startsWith("/dashboard")) {
+      const hasAccess = await checkUserPermission(token.id as string, "/dashboard", "view");
+      if (!hasAccess) {
+        return NextResponse.redirect(new URL("/portal", request.url));
+      }
+    }
+
+    if (pathname.startsWith("/accounting")) {
+      const hasAccess = await checkUserPermission(token.id as string, "/accounting", "view");
+      if (!hasAccess) {
+        return NextResponse.redirect(new URL("/portal", request.url));
+      }
+    }
+
+    if (pathname.startsWith("/settings")) {
+      const hasAccess = await checkUserPermission(token.id as string, "/settings", "view");
+      if (!hasAccess) {
+        return NextResponse.redirect(new URL("/portal", request.url));
+      }
     }
   }
-
-  // RBAC: Protect CRM Routes
-  // Allow super_admin, admin, hr_manager (maybe sales later)
-  if (request.nextUrl.pathname.startsWith("/crm")) {
-    // For now, let's restrict to admins. We can add a 'sales' role later.
-    const allowedRoles = ["super_admin", "admin", "hr_manager"];
-    const userRole = token?.role as string;
-
-    if (!allowedRoles.includes(userRole)) {
-      // Redirect unauthorized users to dashboard
-      return NextResponse.redirect(new URL("/dashboard", request.url));
-    }
-  }
-
-  // RBAC: Protect Employee Portal
-  // (Optional: restrict admins from employee view? usually not needed, but good for clarity)
-  // For now, key requirement is blocking employees from /hr.
 
   return NextResponse.next();
 }
