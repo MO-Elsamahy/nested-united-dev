@@ -8,6 +8,8 @@ import { AccountingSidebar } from "@/components/accounting/AccountingSidebar";
 import { getAppFeatures } from "@/lib/features";
 import { User } from "@/lib/types/database";
 
+import { checkUserPermission } from "@/lib/permissions";
+
 export default async function AccountingLayout({
     children,
 }: {
@@ -23,14 +25,9 @@ export default async function AccountingLayout({
 
     if (!user) redirect("/portal");
 
-    if (user.role !== 'super_admin') {
-        const perm = await queryOne<{ can_access: number }>(
-            "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'accounting'",
-            [user.role]
-        );
-        if (!perm || !perm.can_access) {
-            redirect("/portal");
-        }
+    const hasAccess = await checkUserPermission(user.id, "/accounting", "view");
+    if (!hasAccess) {
+        redirect("/portal");
     }
 
     const features = await getAppFeatures();

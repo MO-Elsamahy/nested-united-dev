@@ -10,6 +10,8 @@ import { redirect, notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+import { checkUserPermission } from "@/lib/permissions";
+
 export default async function HRLayout({ children }: { children: React.ReactNode }) {
     const session = await getServerSession(authOptions);
     const user = session?.user?.id ? await queryOne<User>("SELECT * FROM users WHERE id = ?", [session.user.id]) : null;
@@ -18,14 +20,9 @@ export default async function HRLayout({ children }: { children: React.ReactNode
     if (!user) redirect("/login");
 
     // Check permissions — use database only (no hardcoded role bypass)
-    if (user.role !== 'super_admin') {
-        const perm = await queryOne<{ can_access: number }>(
-            "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'hr'",
-            [user.role]
-        );
-        if (!perm || !perm.can_access) {
-            redirect("/employee");
-        }
+    const hasAccess = await checkUserPermission(user.id, "/hr", "view");
+    if (!hasAccess) {
+        redirect("/employee");
     }
 
     const features = await getAppFeatures();

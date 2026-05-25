@@ -13,6 +13,7 @@ import { AutoSync } from "@/components/AutoSync";
 import { AppShell } from "@/components/layout/AppShell";
 
 import { User } from "@/lib/types/database";
+import { checkUserPermission } from "@/lib/permissions";
 
 export default async function DashboardLayout({
   children,
@@ -38,15 +39,10 @@ export default async function DashboardLayout({
   }
 
   // RBAC: Check if user can access the Rentals (Dashboard) module
-  if (user.role !== 'super_admin') {
-    const perm = await queryOne<{ can_access: number }>(
-      "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'rentals'",
-      [user.role]
-    );
-    if (!perm || !perm.can_access) {
-      console.warn(`User ${user.email} (role: ${user.role}) attempted unauthorized access to Rentals Dashboard`);
-      redirect("/portal");
-    }
+  const hasAccess = await checkUserPermission(user.id, "/dashboard", "view");
+  if (!hasAccess) {
+    console.warn(`User ${user.email} (role: ${user.role}) attempted unauthorized access to Rentals Dashboard`);
+    redirect("/portal");
   }
 
   // Get unread notifications count
