@@ -24,6 +24,7 @@ export async function POST(request: Request) {
             summary: string | null; 
             start_date: string; 
             end_date: string; 
+            ical_uid: string | null;
         }>(
             "SELECT * FROM reservations WHERE id = ?",
             [reservation_id]
@@ -37,8 +38,8 @@ export async function POST(request: Request) {
         const bookingId = uuidv4();
         await execute(
             `INSERT INTO bookings 
-            (id, unit_id, guest_name, checkin_date, checkout_date, notes, platform) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            (id, unit_id, guest_name, checkin_date, checkout_date, notes, platform, ical_uid) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 bookingId,
                 reservation.unit_id,
@@ -46,7 +47,8 @@ export async function POST(request: Request) {
                 reservation.start_date,
                 reservation.end_date,
                 `تم التحويل من iCal - ${reservation.summary || 'Reserved'}`,
-                "manual"
+                "manual",
+                reservation.ical_uid
             ]
         );
 

@@ -65,7 +65,7 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    // Fetch units and also check for arrivals/departures today in real-time
+    // Fetch units and also check for arrivals/departures today in real-time, plus current active guest
     const units = await query<UnitWithReadiness>(
       `SELECT u.*,
               (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date = ? LIMIT 1) as manual_checkin_guest,
@@ -75,11 +75,27 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
               (SELECT b.checkin_date FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date = ? LIMIT 1) as manual_checkin_date,
               (SELECT r.start_date FROM reservations r WHERE r.unit_id = u.id AND r.start_date = ? LIMIT 1) as ical_checkin_date,
               (SELECT b.checkout_date FROM bookings b WHERE b.unit_id = u.id AND b.checkout_date = ? LIMIT 1) as manual_checkout_date,
-              (SELECT r.end_date FROM reservations r WHERE r.unit_id = u.id AND r.end_date = ? LIMIT 1) as ical_checkout_date
+              (SELECT r.end_date FROM reservations r WHERE r.unit_id = u.id AND r.end_date = ? LIMIT 1) as ical_checkout_date,
+              (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_guest,
+              (SELECT r.summary FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= ? AND r.end_date >= ? ORDER BY r.start_date DESC LIMIT 1) as active_ical_guest,
+              (SELECT b.checkin_date FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_checkin,
+              (SELECT r.start_date FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= ? AND r.end_date >= ? ORDER BY r.start_date DESC LIMIT 1) as active_ical_checkin,
+              (SELECT b.checkout_date FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_checkout,
+              (SELECT r.end_date FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= ? AND r.end_date >= ? ORDER BY r.start_date DESC LIMIT 1) as active_ical_checkout,
+              (SELECT b.notes FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_notes
        FROM units u 
        WHERE u.status = 'active' 
        ORDER BY u.unit_name`,
-       [today, today, today, today, today, today, today, today]
+       [
+         today, today, today, today, today, today, today, today, // Today checkin/checkout flags
+         today, today, // active_manual_guest
+         today, today, // active_ical_guest
+         today, today, // active_manual_checkin
+         today, today, // active_ical_checkin
+         today, today, // active_manual_checkout
+         today, today, // active_ical_checkout
+         today, today  // active_manual_notes
+       ]
     );
 
     if (!units || units.length === 0) return [];
@@ -93,6 +109,15 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     for (const unit of units) {
       unit.unit_calendars = calendars.filter((c) => c.unit_id === unit.id);
       
+      // Override readiness guest info dynamically if there is an active in-house booking
+      const activeGuest = (unit as any).active_manual_guest || (unit as any).active_ical_guest;
+      if (activeGuest) {
+        unit.readiness_guest_name = activeGuest;
+        unit.readiness_checkin_date = (unit as any).active_manual_checkin || (unit as any).active_ical_checkin;
+        unit.readiness_checkout_date = (unit as any).active_manual_checkout || (unit as any).active_ical_checkout;
+        unit.readiness_notes = (unit as any).active_manual_notes || ((unit as any).active_ical_guest ? `iCal: ${(unit as any).active_ical_guest}` : null) || unit.readiness_notes;
+      }
+
       // Compute dynamic Today flags
       unit._has_checkin_today = !!(unit.manual_checkin_date || unit.ical_checkin_date);
       unit._has_checkout_today = !!(unit.manual_checkout_date || unit.ical_checkout_date);
@@ -110,9 +135,9 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
       // Only auto-override if it hasn't been handled today OR it's still in the default 'null' state
       if (!wasUpdatedToday || !unit.readiness_status) {
         if (unit._has_checkout_today && (computed === "occupied" || !unit.readiness_status)) {
-          computed = "checkout_today";
+          computed = "occupied"; // Since checkout today, it remains occupied until checked out
         } else if (unit._has_checkin_today && (computed === "ready" || computed === "booked" || !unit.readiness_status)) {
-          computed = "checkin_today";
+          computed = "booked";
         }
       }
 

@@ -274,6 +274,7 @@ export async function POST(request: NextRequest) {
     amount,
     currency,
     notes,
+    converting_reservation_id,
   } = body;
 
   if (!unit_id || !guest_name || !checkin_date || !checkout_date) {
@@ -283,6 +284,17 @@ export async function POST(request: NextRequest) {
   const bookingId = generateUUID();
 
   try {
+    let ical_uid: string | null = null;
+    if (converting_reservation_id) {
+      const res = await queryOne<{ ical_uid: string | null }>(
+        "SELECT ical_uid FROM reservations WHERE id = ?",
+        [converting_reservation_id]
+      );
+      if (res) {
+        ical_uid = res.ical_uid;
+      }
+    }
+
     // Overlap Check: Ensure unit is not already booked
     const overlap = await queryOne(
       `SELECT id FROM bookings 
@@ -298,12 +310,13 @@ export async function POST(request: NextRequest) {
     const reservationOverlap = await queryOne(
       `SELECT id FROM reservations 
        WHERE unit_id = ? 
+       AND id != ?
        AND (
          (start_date <= ? AND end_date > ?) OR
          (start_date < ? AND end_date >= ?) OR
          (start_date >= ? AND end_date <= ?)
        )`,
-      [unit_id, checkin_date, checkin_date, checkout_date, checkout_date, checkin_date, checkout_date]
+      [unit_id, converting_reservation_id || "", checkin_date, checkin_date, checkout_date, checkout_date, checkin_date, checkout_date]
     );
 
     if (overlap || reservationOverlap) {
@@ -311,8 +324,8 @@ export async function POST(request: NextRequest) {
     }
 
     await execute(
-      `INSERT INTO bookings (id, unit_id, platform_account_id, platform, guest_name, phone, checkin_date, checkout_date, amount, currency, notes, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bookings (id, unit_id, platform_account_id, platform, guest_name, phone, checkin_date, checkout_date, amount, currency, notes, created_by, ical_uid)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         bookingId,
         unit_id,
@@ -326,6 +339,7 @@ export async function POST(request: NextRequest) {
         currency || "SAR",
         notes || null,
         currentUser.id,
+        ical_uid,
       ]
     );
 

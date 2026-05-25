@@ -163,12 +163,23 @@ export async function POST() {
           // Skip if already in primary (for non-primary calendars)
           if (!isPrimary && primarySet && primarySet.has(rangeKey)) continue;
 
-          // NEW: Skip if already exists as a manual booking
-          const asBooking = await queryOne(
-            "SELECT id FROM bookings WHERE unit_id = ? AND checkin_date = ? AND checkout_date = ?",
-            [calendar.unit_id, event.start, event.end]
-          );
-          if (asBooking) continue;
+          // NEW: Skip if already exists as a manual booking (by ical_uid or by date fallback)
+          let existsAsBooking = false;
+          if (event.uid) {
+            const byUid = await queryOne(
+              "SELECT id FROM bookings WHERE ical_uid = ?",
+              [event.uid]
+            );
+            if (byUid) existsAsBooking = true;
+          }
+          if (!existsAsBooking) {
+            const asBooking = await queryOne(
+              "SELECT id FROM bookings WHERE unit_id = ? AND checkin_date = ? AND checkout_date = ?",
+              [calendar.unit_id, event.start, event.end]
+            );
+            if (asBooking) existsAsBooking = true;
+          }
+          if (existsAsBooking) continue;
 
           // Check if reservation exists
           const existing = await queryOne<{ id: string; is_manually_edited: number }>(
@@ -184,17 +195,17 @@ export async function POST() {
 
           if (existing) {
             await execute(
-              `UPDATE reservations SET summary = ?, raw_event = ?, platform_account_id = ?, last_synced_at = NOW()
+              `UPDATE reservations SET summary = ?, raw_event = ?, platform_account_id = ?, last_synced_at = NOW(), ical_uid = ?
                WHERE id = ?`,
-              [event.summary, JSON.stringify(event), calendar.platform_account_id || null, existing.id]
+              [event.summary, JSON.stringify(event), calendar.platform_account_id || null, event.uid || null, existing.id]
             );
             seenIds.push(existing.id);
           } else {
             const newId = generateUUID();
             await execute(
-              `INSERT IGNORE INTO reservations (id, unit_id, platform, platform_account_id, start_date, end_date, summary, raw_event, last_synced_at, is_manually_edited)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0)`,
-              [newId, calendar.unit_id, calendar.platform, calendar.platform_account_id || null, event.start, event.end, event.summary, JSON.stringify(event)]
+              `INSERT IGNORE INTO reservations (id, unit_id, platform, platform_account_id, start_date, end_date, summary, raw_event, last_synced_at, is_manually_edited, ical_uid)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), 0, ?)`,
+              [newId, calendar.unit_id, calendar.platform, calendar.platform_account_id || null, event.start, event.end, event.summary, JSON.stringify(event), event.uid || null]
             );
             seenIds.push(newId);
             newBookings++;

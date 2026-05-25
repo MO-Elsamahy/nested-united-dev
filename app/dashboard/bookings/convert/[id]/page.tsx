@@ -81,6 +81,7 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
       amount: form.get("amount") ? Number(form.get("amount")) : null,
       currency: form.get("currency") || "SAR",
       notes: form.get("notes") || reservation.summary || null,
+      converting_reservation_id: resolvedParams.id,
     };
 
     try {
