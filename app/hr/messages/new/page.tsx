@@ -179,7 +179,7 @@ export default function ComposeMessagePage() {
                             </div>
                         ) : (
                             filteredEmployees.map(emp => (
-                                <label key={emp.id} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
+                                <label key={emp.id} className={`relative flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition ${
                                     formData.employee_id === emp.id ? "bg-violet-50 border-violet-600 ring-1 ring-violet-600" : "hover:bg-gray-50"
                                 }`}>
                                     <input 
