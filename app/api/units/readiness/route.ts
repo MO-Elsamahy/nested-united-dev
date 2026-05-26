@@ -44,12 +44,31 @@ export async function GET(request: Request) {
 
     // Transform to match expected format
     let filteredUnits = (units as Record<string, any>[]).map((u) => {
-      // Guest name, checkin, checkout → ALWAYS come from active booking if one exists.
-      // Status is managed manually by staff. Notes keep manual value as override.
+      // Smart booking-driven logic:
+      // If active booking exists AND staff hasn't manually updated since booking started
+      // → use booking data. If staff overrode after booking start → respect it.
       const activeGuestName = u.active_manual_guest || u.active_ical_guest;
       const activeCheckin = u.active_manual_checkin || u.active_ical_checkin;
       const activeCheckout = u.active_manual_checkout || u.active_ical_checkout;
       const activeNotes = u.active_manual_notes || (u.active_ical_guest ? `iCal: ${u.active_ical_guest}` : null);
+
+      let displayGuestName = u.readiness_guest_name;
+      let displayCheckin = u.readiness_checkin_date;
+      let displayCheckout = u.readiness_checkout_date;
+      let displayNotes = u.readiness_notes;
+
+      if (activeGuestName) {
+        const bookingStart = activeCheckin ? new Date(activeCheckin) : null;
+        const lastManualUpdate = u.readiness_updated_at ? new Date(u.readiness_updated_at) : null;
+        const staffOverrodeAfterBooking = lastManualUpdate && bookingStart && lastManualUpdate > bookingStart;
+
+        if (!staffOverrodeAfterBooking) {
+          displayGuestName = activeGuestName;
+          displayCheckin = activeCheckin;
+          displayCheckout = activeCheckout;
+          displayNotes = activeNotes || u.readiness_notes;
+        }
+      }
 
       return {
         ...u,
@@ -58,11 +77,10 @@ export async function GET(request: Request) {
           : null,
         readiness: {
           status: u.readiness_status,
-          // If active booking exists, use its data; otherwise fall back to manually saved
-          checkout_date: activeGuestName ? activeCheckout : u.readiness_checkout_date,
-          checkin_date: activeGuestName ? activeCheckin : u.readiness_checkin_date,
-          guest_name: activeGuestName || u.readiness_guest_name,
-          notes: activeNotes || u.readiness_notes,
+          checkout_date: displayCheckout,
+          checkin_date: displayCheckin,
+          guest_name: displayGuestName,
+          notes: displayNotes,
         },
       };
     });

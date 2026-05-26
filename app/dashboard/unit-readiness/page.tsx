@@ -109,18 +109,30 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     for (const unit of units) {
       unit.unit_calendars = calendars.filter((c) => c.unit_id === unit.id);
       
-      // Guest name, checkin, checkout → ALWAYS come from active booking if one exists.
-      // This ensures display is always in sync with the actual booking duration.
-      // Status is handled separately and can be set manually by staff.
+      // Smart booking-driven logic:
+      // - If there's an active booking AND staff hasn't manually updated since the booking started
+      //   → use booking data (auto-sync with booking duration)
+      // - If staff manually updated AFTER the booking started
+      //   → respect their manual override (they corrected something)
+      // - If no active booking → show manually saved data as-is
       const activeGuest = (unit as any).active_manual_guest || (unit as any).active_ical_guest;
+      const activeCheckinDate = (unit as any).active_manual_checkin || (unit as any).active_ical_checkin;
+
       if (activeGuest) {
-        unit.readiness_guest_name = activeGuest;
-        unit.readiness_checkin_date = (unit as any).active_manual_checkin || (unit as any).active_ical_checkin;
-        unit.readiness_checkout_date = (unit as any).active_manual_checkout || (unit as any).active_ical_checkout;
-        // Notes: keep manual notes if set, else fall back to booking/iCal info
-        unit.readiness_notes = (unit as any).active_manual_notes || unit.readiness_notes || ((unit as any).active_ical_guest ? `iCal: ${(unit as any).active_ical_guest}` : null);
+        const bookingStart = activeCheckinDate ? new Date(activeCheckinDate) : null;
+        const lastManualUpdate = unit.readiness_updated_at ? new Date(unit.readiness_updated_at) : null;
+        // Staff overrode AFTER the booking started → respect it
+        const staffOverrodeAfterBooking = lastManualUpdate && bookingStart && lastManualUpdate > bookingStart;
+
+        if (!staffOverrodeAfterBooking) {
+          // No manual override after booking start → sync from booking
+          unit.readiness_guest_name = activeGuest;
+          unit.readiness_checkin_date = activeCheckinDate;
+          unit.readiness_checkout_date = (unit as any).active_manual_checkout || (unit as any).active_ical_checkout;
+          unit.readiness_notes = (unit as any).active_manual_notes || unit.readiness_notes || ((unit as any).active_ical_guest ? `iCal: ${(unit as any).active_ical_guest}` : null);
+        }
+        // else: staff overrode after booking → keep DB values as-is
       }
-      // If no active booking: guest name/dates remain as manually saved in DB
 
       // Compute dynamic Today flags
       unit._has_checkin_today = !!(unit.manual_checkin_date || unit.ical_checkin_date);

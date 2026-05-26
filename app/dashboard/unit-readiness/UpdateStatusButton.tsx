@@ -138,18 +138,13 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     تاريخ الدخول
-                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
+                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز - قابل للتعديل)</span>}
                   </label>
                   <input
                     type="date"
                     value={formData.checkin_date}
                     onChange={(e) => setFormData({ ...formData, checkin_date: e.target.value })}
-                    readOnly={hasActiveBooking}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      hasActiveBooking
-                        ? 'border-blue-200 bg-blue-50 text-gray-600 cursor-not-allowed'
-                        : 'border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -157,18 +152,13 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     تاريخ الخروج
-                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
+                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز - قابل للتعديل)</span>}
                   </label>
                   <input
                     type="date"
                     value={formData.checkout_date}
                     onChange={(e) => setFormData({ ...formData, checkout_date: e.target.value })}
-                    readOnly={hasActiveBooking}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      hasActiveBooking
-                        ? 'border-blue-200 bg-blue-50 text-gray-600 cursor-not-allowed'
-                        : 'border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -176,19 +166,14 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     اسم الضيف
-                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
+                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز - قابل للتعديل)</span>}
                   </label>
                   <input
                     type="text"
                     value={formData.guest_name}
                     onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
                     placeholder="اسم الضيف"
-                    readOnly={hasActiveBooking}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      hasActiveBooking
-                        ? 'border-blue-200 bg-blue-50 text-gray-600 cursor-not-allowed'
-                        : 'border-gray-300'
-                    }`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
