@@ -44,6 +44,7 @@ export async function GET(request: Request) {
 
     // Transform to match expected format
     let filteredUnits = (units as Record<string, any>[]).map((u) => {
+      // Use DB readiness fields first; only fall back to active booking data if null
       const activeGuestName = u.active_manual_guest || u.active_ical_guest;
       const activeCheckin = u.active_manual_checkin || u.active_ical_checkin;
       const activeCheckout = u.active_manual_checkout || u.active_ical_checkout;
@@ -56,10 +57,10 @@ export async function GET(request: Request) {
           : null,
         readiness: {
           status: u.readiness_status,
-          checkout_date: activeCheckout || u.readiness_checkout_date,
-          checkin_date: activeCheckin || u.readiness_checkin_date,
-          guest_name: activeGuestName || u.readiness_guest_name,
-          notes: activeNotes || u.readiness_notes,
+          checkout_date: u.readiness_checkout_date || activeCheckout,
+          checkin_date: u.readiness_checkin_date || activeCheckin,
+          guest_name: u.readiness_guest_name || activeGuestName,
+          notes: u.readiness_notes || activeNotes,
         },
       };
     });

@@ -109,13 +109,14 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     for (const unit of units) {
       unit.unit_calendars = calendars.filter((c) => c.unit_id === unit.id);
       
-      // Override readiness guest info dynamically if there is an active in-house booking
+      // Only use active booking data as FALLBACK when readiness fields are empty/null
+      // Never override manually-saved readiness data with booking data
       const activeGuest = (unit as any).active_manual_guest || (unit as any).active_ical_guest;
       if (activeGuest) {
-        unit.readiness_guest_name = activeGuest;
-        unit.readiness_checkin_date = (unit as any).active_manual_checkin || (unit as any).active_ical_checkin;
-        unit.readiness_checkout_date = (unit as any).active_manual_checkout || (unit as any).active_ical_checkout;
-        unit.readiness_notes = (unit as any).active_manual_notes || ((unit as any).active_ical_guest ? `iCal: ${(unit as any).active_ical_guest}` : null) || unit.readiness_notes;
+        unit.readiness_guest_name = unit.readiness_guest_name || activeGuest;
+        unit.readiness_checkin_date = unit.readiness_checkin_date || (unit as any).active_manual_checkin || (unit as any).active_ical_checkin;
+        unit.readiness_checkout_date = unit.readiness_checkout_date || (unit as any).active_manual_checkout || (unit as any).active_ical_checkout;
+        unit.readiness_notes = unit.readiness_notes || (unit as any).active_manual_notes || ((unit as any).active_ical_guest ? `iCal: ${(unit as any).active_ical_guest}` : null);
       }
 
       // Compute dynamic Today flags
@@ -135,9 +136,9 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
       // Only auto-override if it hasn't been handled today OR it's still in the default 'null' state
       if (!wasUpdatedToday || !unit.readiness_status) {
         if (unit._has_checkout_today && (computed === "occupied" || !unit.readiness_status)) {
-          computed = "occupied"; // Since checkout today, it remains occupied until checked out
+          computed = "checkout_today";
         } else if (unit._has_checkin_today && (computed === "ready" || computed === "booked" || !unit.readiness_status)) {
-          computed = "booked";
+          computed = "checkin_today";
         }
       }
 
