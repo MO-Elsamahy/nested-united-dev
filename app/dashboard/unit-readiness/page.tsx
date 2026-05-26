@@ -109,15 +109,18 @@ async function getUnitsWithReadiness(statusFilter?: string | null) {
     for (const unit of units) {
       unit.unit_calendars = calendars.filter((c) => c.unit_id === unit.id);
       
-      // Only use active booking data as FALLBACK when readiness fields are empty/null
-      // Never override manually-saved readiness data with booking data
+      // Guest name, checkin, checkout → ALWAYS come from active booking if one exists.
+      // This ensures display is always in sync with the actual booking duration.
+      // Status is handled separately and can be set manually by staff.
       const activeGuest = (unit as any).active_manual_guest || (unit as any).active_ical_guest;
       if (activeGuest) {
-        unit.readiness_guest_name = unit.readiness_guest_name || activeGuest;
-        unit.readiness_checkin_date = unit.readiness_checkin_date || (unit as any).active_manual_checkin || (unit as any).active_ical_checkin;
-        unit.readiness_checkout_date = unit.readiness_checkout_date || (unit as any).active_manual_checkout || (unit as any).active_ical_checkout;
-        unit.readiness_notes = unit.readiness_notes || (unit as any).active_manual_notes || ((unit as any).active_ical_guest ? `iCal: ${(unit as any).active_ical_guest}` : null);
+        unit.readiness_guest_name = activeGuest;
+        unit.readiness_checkin_date = (unit as any).active_manual_checkin || (unit as any).active_ical_checkin;
+        unit.readiness_checkout_date = (unit as any).active_manual_checkout || (unit as any).active_ical_checkout;
+        // Notes: keep manual notes if set, else fall back to booking/iCal info
+        unit.readiness_notes = (unit as any).active_manual_notes || unit.readiness_notes || ((unit as any).active_ical_guest ? `iCal: ${(unit as any).active_ical_guest}` : null);
       }
+      // If no active booking: guest name/dates remain as manually saved in DB
 
       // Compute dynamic Today flags
       unit._has_checkin_today = !!(unit.manual_checkin_date || unit.ical_checkin_date);

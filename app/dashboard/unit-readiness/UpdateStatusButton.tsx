@@ -27,6 +27,9 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
+  // Check if there's an active booking driving the guest/dates display
+  const hasActiveBooking = !!(unit as any).active_manual_guest || !!(unit as any).active_ical_guest;
+
   const [formData, setFormData] = useState({
     status: currentStatus,
     checkout_date: formatDateForInput(unit.readiness_checkout_date),
@@ -131,43 +134,61 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
                   </select>
                 </div>
 
-                {/* Checkin Date (أولاً) */}
+                {/* Checkin Date */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تاريخ الدخول (اختياري)
+                    تاريخ الدخول
+                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
                   </label>
                   <input
                     type="date"
                     value={formData.checkin_date}
                     onChange={(e) => setFormData({ ...formData, checkin_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    readOnly={hasActiveBooking}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                      hasActiveBooking
+                        ? 'border-blue-200 bg-blue-50 text-gray-600 cursor-not-allowed'
+                        : 'border-gray-300'
+                    }`}
                   />
                 </div>
 
-                {/* Checkout Date (ثانياً) */}
+                {/* Checkout Date */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تاريخ الخروج (اختياري)
+                    تاريخ الخروج
+                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
                   </label>
                   <input
                     type="date"
                     value={formData.checkout_date}
                     onChange={(e) => setFormData({ ...formData, checkout_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    readOnly={hasActiveBooking}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                      hasActiveBooking
+                        ? 'border-blue-200 bg-blue-50 text-gray-600 cursor-not-allowed'
+                        : 'border-gray-300'
+                    }`}
                   />
                 </div>
 
                 {/* Guest Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    اسم الضيف (اختياري)
+                    اسم الضيف
+                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
                   </label>
                   <input
                     type="text"
                     value={formData.guest_name}
                     onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
                     placeholder="اسم الضيف"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    readOnly={hasActiveBooking}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                      hasActiveBooking
+                        ? 'border-blue-200 bg-blue-50 text-gray-600 cursor-not-allowed'
+                        : 'border-gray-300'
+                    }`}
                   />
                 </div>
 
