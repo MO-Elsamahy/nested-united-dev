@@ -111,12 +111,21 @@ export async function PUT(
       [id]
     );
 
-    // Insert new permissions
-    if (permissions.length > 0) {
-      for (const p of permissions) {
+    // Deduplicate permissions by page_path (keep last occurrence)
+    const uniquePermissions = Object.values(
+      permissions.reduce((acc: Record<string, typeof permissions[0]>, p: typeof permissions[0]) => {
+        acc[p.page_path] = p;
+        return acc;
+      }, {})
+    );
+
+    // Insert new permissions using ON DUPLICATE KEY UPDATE to avoid race conditions
+    if (uniquePermissions.length > 0) {
+      for (const p of uniquePermissions) {
         await execute(
           `INSERT INTO user_permissions (id, user_id, page_path, can_view, can_edit)
-           VALUES (?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE can_view = VALUES(can_view), can_edit = VALUES(can_edit)`,
           [
             generateUUID(),
             id,
