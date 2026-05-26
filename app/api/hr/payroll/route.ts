@@ -100,9 +100,9 @@ export async function POST(request: Request) {
         const _workingDays = parseInt(settings['working_days_per_month'] || '30'); // Standard 30 days usually allowed in labor law for calc
 
         // 3. Get Employees
-        const employees = await query<EmployeeRow>("SELECT * FROM hr_employees WHERE status = 'active'");
+        const employees = await query<EmployeeRow>("SELECT * FROM hr_employees WHERE status = 'active' AND exclude_from_payroll = 0");
         if (!employees || employees.length === 0) {
-            return NextResponse.json({ error: "لا يوجد موظفين نشطين" }, { status: 400 });
+            return NextResponse.json({ error: "لا يوجد موظفين نشطين غير مستبعدين من كشف الرواتب" }, { status: 400 });
         }
 
         // 4. Create Run Header
