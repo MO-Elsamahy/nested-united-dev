@@ -109,6 +109,46 @@ const migrations = [
             INDEX idx_payroll_run_logs_created (created_at)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     },
+    {
+        name: '14. HR Employees — salary_currency',
+        sql: `ALTER TABLE hr_employees ADD COLUMN salary_currency VARCHAR(10) NOT NULL DEFAULT 'SAR'`,
+    },
+    {
+        name: '15. HR Payroll Runs — currency',
+        sql: `ALTER TABLE hr_payroll_runs ADD COLUMN currency VARCHAR(10) NOT NULL DEFAULT 'SAR'`,
+    },
+    {
+        name: '16. HR Payroll Details — currency',
+        sql: `ALTER TABLE hr_payroll_details ADD COLUMN currency VARCHAR(10) NOT NULL DEFAULT 'SAR'`,
+    },
+    {
+        name: '17. HR Payroll Details — salary_confirmed_at',
+        sql: `ALTER TABLE hr_payroll_details ADD COLUMN salary_confirmed_at DATETIME NULL`,
+    },
+    {
+        name: '18. HR Payroll Details — salary_confirmed_by',
+        sql: `ALTER TABLE hr_payroll_details ADD COLUMN salary_confirmed_by VARCHAR(36) NULL`,
+    },
+    {
+        name: '19. HR Payroll Details — custom_deduction',
+        sql: `ALTER TABLE hr_payroll_details ADD COLUMN custom_deduction DECIMAL(15,2) DEFAULT 0.00`,
+    },
+    {
+        name: '20. HR Payroll Details — custom_deduction_note',
+        sql: `ALTER TABLE hr_payroll_details ADD COLUMN custom_deduction_note TEXT NULL`,
+    },
+    {
+        name: '21. HR Payroll Details — custom_addition',
+        sql: `ALTER TABLE hr_payroll_details ADD COLUMN custom_addition DECIMAL(15,2) DEFAULT 0.00`,
+    },
+    {
+        name: '22. HR Payroll Details — custom_addition_note',
+        sql: `ALTER TABLE hr_payroll_details ADD COLUMN custom_addition_note TEXT NULL`,
+    },
+    {
+        name: '23. HR Payroll Details — ensure salary_confirmed_by type',
+        sql: `ALTER TABLE hr_payroll_details MODIFY COLUMN salary_confirmed_by VARCHAR(36) NULL`,
+    },
 ];
 
 // ─── Auto-wire accounting settings ───────────────────────────────────────────
