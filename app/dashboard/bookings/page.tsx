@@ -50,6 +50,7 @@ interface BookingRow {
   unit_id_ref: string | null;
   unit_name: string | null;
   unit_code: string | null;
+  deal_id: string | null;
 }
 
 interface ReservationRow {
@@ -84,6 +85,7 @@ interface UnifiedBooking {
   } | null;
   notes: string | null;
   unit: { id: string; unit_name: string; unit_code: string | null } | null;
+  deal_id: string | null;
 }
 
 async function getBookings(searchParams?: {
@@ -252,6 +254,7 @@ async function getBookings(searchParams?: {
       } : null,
       notes: b.notes,
       unit: b.unit_id_ref ? { id: b.unit_id_ref, unit_name: b.unit_name || "غير معروف", unit_code: b.unit_code } : null,
+      deal_id: b.deal_id,
     }));
 
     const reservations: UnifiedBooking[] = reservationsRows.map((r) => ({
@@ -272,6 +275,7 @@ async function getBookings(searchParams?: {
       } : null,
       notes: r.description,
       unit: r.unit_id_ref ? { id: r.unit_id_ref, unit_name: r.unit_name || "غير معروف", unit_code: r.unit_code } : null,
+      deal_id: null,
     }));
 
     // Combine and filter
@@ -346,6 +350,8 @@ export default async function BookingsPage({
     today?: string;
     checkin_today?: string;
     checkout_today?: string;
+    deal_created?: string;
+    amount?: string;
   }> | {
     from?: string;
     to?: string;
@@ -358,6 +364,8 @@ export default async function BookingsPage({
     today?: string;
     checkin_today?: string;
     checkout_today?: string;
+    deal_created?: string;
+    amount?: string;
   };
 }) {
   const session = await getServerSession(authOptions);
@@ -426,6 +434,30 @@ export default async function BookingsPage({
           {canEdit && <BookingsPageClient />}
         </div>
       </div>
+
+      {/* CRM Auto-deal Notification Banner */}
+      {resolvedParams.deal_created && (
+        <div className="bg-purple-50 border border-purple-200 text-purple-800 px-4 py-3.5 rounded-xl flex items-center justify-between gap-3 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 font-semibold shrink-0">
+              ✨
+            </div>
+            <div>
+              <h4 className="font-semibold text-sm sm:text-base text-purple-900">تم إنشاء صفقة في CRM تلقائياً</h4>
+              <p className="text-xs sm:text-sm text-purple-700 mt-0.5">
+                تم ربط هذا الحجز بصفقة جديدة بمرحلة "مكتمل" تلقائياً
+                {resolvedParams.amount && ` بقيمة ${resolvedParams.amount} SAR`}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/crm/deals"
+            className="text-xs sm:text-sm font-semibold text-purple-700 hover:text-purple-900 bg-purple-100 hover:bg-purple-200 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+          >
+            عرض الصفقات
+          </Link>
+        </div>
+      )}
 
       {/* Advanced Filter */}
       <BookingsFilter units={units} accounts={accounts} />

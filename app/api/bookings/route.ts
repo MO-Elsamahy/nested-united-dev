@@ -323,9 +323,78 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "الوحدة محجوزة بالفعل في هذه التواريخ" }, { status: 409 });
     }
 
+    let dealId: string | null = null;
+    let dealCreated = false;
+    const amountVal = amount !== undefined && amount !== null ? Number(amount) : 0;
+
+    if (amountVal > 0) {
+      // 1. Find or create customer
+      let customerId: string | null = null;
+
+      // Match by phone first
+      if (phone) {
+        const existingByPhone = await queryOne<{ id: string }>(
+          "SELECT id FROM customers WHERE phone = ? LIMIT 1",
+          [phone]
+        );
+        if (existingByPhone) {
+          customerId = existingByPhone.id;
+        }
+      }
+
+      // If not found by phone, match by name
+      if (!customerId && guest_name) {
+        const existingByName = await queryOne<{ id: string }>(
+          "SELECT id FROM customers WHERE full_name = ? LIMIT 1",
+          [guest_name]
+        );
+        if (existingByName) {
+          customerId = existingByName.id;
+        }
+      }
+
+      // If still not found, create a new customer
+      if (!customerId) {
+        customerId = generateUUID();
+        await execute(
+          `INSERT INTO customers (id, full_name, phone, type) VALUES (?, ?, ?, ?)`,
+          [customerId, guest_name, phone || null, 'individual']
+        );
+      }
+
+      // 2. Create CRM deal
+      dealId = generateUUID();
+      const dealTitle = `حجز: ${guest_name}`;
+      const dealNotes = `تم إنشاء الصفقة تلقائياً من نظام الحجوزات`;
+
+      await execute(
+        `INSERT INTO crm_deals (id, customer_id, unit_id, title, notes, stage, value, status, priority, expected_close_date, booking_id)
+         VALUES (?, ?, ?, ?, ?, 'completed', ?, 'open', 'medium', ?, ?)`,
+        [
+          dealId,
+          customerId,
+          unit_id,
+          dealTitle,
+          dealNotes,
+          amountVal,
+          checkout_date,
+          bookingId
+        ]
+      );
+
+      // Log activity for CRM deal
+      const actId = generateUUID();
+      await execute(`
+          INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
+          VALUES (?, ?, ?, 'system', 'إنشاء صفقة تلقائي', ?, ?)
+      `, [actId, customerId, dealId, `تم إنشاء الصفقة تلقائياً عند تسجيل الحجز بقيمة ${amountVal} ر.س`, currentUser.id]);
+
+      dealCreated = true;
+    }
+
     await execute(
-      `INSERT INTO bookings (id, unit_id, platform_account_id, platform, guest_name, phone, checkin_date, checkout_date, amount, currency, notes, created_by, ical_uid)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bookings (id, unit_id, platform_account_id, platform, guest_name, phone, checkin_date, checkout_date, amount, currency, notes, created_by, ical_uid, deal_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         bookingId,
         unit_id,
@@ -335,15 +404,19 @@ export async function POST(request: NextRequest) {
         phone || null,
         checkin_date,
         checkout_date,
-        amount ?? 0,
+        amountVal,
         currency || "SAR",
         notes || null,
         currentUser.id,
         ical_uid,
+        dealId,
       ]
     );
 
-    const booking = await queryOne("SELECT * FROM bookings WHERE id = ?", [bookingId]);
+    const booking = await queryOne<any>("SELECT * FROM bookings WHERE id = ?", [bookingId]);
+    if (booking) {
+      booking.deal_created = dealCreated;
+    }
 
     // Log activity
     await logActivityInServer({

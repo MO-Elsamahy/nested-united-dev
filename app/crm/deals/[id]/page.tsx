@@ -6,8 +6,8 @@ import Link from "next/link";
 import {
     ArrowRight, User, DollarSign, Calendar, Flag,
     Clock, Phone, Mail, FileText, Edit3, Loader2,
-    CheckCircle2, XCircle, Handshake, CreditCard, PackageCheck,
-    BadgeCheck, MessagesSquare, History,
+    CheckCircle2, XCircle, PackageCheck,
+    MessagesSquare, History, Settings2, CreditCard,
     PhoneCall, CalendarDays, MailIcon, RefreshCw,
     StickyNote, Activity, Trash2, Archive, RotateCcw, Building2
 } from "lucide-react";
@@ -17,15 +17,10 @@ import type { CrmDeal, CrmActivity } from "@/lib/types/crm";
 import type { LucideIcon } from "lucide-react";
 
 const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: LucideIcon }> = {
-    new: { label: 'جديد', color: 'text-slate-700', bg: 'bg-slate-100', icon: Clock },
-    contacting: { label: 'جاري التواصل', color: 'text-blue-700', bg: 'bg-blue-100', icon: Phone },
-    qualified: { label: 'مؤهل', color: 'text-cyan-700', bg: 'bg-cyan-100', icon: BadgeCheck },
-    proposal: { label: 'إرسال عرض', color: 'text-violet-700', bg: 'bg-violet-100', icon: FileText },
-    negotiation: { label: 'تفاوض', color: 'text-amber-700', bg: 'bg-amber-100', icon: MessagesSquare },
-    won: { label: 'تم الاتفاق', color: 'text-emerald-700', bg: 'bg-emerald-100', icon: Handshake },
-    paid: { label: 'تم الدفع', color: 'text-teal-700', bg: 'bg-teal-100', icon: CreditCard },
-    completed: { label: 'مكتمل', color: 'text-green-700', bg: 'bg-green-100', icon: PackageCheck },
-    lost: { label: 'خسارة', color: 'text-red-700', bg: 'bg-red-100', icon: XCircle },
+    negotiation:    { label: 'تفاوض',   color: 'text-amber-700',  bg: 'bg-amber-100',  icon: MessagesSquare },
+    partial_payment:{ label: 'دفع جزئي', color: 'text-blue-700',   bg: 'bg-blue-100',   icon: CreditCard },
+    completed:      { label: 'مكتمل',   color: 'text-green-700',  bg: 'bg-green-100',  icon: PackageCheck },
+    management:     { label: 'الإدارة', color: 'text-violet-700', bg: 'bg-violet-100', icon: Settings2 },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bg: string }> = {

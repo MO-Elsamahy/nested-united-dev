@@ -44,7 +44,7 @@ export async function GET(request: Request) {
         );
 
         const wonDeals = await queryOne<{ count: number; total_value: number }>(
-            `SELECT COUNT(*) as count, COALESCE(SUM(value), 0) as total_value FROM crm_deals d WHERE stage IN ('won','paid','completed') ${dateFilter}`
+            `SELECT COUNT(*) as count, COALESCE(SUM(value), 0) as total_value FROM crm_deals d WHERE stage IN ('completed','management') ${dateFilter}`
         );
 
         const lostDeals = await queryOne<{ count: number }>(
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
             `SELECT stage, COUNT(*) as count, COALESCE(SUM(value), 0) as total_value 
              FROM crm_deals d WHERE status = 'open' ${dateFilter}
              GROUP BY stage 
-             ORDER BY FIELD(stage, 'new','contacting','qualified','proposal','negotiation','won','paid','completed','lost')`
+             ORDER BY FIELD(stage, 'negotiation','partial_payment','completed','management')`
         );
 
         // ── Stage Performance / Funnel (replaces flawed bottleneck logic) ──
@@ -103,10 +103,10 @@ export async function GET(request: Request) {
                 u.id as user_id,
                 (SELECT COUNT(*) FROM crm_activities a2 WHERE a2.performed_by = u.id ${actDateFilter.replace(/a\./g, 'a2.')}) as activity_count,
                 COUNT(ud.deal_id) as deals_worked_on,
-                SUM(CASE WHEN ud.stage IN ('won','paid','completed') THEN 1 ELSE 0 END) as won_count,
+                SUM(CASE WHEN ud.stage IN ('completed','management') THEN 1 ELSE 0 END) as won_count,
                 SUM(CASE WHEN ud.stage = 'lost' THEN 1 ELSE 0 END) as lost_count,
                 COALESCE(SUM(ud.value), 0) as deal_value,
-                COALESCE(SUM(CASE WHEN ud.stage IN ('won','paid','completed') THEN ud.value ELSE 0 END), 0) as won_value
+                COALESCE(SUM(CASE WHEN ud.stage IN ('completed','management') THEN ud.value ELSE 0 END), 0) as won_value
              FROM users u
              INNER JOIN (
                  SELECT DISTINCT a.performed_by as user_id, d.id as deal_id, d.stage, d.value

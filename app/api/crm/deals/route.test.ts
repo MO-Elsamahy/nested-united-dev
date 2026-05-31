@@ -129,7 +129,7 @@ describe("CRM Deals API PUT", () => {
 
         const req = new Request("http://localhost/api/crm/deals", {
             method: "PUT",
-            body: JSON.stringify({ id: "d1", stage: "contacting" }),
+            body: JSON.stringify({ id: "d1", stage: "negotiation" }),
         });
 
         const res = await PUT(req);

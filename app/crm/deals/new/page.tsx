@@ -310,7 +310,7 @@ function NewDealForm() {
         unit_id: "",
         title: "",
         value: "",
-        stage: "new",
+        stage: "negotiation",
         priority: "medium",
         expected_close_date: "",
         notes: ""
@@ -478,15 +478,10 @@ function NewDealForm() {
                         onChange={handleChange}
                         className="w-full px-4 py-2 border rounded-lg bg-white"
                     >
-                        <option value="new">جديد</option>
-                        <option value="contacting">جاري التواصل</option>
-                        <option value="qualified">مؤهل</option>
-                        <option value="proposal">إرسال عرض</option>
                         <option value="negotiation">تفاوض</option>
-                        <option value="won">تم الاتفاق</option>
-                        <option value="paid">تم الدفع</option>
+                        <option value="partial_payment">دفع جزئي</option>
                         <option value="completed">مكتمل</option>
-                        <option value="lost">خسارة</option>
+                        <option value="management">الإدارة</option>
                     </select>
                 </div>
             </div>

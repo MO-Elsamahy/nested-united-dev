@@ -603,13 +603,20 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                                     <div className="flex justify-between items-start">
                                         <span className="font-bold text-sm text-gray-800">{deal.title}</span>
                                         <span
-                                            className={`text-[10px] px-2 py-1 rounded-full ${
-                                                deal.stage === "won"
-                                                    ? "bg-green-100 text-green-700"
-                                                    : "bg-blue-100 text-blue-700"
+                                            className={`text-[10px] px-2 py-1 rounded-full font-medium ${
+                                                deal.stage === 'completed' || deal.stage === 'management'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : deal.stage === 'partial_payment'
+                                                    ? 'bg-blue-100 text-blue-700'
+                                                    : 'bg-amber-100 text-amber-700'
                                             }`}
                                         >
-                                            {deal.stage}
+                                            {{
+                                                negotiation: 'تفاوض',
+                                                partial_payment: 'دفع جزئي',
+                                                completed: 'مكتمل',
+                                                management: 'الإدارة',
+                                            }[deal.stage] || deal.stage}
                                         </span>
                                     </div>
                                     <div className="mt-2 flex justify-between items-center text-xs text-gray-500">

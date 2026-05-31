@@ -12,15 +12,10 @@ import {
 
 /* ────── Stage Config ────── */
 const STAGE_MAP: Record<string, { label: string; color: string }> = {
-    new: { label: 'جديد', color: '#64748b' },
-    contacting: { label: 'تواصل', color: '#3b82f6' },
-    qualified: { label: 'مؤهل', color: '#06b6d4' },
-    proposal: { label: 'عرض سعر', color: '#8b5cf6' },
-    negotiation: { label: 'تفاوض', color: '#f59e0b' },
-    won: { label: 'تم الاتفاق', color: '#10b981' },
-    paid: { label: 'تم الدفع', color: '#14b8a6' },
-    completed: { label: 'مكتمل', color: '#22c55e' },
-    lost: { label: 'خسارة', color: '#ef4444' },
+    negotiation:     { label: 'تفاوض',   color: '#f59e0b' },
+    partial_payment: { label: 'دفع جزئي', color: '#3b82f6' },
+    completed:       { label: 'مكتمل',   color: '#22c55e' },
+    management:      { label: 'الإدارة', color: '#8b5cf6' },
 };
 
 const AR_STAGE_TO_ID: Record<string, string> = {};

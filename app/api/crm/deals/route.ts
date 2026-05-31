@@ -143,10 +143,20 @@ export async function PUT(request: Request) {
         const updates: string[] = [];
         const params: unknown[] = [];
 
+        /** المراحل المعتمدة لدورة حياة الصفقة */
+        const VALID_STAGES = ['negotiation', 'partial_payment', 'completed', 'management'];
+
         if (stage !== undefined && stage !== null && stage !== "") {
+            if (!VALID_STAGES.includes(stage)) {
+                return NextResponse.json(
+                    { error: `مرحلة غير صالحة. المراحل المتاحة: ${VALID_STAGES.join(', ')}` },
+                    { status: 400 }
+                );
+            }
             updates.push("stage = ?");
             params.push(stage);
         }
+
         if (status !== undefined && status !== null && status !== "") {
             updates.push("status = ?");
             params.push(status);

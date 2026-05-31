@@ -30,6 +30,7 @@ interface Booking {
     account_name: string;
     platform: string;
   } | null;
+  deal_id?: string | null;
 }
 
 interface BookingsViewProps {
@@ -173,6 +174,11 @@ function ListView({ bookings, canEdit, showAmount }: BookingsViewProps) {
                         iCal
                       </span>
                     )}
+                    {b.deal_id && (
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium border border-purple-200">
+                        صفقة CRM
+                      </span>
+                    )}
                   </div>
                   {b.phone && (
                     <div className="flex items-center gap-1 text-sm text-gray-500 mt-1">
@@ -276,6 +282,11 @@ function GridView({ bookings, canEdit, showAmount }: BookingsViewProps) {
                       iCal
                     </span>
                   )}
+                  {b.deal_id && (
+                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium border border-purple-200">
+                      صفقة CRM
+                    </span>
+                  )}
                 </div>
                 {b.phone && (
                   <p className="text-xs text-gray-500 mt-1">{b.phone}</p>
@@ -375,6 +386,11 @@ function TableView({ bookings, canEdit, showAmount }: BookingsViewProps) {
                     {b.type === "ical" && (
                       <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
                         iCal
+                      </span>
+                    )}
+                    {b.deal_id && (
+                      <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium border border-purple-200">
+                        صفقة CRM
                       </span>
                     )}
                   </div>

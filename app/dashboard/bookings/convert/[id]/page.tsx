@@ -102,7 +102,12 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
         console.warn("Failed to delete original reservation, but booking was created");
       }
 
-      router.push("/dashboard/bookings");
+      const amountVal = payload.amount || 0;
+      if (amountVal > 0) {
+        router.push(`/dashboard/bookings?deal_created=true&amount=${amountVal}`);
+      } else {
+        router.push("/dashboard/bookings");
+      }
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "فشل تحويل الحجز");

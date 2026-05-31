@@ -5,22 +5,17 @@ import Link from "next/link";
 import {
     Plus, Archive, RotateCcw, TrendingUp, DollarSign,
     Target, User,
-    Clock, Handshake,
-    Phone, BadgeCheck, FileText, MessagesSquare, CreditCard,
-    PackageCheck, Loader2, XCircle, Eye
+    MessagesSquare, CreditCard,
+    PackageCheck, Loader2, Settings2, Eye
 } from "lucide-react";
 import type { CrmDeal } from "@/lib/types/crm";
 
+/** المراحل الأربع لدورة حياة الصفقة */
 const STAGES = [
-    { id: 'new', label: 'جديد', icon: Clock, color: '#64748b', light: '#f1f5f9', text: '#334155' },
-    { id: 'contacting', label: 'تواصل', icon: Phone, color: '#3b82f6', light: '#eff6ff', text: '#1d4ed8' },
-    { id: 'qualified', label: 'مؤهل', icon: BadgeCheck, color: '#06b6d4', light: '#ecfeff', text: '#0e7490' },
-    { id: 'proposal', label: 'عرض سعر', icon: FileText, color: '#8b5cf6', light: '#f5f3ff', text: '#6d28d9' },
-    { id: 'negotiation', label: 'تفاوض', icon: MessagesSquare, color: '#f59e0b', light: '#fffbeb', text: '#b45309' },
-    { id: 'won', label: 'تم الاتفاق', icon: Handshake, color: '#10b981', light: '#ecfdf5', text: '#047857' },
-    { id: 'paid', label: 'تم الدفع', icon: CreditCard, color: '#14b8a6', light: '#f0fdfa', text: '#0f766e' },
-    { id: 'completed', label: 'مكتمل', icon: PackageCheck, color: '#22c55e', light: '#f0fdf4', text: '#15803d' },
-    { id: 'lost', label: 'خسارة', icon: XCircle, color: '#ef4444', light: '#fef2f2', text: '#b91c1c' },
+    { id: 'negotiation',    label: 'تفاوض',     icon: MessagesSquare, color: '#f59e0b', light: '#fffbeb', text: '#b45309' },
+    { id: 'partial_payment', label: 'دفع جزئي', icon: CreditCard,     color: '#3b82f6', light: '#eff6ff', text: '#1d4ed8' },
+    { id: 'completed',      label: 'مكتمل',     icon: PackageCheck,   color: '#22c55e', light: '#f0fdf4', text: '#15803d' },
+    { id: 'management',     label: 'الإدارة',   icon: Settings2,      color: '#8b5cf6', light: '#f5f3ff', text: '#6d28d9' },
 ];
 
 
@@ -67,7 +62,7 @@ export default function DealsPage() {
 
     const openCount = deals.length;
     const totalVal = deals.reduce((s, d) => s + (Number(d.value) || 0), 0);
-    const wonCount = deals.filter(d => ['won', 'paid', 'completed'].includes(d.stage)).length;
+    const wonCount = deals.filter(d => ['completed', 'management'].includes(d.stage)).length;
     const winRate = openCount > 0 ? Math.round((wonCount / openCount) * 100) : 0;
 
     const handleDragStart = (e: React.DragEvent, id: string) => {

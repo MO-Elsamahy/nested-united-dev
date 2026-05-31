@@ -72,7 +72,12 @@ export default function NewBookingPage() {
       });
       const result = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(result.error || "فشل إنشاء الحجز");
-      router.push("/dashboard/bookings");
+      const amountVal = payload.amount || 0;
+      if (amountVal > 0) {
+        router.push(`/dashboard/bookings?deal_created=true&amount=${amountVal}`);
+      } else {
+        router.push("/dashboard/bookings");
+      }
       router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "فشل إنشاء الحجز");

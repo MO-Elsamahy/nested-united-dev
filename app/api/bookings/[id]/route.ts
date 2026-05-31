@@ -143,6 +143,7 @@ export async function DELETE(
       [resolvedParams.id]
     );
 
+    await execute("UPDATE crm_deals SET booking_id = NULL WHERE booking_id = ?", [resolvedParams.id]);
     await execute("DELETE FROM bookings WHERE id = ?", [resolvedParams.id]);
 
     // Log activity

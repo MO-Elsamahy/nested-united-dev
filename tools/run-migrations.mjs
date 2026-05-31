@@ -149,6 +149,14 @@ const migrations = [
         name: '23. HR Payroll Details — ensure salary_confirmed_by type',
         sql: `ALTER TABLE hr_payroll_details MODIFY COLUMN salary_confirmed_by VARCHAR(36) NULL`,
     },
+    {
+        name: '24. Bookings — add deal_id',
+        sql: `ALTER TABLE bookings ADD COLUMN deal_id CHAR(36) NULL`,
+    },
+    {
+        name: '25. CRM Deals — add booking_id',
+        sql: `ALTER TABLE crm_deals ADD COLUMN booking_id CHAR(36) NULL`,
+    },
 ];
 
 // ─── Auto-wire accounting settings ───────────────────────────────────────────
