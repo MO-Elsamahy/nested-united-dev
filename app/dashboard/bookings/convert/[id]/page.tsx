@@ -9,6 +9,7 @@ interface UnitOption {
   id: string;
   unit_name: string;
   unit_code: string | null;
+  platform_account_id?: string | null;
 }
 
 interface AccountOption {
@@ -39,6 +40,7 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedAccountId, setSelectedAccountId] = useState<string>("");
   const [reservation, setReservation] = useState<ReservationData | null>(null);
 
   useEffect(() => {
@@ -54,6 +56,10 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
         setError(reservationData.error);
       } else {
         setReservation(reservationData);
+        // Pre-select account linked to unit or reservation
+        const unitObj = (unitsData || []).find((u: any) => u.id === reservationData.unit_id);
+        const accId = unitObj?.platform_account_id || reservationData.unit?.platform_account_id || reservationData.platform_account_id || "";
+        setSelectedAccountId(accId);
       }
       setLoading(false);
     }).catch(() => {
@@ -61,6 +67,16 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
       setLoading(false);
     });
   }, [resolvedParams.id]);
+
+  const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const unitId = e.target.value;
+    const selectedUnit = units.find(u => u.id === unitId);
+    if (selectedUnit?.platform_account_id) {
+      setSelectedAccountId(selectedUnit.platform_account_id);
+    } else {
+      setSelectedAccountId("");
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -174,7 +190,7 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">الوحدة *</label>
-              <select name="unit_id" required className="w-full border rounded px-3 py-2" defaultValue={reservation.unit_id}>
+              <select name="unit_id" required className="w-full border rounded px-3 py-2" defaultValue={reservation.unit_id} onChange={handleUnitChange}>
                 <option value="">اختر الوحدة</option>
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -185,7 +201,7 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">حساب المستثمر (اختياري)</label>
-              <select name="platform_account_id" className="w-full border rounded px-3 py-2" defaultValue={reservation.unit?.platform_account_id || ""}>
+              <select name="platform_account_id" className="w-full border rounded px-3 py-2" value={selectedAccountId} onChange={(e) => setSelectedAccountId(e.target.value)}>
                 <option value="">بدون</option>
                 {accounts.map((a) => (
                   <option key={a.id} value={a.id}>
