@@ -52,11 +52,11 @@ export default function DealsPage() {
     // Initial fetch
     useEffect(() => { fetchDeals(); }, [fetchDeals]);
 
-    // Real-time polling every 10 seconds
+    // Real-time polling every 3 seconds for instant synchronization
     useEffect(() => {
         const interval = setInterval(() => {
             fetchDeals(true);
-        }, 10000);
+        }, 3000);
         return () => clearInterval(interval);
     }, [fetchDeals]);
 
