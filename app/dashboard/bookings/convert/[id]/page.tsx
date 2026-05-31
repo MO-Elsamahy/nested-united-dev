@@ -42,24 +42,24 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
   const [reservation, setReservation] = useState<ReservationData | null>(null);
 
   useEffect(() => {
-    // Load units and accounts
+    setLoading(true);
     Promise.all([
-      fetch("/api/units").then((r) => r.json()).then((data) => setUnits(data || [])).catch(() => setUnits([])),
-      fetch("/api/accounts").then((r) => r.json()).then((data) => setAccounts(data || [])).catch(() => setAccounts([])),
-    ]);
-
-    // Load reservation data
-    fetch(`/api/reservations/${resolvedParams.id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setReservation(data);
-        }
-      })
-      .catch(() => setError("فشل تحميل بيانات الحجز"))
-      .finally(() => setLoading(false));
+      fetch("/api/units").then((r) => r.json()).catch(() => []),
+      fetch("/api/accounts").then((r) => r.json()).catch(() => []),
+      fetch(`/api/reservations/${resolvedParams.id}`).then((r) => r.json()).catch(() => ({ error: "فشل تحميل بيانات الحجز" }))
+    ]).then(([unitsData, accountsData, reservationData]) => {
+      setUnits(unitsData || []);
+      setAccounts(accountsData || []);
+      if (reservationData.error) {
+        setError(reservationData.error);
+      } else {
+        setReservation(reservationData);
+      }
+      setLoading(false);
+    }).catch(() => {
+      setError("فشل تحميل البيانات");
+      setLoading(false);
+    });
   }, [resolvedParams.id]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
