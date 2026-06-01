@@ -331,17 +331,14 @@ export async function POST(request: NextRequest) {
       // 1. Find or create customer
       let customerId: string | null = null;
 
-      // Match by phone first (normalizing to last 9 digits to support format drifts)
+      // Match by phone first (exact matching)
       if (phone) {
-        const lastNine = phone.replace(/\D/g, "").slice(-9);
-        if (lastNine.length === 9) {
-          const existingByPhone = await queryOne<{ id: string }>(
-            "SELECT id FROM customers WHERE phone LIKE ? LIMIT 1",
-            [`%${lastNine}`]
-          );
-          if (existingByPhone) {
-            customerId = existingByPhone.id;
-          }
+        const existingByPhone = await queryOne<{ id: string }>(
+          "SELECT id FROM customers WHERE phone = ? LIMIT 1",
+          [phone]
+        );
+        if (existingByPhone) {
+          customerId = existingByPhone.id;
         }
       }
 
@@ -353,13 +350,11 @@ export async function POST(request: NextRequest) {
         );
         if (existingByName) {
           const existingPhone = existingByName.phone;
-          const newPhoneClean = phone ? phone.replace(/\D/g, "").slice(-9) : "";
-          const existingPhoneClean = existingPhone ? existingPhone.replace(/\D/g, "").slice(-9) : "";
 
           // We merge if:
           // 1. The existing customer has no phone number.
-          // 2. Both have phone numbers and they match (last 9 digits).
-          if (!existingPhoneClean || (newPhoneClean && existingPhoneClean === newPhoneClean)) {
+          // 2. Both have phone numbers and they match exactly.
+          if (!existingPhone || existingPhone === phone) {
             customerId = existingByName.id;
             // If the existing customer didn't have a phone but we do now, update it
             if (!existingPhone && phone) {
