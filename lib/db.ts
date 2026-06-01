@@ -1,4 +1,4 @@
-import mysql, { type ExecuteValues } from 'mysql2/promise';
+import mysql from 'mysql2/promise';
 
 // Create a connection pool
 const pool = mysql.createPool({
@@ -16,9 +16,9 @@ const pool = mysql.createPool({
 });
 
 // Helper to sanitize parameters (converts undefined to null for MySQL)
-const sanitizeParams = (params?: unknown[]): ExecuteValues => {
+const sanitizeParams = (params?: unknown[]): any[] => {
     if (!params) return [];
-    return params.map(p => p === undefined ? null : p) as ExecuteValues;
+    return params.map(p => p === undefined ? null : p);
 };
 
 // Helper function to execute queries
