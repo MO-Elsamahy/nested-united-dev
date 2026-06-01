@@ -62,9 +62,17 @@ export async function PUT(
     notes,
   } = body;
 
-  if (!guest_name || !checkin_date || !checkout_date || !unit_id) {
+  if (!guest_name || !checkin_date || !checkout_date || !unit_id || amount === undefined || amount === null || amount === "") {
     return NextResponse.json(
-      { error: "يرجى تعبئة جميع الحقول المطلوبة" },
+      { error: "يرجى تعبئة جميع الحقول المطلوبة (بما في ذلك المبلغ)" },
+      { status: 400 }
+    );
+  }
+
+  const amountVal = Number(amount);
+  if (isNaN(amountVal) || amountVal <= 0) {
+    return NextResponse.json(
+      { error: "المبلغ يجب أن يكون قيمة رقمية أكبر من الصفر" },
       { status: 400 }
     );
   }
@@ -89,7 +97,7 @@ export async function PUT(
         phone || null,
         checkin_date,
         checkout_date,
-        amount || null,
+        amountVal,
         currency || "SAR",
         notes || null,
         resolvedParams.id,

@@ -233,8 +233,8 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">المبلغ</label>
-              <input type="number" step="0.01" name="amount" className="w-full border rounded px-3 py-2" defaultValue={booking.amount || ""} />
+              <label className="block text-sm font-medium mb-1">المبلغ *</label>
+              <input type="number" step="0.01" name="amount" required className="w-full border rounded px-3 py-2" defaultValue={booking.amount || ""} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">العملة</label>

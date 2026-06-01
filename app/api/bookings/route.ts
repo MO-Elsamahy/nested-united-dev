@@ -277,8 +277,13 @@ export async function POST(request: NextRequest) {
     converting_reservation_id,
   } = body;
 
-  if (!unit_id || !guest_name || !checkin_date || !checkout_date) {
-    return NextResponse.json({ error: "الحقول الأساسية مطلوبة" }, { status: 400 });
+  if (!unit_id || !guest_name || !checkin_date || !checkout_date || amount === undefined || amount === null || amount === "") {
+    return NextResponse.json({ error: "الحقول الأساسية مطلوبة (بما في ذلك المبلغ)" }, { status: 400 });
+  }
+
+  const amountVal = Number(amount);
+  if (isNaN(amountVal) || amountVal <= 0) {
+    return NextResponse.json({ error: "المبلغ يجب أن يكون قيمة رقمية أكبر من الصفر" }, { status: 400 });
   }
 
   const bookingId = generateUUID();
@@ -325,7 +330,6 @@ export async function POST(request: NextRequest) {
 
     let dealId: string | null = null;
     let dealCreated = false;
-    const amountVal = amount !== undefined && amount !== null ? Number(amount) : 0;
 
     if (amountVal > 0) {
       // 1. Find or create customer
