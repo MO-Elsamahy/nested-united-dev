@@ -331,25 +331,41 @@ export async function POST(request: NextRequest) {
       // 1. Find or create customer
       let customerId: string | null = null;
 
-      // Match by phone first
+      // Match by phone first (normalizing to last 9 digits to support format drifts)
       if (phone) {
-        const existingByPhone = await queryOne<{ id: string }>(
-          "SELECT id FROM customers WHERE phone = ? LIMIT 1",
-          [phone]
-        );
-        if (existingByPhone) {
-          customerId = existingByPhone.id;
+        const lastNine = phone.replace(/\D/g, "").slice(-9);
+        if (lastNine.length === 9) {
+          const existingByPhone = await queryOne<{ id: string }>(
+            "SELECT id FROM customers WHERE phone LIKE ? LIMIT 1",
+            [`%${lastNine}`]
+          );
+          if (existingByPhone) {
+            customerId = existingByPhone.id;
+          }
         }
       }
 
-      // If not found by phone, match by name
+      // If not found by phone, match by name (only if the existing customer doesn't have a different phone number)
       if (!customerId && guest_name) {
-        const existingByName = await queryOne<{ id: string }>(
-          "SELECT id FROM customers WHERE full_name = ? LIMIT 1",
+        const existingByName = await queryOne<{ id: string; phone: string | null }>(
+          "SELECT id, phone FROM customers WHERE full_name = ? LIMIT 1",
           [guest_name]
         );
         if (existingByName) {
-          customerId = existingByName.id;
+          const existingPhone = existingByName.phone;
+          const newPhoneClean = phone ? phone.replace(/\D/g, "").slice(-9) : "";
+          const existingPhoneClean = existingPhone ? existingPhone.replace(/\D/g, "").slice(-9) : "";
+
+          // We merge if:
+          // 1. The existing customer has no phone number.
+          // 2. Both have phone numbers and they match (last 9 digits).
+          if (!existingPhoneClean || (newPhoneClean && existingPhoneClean === newPhoneClean)) {
+            customerId = existingByName.id;
+            // If the existing customer didn't have a phone but we do now, update it
+            if (!existingPhone && phone) {
+              await execute("UPDATE customers SET phone = ? WHERE id = ?", [phone, customerId]);
+            }
+          }
         }
       }
 
