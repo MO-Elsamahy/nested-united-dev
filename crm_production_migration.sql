@@ -25,4 +25,9 @@ ALTER TABLE crm_deals
   ON DELETE SET NULL
   ON UPDATE CASCADE;
 
+-- 4. Increase customers phone column length to VARCHAR(50) (NEW - 2026-06-01)
+--    Prevents truncation of phone numbers containing country codes (+966)
+ALTER TABLE customers
+  MODIFY COLUMN phone VARCHAR(50) DEFAULT NULL;
+
 -- Note: All other improvements were strictly backend SQL query logic and frontend UI enhancements.
