@@ -30,4 +30,9 @@ ALTER TABLE crm_deals
 ALTER TABLE customers
   MODIFY COLUMN phone VARCHAR(50) DEFAULT NULL;
 
+-- 5. Update CRM deals stage column ENUM to support all pipeline stages (NEW - 2026-06-01)
+--    Ensures that deals moved to 'partial_payment' or 'management' do not disappear or fail to save.
+ALTER TABLE crm_deals
+  MODIFY COLUMN stage ENUM('new','contacting','qualified','proposal','negotiation','won','paid','completed','lost','partial_payment','management') DEFAULT 'new';
+
 -- Note: All other improvements were strictly backend SQL query logic and frontend UI enhancements.
