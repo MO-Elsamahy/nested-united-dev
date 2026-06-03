@@ -1,10 +1,28 @@
 import { getToken } from "next-auth/jwt";
 import { NextResponse, type NextRequest } from "next/server";
 import { checkUserPermission } from "@/lib/permissions";
+import { queryOne } from "@/lib/db";
 
 export async function proxy(request: NextRequest) {
   const token = await getToken({ req: request, secret: process.env.NEXTAUTH_SECRET });
-  const isAuthenticated = !!token;
+  let isAuthenticated = !!token;
+
+  // Verify if the authenticated user actually exists in the database and is active
+  if (token?.id) {
+    try {
+      const dbUser = await queryOne<{ is_active: number | boolean }>(
+        "SELECT is_active FROM users WHERE id = ? AND deleted_at IS NULL",
+        [token.id]
+      );
+      if (!dbUser || !(dbUser.is_active === 1 || dbUser.is_active === true)) {
+        isAuthenticated = false;
+      }
+    } catch (e) {
+      console.error("Error verifying user in proxy:", e);
+      isAuthenticated = false;
+    }
+  }
+
   const { pathname } = request.nextUrl;
 
   // Redirect home to portal or login
@@ -22,7 +40,7 @@ export async function proxy(request: NextRequest) {
   }
 
   // Protect all system routes from unauthenticated users
-  const protectedPrefixes = ["/portal", "/dashboard", "/hr", "/crm", "/accounting", "/employee", "/settings"];
+  const protectedPrefixes = ["/portal", "/dashboard", "/hr", "/crm", "/accounting", "/employee", "/settings", "/analytics"];
   const isProtected = protectedPrefixes.some(prefix => pathname.startsWith(prefix));
 
   if (isProtected) {
@@ -52,6 +70,13 @@ export async function proxy(request: NextRequest) {
 
     if (pathname.startsWith("/dashboard")) {
       const hasAccess = await checkUserPermission(token.id as string, "/dashboard", "view");
+      if (!hasAccess) {
+        return NextResponse.redirect(new URL("/portal", request.url));
+      }
+    }
+
+    if (pathname.startsWith("/analytics")) {
+      const hasAccess = await checkUserPermission(token.id as string, "/analytics", "view");
       if (!hasAccess) {
         return NextResponse.redirect(new URL("/portal", request.url));
       }

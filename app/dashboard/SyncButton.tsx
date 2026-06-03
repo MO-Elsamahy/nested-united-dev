@@ -47,15 +47,14 @@ export function SyncButton() {
 
       {result && (
         <div
-          className={`p-4 rounded-lg ${
-            result.success
+          className={`p-4 rounded-lg ${result.success
               ? result.status === "success"
                 ? "bg-green-50 border border-green-200"
                 : result.status === "partial"
-                ? "bg-yellow-50 border border-yellow-200"
-                : "bg-red-50 border border-red-200"
+                  ? "bg-yellow-50 border border-yellow-200"
+                  : "bg-red-50 border border-red-200"
               : "bg-red-50 border border-red-200"
-          }`}
+            }`}
         >
           {result.success ? (
             <div className="space-y-1">
@@ -63,8 +62,8 @@ export function SyncButton() {
                 {result.status === "success"
                   ? "✅ تمت المزامنة بنجاح"
                   : result.status === "partial"
-                  ? "⚠️ تمت المزامنة جزئيًا"
-                  : "❌ فشلت المزامنة"}
+                    ? "⚠️ تمت المزامنة جزئيًا"
+                    : "❌ فشلت المزامنة"}
               </p>
               <p className="text-sm text-gray-600">{result.message}</p>
               {result.duration && (

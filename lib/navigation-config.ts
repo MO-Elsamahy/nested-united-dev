@@ -23,6 +23,8 @@ import {
     Shield,
     MessageSquare,
     Pencil,
+    TrendingUp,
+    Activity,
     LucideIcon
 } from "lucide-react";
 
@@ -64,6 +66,19 @@ export const DASHBOARD_NAV: NavSection[] = [
         items: [
             { label: "المستخدمون", href: "/dashboard/users", icon: Users, requiresSuperAdmin: true },
             { label: "سجل الأنشطة", href: "/dashboard/activity-logs", icon: FileText, requiresSuperAdmin: true },
+        ]
+    }
+];
+
+export const ANALYTICS_NAV: NavSection[] = [
+    {
+        title: "أقسام التحليلات",
+        items: [
+            { label: "لوحة القيادة التنفيذية", href: "/analytics?tab=executive", icon: TrendingUp },
+            { label: "العمليات المباشرة", href: "/analytics?tab=live_ops", icon: Activity },
+            { label: "ربحية الوحدات", href: "/analytics?tab=profitability", icon: DollarSign },
+            { label: "مبيعات وتوقعات CRM", href: "/analytics?tab=crm", icon: Target },
+            { label: "الموارد البشرية والرواتب", href: "/analytics?tab=hr", icon: Users },
         ]
     }
 ];
@@ -194,6 +209,7 @@ export const SETTINGS_NAV: NavSection[] = [
 // Map for Breadcrumbs/Headings
 export const PATH_NAME_MAP: Record<string, string> = {
     dashboard: "إدارة التأجير",
+    analytics: "التحليلات المتقدمة",
     accounting: "النظام المالي",
     hr: "الموارد البشرية",
     crm: "إدارة العملاء",
@@ -237,6 +253,7 @@ export const PATH_NAME_MAP: Record<string, string> = {
 export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
     rentals: [
         { path: "/dashboard", label: "لوحة التحكم الرئيسية" },
+        { path: "/analytics", label: "التحليلات المتقدمة" },
         { path: "/dashboard/inbox", label: "صندوق الوارد" },
         { path: "/dashboard/units", label: "الوحدات" },
         { path: "/dashboard/bookings", label: "الحجوزات" },

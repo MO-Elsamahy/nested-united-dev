@@ -35,4 +35,10 @@ ALTER TABLE customers
 ALTER TABLE crm_deals
   MODIFY COLUMN stage ENUM('new','contacting','qualified','proposal','negotiation','won','paid','completed','lost','partial_payment','management') DEFAULT 'new';
 
+-- 6. Insert Local/Production Super Admin User (NEW - 2026-06-02)
+--    Creates a default super_admin account for system initialization.
+INSERT INTO users (id, email, password_hash, role, name, is_active)
+VALUES ('df706cfb-534a-4afe-b76a-c68e096cf446', 'admin@admin.com', '$2b$10$G8CWRdNXDOwfd60mko5A4OGgEvYfw1fJ3cKMi3RT7hYY7Vf2WhKdi', 'super_admin', 'Admin User', 1)
+ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = VALUES(role), name = VALUES(name), is_active = VALUES(is_active);
+
 -- Note: All other improvements were strictly backend SQL query logic and frontend UI enhancements.

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 interface SidebarItemProps {
@@ -12,7 +12,33 @@ interface SidebarItemProps {
 
 export function SidebarItem({ label, href, icon: Icon }: SidebarItemProps) {
   const pathname = usePathname();
-  const isActive = pathname === href;
+  const searchParams = useSearchParams();
+
+  let isActive = false;
+
+  if (href.includes("?")) {
+    const [basePath, searchStr] = href.split("?");
+    const hrefParams = new URLSearchParams(searchStr);
+    
+    const matchesPath = pathname === basePath;
+    let matchesParams = true;
+    
+    hrefParams.forEach((val, key) => {
+      const currentVal = searchParams.get(key);
+      if (currentVal !== val) {
+        // Fallback for default tab "executive" when no tab parameter is present in URL
+        if (key === "tab" && val === "executive" && !currentVal) {
+          // Keep true
+        } else {
+          matchesParams = false;
+        }
+      }
+    });
+    
+    isActive = matchesPath && matchesParams;
+  } else {
+    isActive = pathname === href;
+  }
 
   return (
     <Link
@@ -29,4 +55,5 @@ export function SidebarItem({ label, href, icon: Icon }: SidebarItemProps) {
     </Link>
   );
 }
+
 

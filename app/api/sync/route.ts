@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { query, queryOne, execute, generateUUID } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import ICAL from "ical.js";
+import { clearAnalyticsCache } from "@/lib/analytics-cache";
 
 interface ParsedEvent {
   start: string;
@@ -253,6 +254,8 @@ export async function POST() {
        VALUES (?, ?, ?, ?, ?, ?)`,
       [generateUUID(), status, message, unitsProcessed, errorsCount, errors.length > 0 ? JSON.stringify({ errors }) : null]
     );
+
+    clearAnalyticsCache();
 
     return NextResponse.json({
       success: true,

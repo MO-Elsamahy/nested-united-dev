@@ -14,7 +14,8 @@ import {
     Settings,
     LogOut,
     UserCog,
-    Users2
+    Users2,
+    PieChart
 } from "lucide-react";
 import { LogoutButton } from "./LogoutButton";
 
@@ -55,6 +56,14 @@ export default async function PortalPage() {
             icon: Building2,
             href: "/dashboard",
             color: "bg-blue-600",
+        },
+        {
+            id: "analytics",
+            name: "التحليلات المتقدمة",
+            description: "تحليل الأداء التشغيلي والمالي والعملاء",
+            icon: PieChart,
+            href: "/analytics",
+            color: "bg-teal-600",
         },
         {
             id: "accounting",
@@ -107,6 +116,7 @@ export default async function PortalPage() {
     for (const sys of allSystems) {
         // 1. Check Feature Flags (Manifest)
         if (sys.id === "rentals" && !features.rentals) continue;
+        if (sys.id === "analytics" && !features.rentals) continue;
         if (sys.id === "accounting" && !features.accounting) continue;
         if (sys.id === "hr" && !features.hr) continue;
         if (sys.id === "crm" && !features.crm) continue;
