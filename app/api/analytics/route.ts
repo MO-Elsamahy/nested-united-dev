@@ -48,6 +48,16 @@ export async function GET(req: NextRequest) {
       const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
       return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     };
+    // Fetch max database date to support Year-to-Date (YTD) capping
+    const [maxBookingsResult] = await query<any>("SELECT MAX(checkout_date) as max_d FROM bookings");
+    const [maxReservationsResult] = await query<any>("SELECT MAX(end_date) as max_d FROM reservations");
+    const bMaxVal = maxBookingsResult[0]?.max_d;
+    const rMaxVal = maxReservationsResult[0]?.max_d;
+    const maxDates: Date[] = [];
+    if (bMaxVal) maxDates.push(new Date(bMaxVal));
+    if (rMaxVal) maxDates.push(new Date(rMaxVal));
+    const maxDataDate = maxDates.length > 0 ? new Date(Math.max(...maxDates.map(d => d.getTime()))) : null;
+
     let startDateStr = "";
     let endDateStr = "";
 
@@ -105,6 +115,15 @@ export async function GET(req: NextRequest) {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         startDateStr = format(startOfMonth);
         endDateStr = format(now);
+      }
+    }
+
+    // Apply YTD capping if the max data date falls within the selected range
+    if (maxDataDate) {
+      const startD = new Date(startDateStr);
+      const endD = new Date(endDateStr);
+      if (maxDataDate >= startD && maxDataDate < endD) {
+        endDateStr = format(maxDataDate);
       }
     }
 
