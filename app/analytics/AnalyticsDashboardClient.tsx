@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   TrendingUp,
+  TrendingDown,
   Activity,
   DollarSign,
   Calendar,
@@ -12,6 +13,9 @@ import {
   ChevronDown,
   Building2,
   Percent,
+  Users,
+  Briefcase,
+  ClipboardList,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -32,6 +36,7 @@ interface Account {
   id: string;
   platform: string;
   account_name: string;
+  ids?: string;
 }
 
 interface AnalyticsDashboardClientProps {
@@ -47,8 +52,88 @@ export function AnalyticsDashboardClient({
 }: AnalyticsDashboardClientProps) {
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("month");
-  const [customStartDate, setCustomStartDate] = useState<string>("");
-  const [customEndDate, setCustomEndDate] = useState<string>("");
+
+  // Date selection states
+  const now = new Date();
+  const getLocalDateString = (d: Date) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getISOWeekString = (date: Date): string => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `${d.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+  };
+
+  const getMondayOfISOWeek = (weekStr: string): Date => {
+    const parts = weekStr.split("-W");
+    if (parts.length !== 2) return new Date();
+    const year = parseInt(parts[0], 10);
+    const week = parseInt(parts[1], 10);
+    const d = new Date(year, 0, 4);
+    const day = d.getDay();
+    const mondayOfWeek1 = new Date(year, 0, 4 - (day === 0 ? 6 : day - 1));
+    mondayOfWeek1.setDate(mondayOfWeek1.getDate() + (week - 1) * 7);
+    return mondayOfWeek1;
+  };
+
+  const getWeekNumberOnly = (weekStr: string): string => {
+    const parts = weekStr.split("-W");
+    return parts[1] ? String(parseInt(parts[1], 10)) : "";
+  };
+
+  const [selectedDay, setSelectedDay] = useState<string>(getLocalDateString(now));
+  const [selectedWeek, setSelectedWeek] = useState<string>(getISOWeekString(now));
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  );
+  const [selectedYear, setSelectedYear] = useState<string>(String(now.getFullYear()));
+  const [customStartDate, setCustomStartDate] = useState<string>(
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+  );
+  const [customEndDate, setCustomEndDate] = useState<string>(getLocalDateString(now));
+
+  const getComputedDates = () => {
+    const todayStr = getLocalDateString(now);
+    if (dateRange === "today") {
+      return { startDate: selectedDay, endDate: selectedDay };
+    }
+    if (dateRange === "week") {
+      const monday = getMondayOfISOWeek(selectedWeek);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return { startDate: getLocalDateString(monday), endDate: getLocalDateString(sunday) };
+    }
+    if (dateRange === "month") {
+      const [year, month] = selectedMonth.split("-").map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      return {
+        startDate: `${selectedMonth}-01`,
+        endDate: `${selectedMonth}-${String(lastDay).padStart(2, "0")}`
+      };
+    }
+    if (dateRange === "year") {
+      return {
+        startDate: `${selectedYear}-01-01`,
+        endDate: `${selectedYear}-12-31`
+      };
+    }
+    if (dateRange === "all") {
+      return {
+        startDate: "2020-01-01",
+        endDate: "2030-12-31"
+      };
+    }
+    // custom
+    return { startDate: customStartDate, endDate: customEndDate };
+  };
+
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const bypassCacheRef = useRef<boolean>(true); // Start true for fresh first load
 
@@ -105,11 +190,13 @@ export function AnalyticsDashboardClient({
         const bypass = bypassCacheRef.current;
         bypassCacheRef.current = false; // Reset
 
+        const { startDate, endDate } = getComputedDates();
+
         const queryParams = new URLSearchParams({
           account: selectedAccount,
-          range: dateRange,
-          startDate: customStartDate,
-          endDate: customEndDate,
+          range: dateRange, // Send the selected dateRange for dynamic grouping
+          startDate: startDate,
+          endDate: endDate,
         });
         if (bypass) {
           queryParams.append("bypass", "true");
@@ -139,7 +226,17 @@ export function AnalyticsDashboardClient({
     return () => {
       active = false;
     };
-  }, [selectedAccount, dateRange, customStartDate, customEndDate, isRefreshing]);
+  }, [
+    selectedAccount,
+    dateRange,
+    selectedDay,
+    selectedWeek,
+    selectedMonth,
+    selectedYear,
+    customStartDate,
+    customEndDate,
+    isRefreshing
+  ]);
 
   const formattedSyncTime = localSyncTime
     ? localSyncTime.toLocaleString("ar-EG", {
@@ -194,8 +291,8 @@ export function AnalyticsDashboardClient({
               >
                 <option value="all">كل المنصات والحسابات</option>
                 {initialAccounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.account_name} ({account.platform === "airbnb" ? "Airbnb" : "Gathern"})
+                  <option key={account.id} value={account.ids || account.id}>
+                    {account.account_name}
                   </option>
                 ))}
               </select>
@@ -211,12 +308,12 @@ export function AnalyticsDashboardClient({
             </label>
             <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-200/60 max-w-max">
               {[
-                { id: "today", label: "اليوم" },
+                { id: "today", label: "يوم" },
                 { id: "week", label: "أسبوع" },
-                { id: "month", label: "الشهر الحالي" },
-                { id: "quarter", label: "ربع سنوي" },
-                { id: "year", label: "سنوي" },
-                { id: "custom", label: "تاريخ مخصص" },
+                { id: "month", label: "شهر" },
+                { id: "year", label: "سنة" },
+                { id: "all", label: "الكل" },
+                { id: "custom", label: "مخصص" },
               ].map((opt) => (
                 <button
                   key={opt.id}
@@ -249,7 +346,86 @@ export function AnalyticsDashboardClient({
         </div>
       </div>
 
-      {/* 3. Custom Date picker if Custom is selected */}
+      {/* 3. Conditional Date picker dependent on selected dateRange */}
+      {dateRange === "today" && (
+        <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-600">اختر اليوم:</label>
+            <input
+              type="date"
+              value={selectedDay}
+              onChange={(e) => {
+                bypassCacheRef.current = true;
+                setSelectedDay(e.target.value);
+              }}
+              className="bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+        </div>
+      )}
+
+      {dateRange === "week" && (
+        <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-600">اختر الأسبوع (أسبوع رقم {getWeekNumberOnly(selectedWeek)}):</label>
+            <input
+              type="week"
+              value={selectedWeek}
+              onChange={(e) => {
+                bypassCacheRef.current = true;
+                setSelectedWeek(e.target.value);
+              }}
+              className="bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+        </div>
+      )}
+
+      {dateRange === "month" && (
+        <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-600">اختر الشهر:</label>
+            <input
+              type="month"
+              value={selectedMonth}
+              onChange={(e) => {
+                bypassCacheRef.current = true;
+                setSelectedMonth(e.target.value);
+              }}
+              className="bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            />
+          </div>
+        </div>
+      )}
+
+      {dateRange === "year" && (
+        <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-semibold text-gray-600">اختر السنة:</label>
+            <select
+              value={selectedYear}
+              onChange={(e) => {
+                bypassCacheRef.current = true;
+                setSelectedYear(e.target.value);
+              }}
+              className="bg-white border border-gray-200 rounded-xl px-3.5 py-1.5 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map((yr) => (
+                <option key={yr} value={String(yr)}>
+                  {yr}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {dateRange === "all" && (
+        <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
+          <span className="text-xs font-semibold text-gray-500">تم تحديد كامل الفترة الزمنية للبيانات تلقائياً</span>
+        </div>
+      )}
+
       {dateRange === "custom" && (
         <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex flex-col sm:flex-row items-center gap-4 max-w-max animate-fadeIn">
           <div className="flex items-center gap-2">
@@ -372,6 +548,70 @@ export function AnalyticsDashboardClient({
                       </div>
                     </div>
                   </div>
+
+                  {/* Card 5 */}
+                  <div className="bg-gradient-to-br from-rose-50/40 to-rose-50/10 border border-rose-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500">إجمالي الحجوزات</span>
+                      <div className="p-2 bg-rose-500 text-white rounded-xl">
+                        <ClipboardList className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-2xl font-black text-gray-900">{data.stats.totalBookings} حجز</p>
+                      <div className="flex items-center gap-1 text-rose-600 text-xs font-bold">
+                        <span>إجمالي الحجوزات المسجلة</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 6 */}
+                  <div className="bg-gradient-to-br from-red-50/40 to-red-50/10 border border-red-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500">إجمالي المصروفات</span>
+                      <div className="p-2 bg-red-500 text-white rounded-xl">
+                        <TrendingDown className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-2xl font-black text-gray-900">{data.stats.totalExpenses}</p>
+                      <div className="flex items-center gap-1 text-red-600 text-xs font-bold">
+                        <span>تكاليف التشغيل والصيانة والرواتب</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 7 */}
+                  <div className="bg-gradient-to-br from-teal-50/40 to-teal-50/10 border border-teal-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500">صافي الدخل</span>
+                      <div className="p-2 bg-teal-500 text-white rounded-xl">
+                        <Briefcase className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-2xl font-black text-gray-900">{data.stats.netIncome}</p>
+                      <div className="flex items-center gap-1 text-teal-600 text-xs font-bold">
+                        <span>صافي الأرباح بعد المصروفات</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 8 */}
+                  <div className="bg-gradient-to-br from-indigo-50/40 to-indigo-50/10 border border-indigo-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-500">معدل الضيوف المتكررين</span>
+                      <div className="p-2 bg-indigo-500 text-white rounded-xl">
+                        <Users className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-2xl font-black text-gray-900">{data.stats.repeatGuestRate}</p>
+                      <div className="flex items-center gap-1 text-indigo-600 text-xs font-bold">
+                        <span>نسبة ولاء النزلاء وتكرار الحجز</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Visual Analytics Charts */}
@@ -405,7 +645,8 @@ export function AnalyticsDashboardClient({
                               dataKey="month"
                               axisLine={false}
                               tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 11, fontWeight: "bold" }}
+                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                              minTickGap={10}
                               padding={{ left: 25, right: 25 }}
                             />
                             <YAxis
@@ -481,7 +722,13 @@ export function AnalyticsDashboardClient({
                                   raw: data.platformShare.gathern.value,
                                   color: "#14b8a6",
                                 },
-                              ]}
+                                {
+                                  name: "حجز خارجي",
+                                  value: data.platformShare.external?.percent || 0,
+                                  raw: data.platformShare.external?.value || "0 ر.س",
+                                  color: "#22c55e",
+                                },
+                              ].filter(item => item.value > 0)}
                               cx="50%"
                               cy="50%"
                               innerRadius={52}
@@ -489,8 +736,28 @@ export function AnalyticsDashboardClient({
                               paddingAngle={4}
                               dataKey="value"
                             >
-                              <Cell fill="#3b82f6" />
-                              <Cell fill="#14b8a6" />
+                              {[
+                                {
+                                  name: "Airbnb Global",
+                                  value: data.platformShare.airbnb.percent,
+                                  raw: data.platformShare.airbnb.value,
+                                  color: "#3b82f6",
+                                },
+                                {
+                                  name: "Gathern Local",
+                                  value: data.platformShare.gathern.percent,
+                                  raw: data.platformShare.gathern.value,
+                                  color: "#14b8a6",
+                                },
+                                {
+                                  name: "حجز خارجي",
+                                  value: data.platformShare.external?.percent || 0,
+                                  raw: data.platformShare.external?.value || "0 ر.س",
+                                  color: "#22c55e",
+                                },
+                              ].filter(item => item.value > 0).map((entry, idx) => (
+                                <Cell key={`cell-${idx}`} fill={entry.color} />
+                              ))}
                             </Pie>
                             <RechartsTooltip
                               content={({ active, payload }) => {
@@ -518,23 +785,138 @@ export function AnalyticsDashboardClient({
                     </div>
 
                     {/* Premium Grid Legend Details */}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      <div className="bg-blue-50/30 border border-blue-100/50 rounded-xl p-3 text-center transition-all hover:bg-blue-50/60">
-                        <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-gray-500 mb-1">
+                    <div className="grid grid-cols-3 gap-2 pt-2">
+                      <div className="bg-blue-50/30 border border-blue-100/50 rounded-xl p-2.5 text-center transition-all hover:bg-blue-50/60">
+                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 mb-1">
                           <span className="w-2 h-2 rounded-full bg-blue-500" />
                           <span>Airbnb Global</span>
                         </div>
-                        <p className="text-lg font-black text-blue-600 leading-none">{data.platformShare.airbnb.percent}%</p>
+                        <p className="text-base font-black text-blue-600 leading-none">{data.platformShare.airbnb.percent}%</p>
                         <span className="text-[10px] font-bold text-gray-500 mt-1 block">{data.platformShare.airbnb.value}</span>
                       </div>
 
-                      <div className="bg-teal-50/30 border border-teal-100/50 rounded-xl p-3 text-center transition-all hover:bg-teal-50/60">
-                        <div className="flex items-center justify-center gap-1.5 text-[10px] font-bold text-gray-500 mb-1">
+                      <div className="bg-teal-50/30 border border-teal-100/50 rounded-xl p-2.5 text-center transition-all hover:bg-teal-50/60">
+                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 mb-1">
                           <span className="w-2 h-2 rounded-full bg-teal-500" />
                           <span>Gathern Local</span>
                         </div>
-                        <p className="text-lg font-black text-teal-600 leading-none">{data.platformShare.gathern.percent}%</p>
+                        <p className="text-base font-black text-teal-600 leading-none">{data.platformShare.gathern.percent}%</p>
                         <span className="text-[10px] font-bold text-gray-500 mt-1 block">{data.platformShare.gathern.value}</span>
+                      </div>
+
+                      <div className="bg-emerald-50/30 border border-emerald-100/50 rounded-xl p-2.5 text-center transition-all hover:bg-emerald-50/60">
+                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 mb-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                          <span>حجز خارجي</span>
+                        </div>
+                        <p className="text-base font-black text-emerald-600 leading-none">{data.platformShare.external?.percent || 0}%</p>
+                        <span className="text-[10px] font-bold text-gray-500 mt-1 block">{data.platformShare.external?.value || "0 ر.س"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Second Row of Charts/Summaries */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Top Performing Units Card */}
+                  <div className="lg:col-span-2 border border-gray-100 rounded-2xl p-5 flex flex-col justify-between bg-white shadow-sm space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">أعلى الوحدات أداءً (حسب الإيراد المحقق)</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">أفضل 5 وحدات عقارية تحقيقاً للتدفقات المالية للفترة المحددة</p>
+                    </div>
+
+                    <div className="w-full h-[220px]" style={{ direction: "ltr" }}>
+                      {isMounted ? (
+                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                          <BarChart
+                            data={(data.profitability || []).slice(0, 5).map((u: any) => ({
+                              name: u.name,
+                              revenue: parseFloat(u.revenue.replace(/,/g, "")),
+                            }))}
+                            layout="vertical"
+                            margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                          >
+                            <XAxis type="number" tickFormatter={(v) => `${v.toLocaleString()} ر.س`} />
+                            <YAxis
+                              dataKey="name"
+                              type="category"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: "#475569", fontSize: 10, fontWeight: "bold" }}
+                              width={110}
+                              orientation="right"
+                            />
+                            <RechartsTooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const entry = payload[0];
+                                  return (
+                                    <div className="bg-slate-900 text-white p-2.5 rounded-xl shadow-md border border-slate-800 text-[11px] font-bold text-right dir-rtl">
+                                      <p className="font-bold text-gray-400">{entry.payload.name}</p>
+                                      <p className="mt-0.5 text-white">
+                                        الإيرادات: <span className="text-teal-400">{entry.value.toLocaleString()} ر.س</span>
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar dataKey="revenue" fill="#14b8a6" radius={[0, 4, 4, 0]} barSize={16} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Operational Summary Quick Card */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col justify-between bg-white shadow-sm space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">نظرة عامة على العمليات الحية</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">ملخص الحالة التشغيلية الفورية وأعمال الصيانة</p>
+                    </div>
+
+                    <div className="space-y-3.5 my-auto">
+                      <div className="flex items-center justify-between p-3 bg-blue-50/40 rounded-xl border border-blue-100/50">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                          <span className="text-xs font-bold text-gray-600">شقق جاهزة وشاغرة</span>
+                        </div>
+                        <span className="text-sm font-black text-blue-700">
+                          {(data.liveUnits || []).filter((u: any) => u.status === "شاغر وجاهز").length} شقة
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-emerald-50/40 rounded-xl border border-emerald-100/50">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                          <span className="text-xs font-bold text-gray-600">شقق مأهولة بالنزلاء</span>
+                        </div>
+                        <span className="text-sm font-black text-emerald-700">
+                          {(data.liveUnits || []).filter((u: any) => u.status === "مأهول").length} شقة
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-amber-50/40 rounded-xl border border-amber-100/50">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                          <span className="text-xs font-bold text-gray-600">شقق قيد التنظيف والتحضير</span>
+                        </div>
+                        <span className="text-sm font-black text-amber-700">
+                          {(data.liveUnits || []).filter((u: any) => u.status === "تنظيف").length} شقة
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-rose-50/40 rounded-xl border border-rose-100/50">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                          <span className="text-xs font-bold text-gray-600">أعمال صيانة نشطة</span>
+                        </div>
+                        <span className="text-sm font-black text-rose-700">
+                          {(data.liveUnits || []).filter((u: any) => u.status === "تحت الصيانة").length} شقة
+                        </span>
                       </div>
                     </div>
                   </div>

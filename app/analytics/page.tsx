@@ -11,6 +11,7 @@ interface PlatformAccount {
   id: string;
   platform: string;
   account_name: string;
+  ids: string;
 }
 
 interface SyncLog {
@@ -33,7 +34,7 @@ export default async function AnalyticsPage({
   let accounts: PlatformAccount[] = [];
   try {
     accounts = await query<PlatformAccount>(
-      "SELECT id, platform, account_name FROM platform_accounts ORDER BY account_name ASC"
+      "SELECT MIN(id) as id, platform, account_name, GROUP_CONCAT(id) as ids FROM platform_accounts WHERE platform != 'whatsapp' GROUP BY account_name ORDER BY account_name ASC"
     );
   } catch (error) {
     console.error("Error fetching accounts for analytics:", error);

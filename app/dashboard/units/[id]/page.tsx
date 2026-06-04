@@ -78,6 +78,7 @@ interface UnitDetail {
   reservations: UnitReservation[];
   bookings: UnitBooking[];
   maintenance_tickets: MaintenanceTicket[];
+  platform_account_name: string | null;
 }
 
 interface UnifiedBooking {
@@ -98,9 +99,12 @@ interface UnifiedBooking {
 
 async function getUnit(id: string): Promise<UnitDetail | null> {
   try {
-    // Get unit
+    // Get unit with platform account name
     const unit = await queryOne<Omit<UnitDetail, 'unit_calendars' | 'reservations' | 'bookings' | 'maintenance_tickets'>>(
-      "SELECT * FROM units WHERE id = ?",
+      `SELECT u.*, pa.account_name as platform_account_name 
+       FROM units u 
+       LEFT JOIN platform_accounts pa ON u.platform_account_id = pa.id 
+       WHERE u.id = ?`,
       [id]
     );
 
@@ -113,6 +117,19 @@ async function getUnit(id: string): Promise<UnitDetail | null> {
       "SELECT id, platform, ical_url, is_primary, platform_account_id FROM unit_calendars WHERE unit_id = ?",
       [id]
     );
+
+    // Populate platform_account for each calendar
+    for (const cal of unit_calendars) {
+      if (cal.platform_account_id) {
+        const pa = await queryOne<any>(
+          "SELECT id, account_name, platform FROM platform_accounts WHERE id = ?",
+          [cal.platform_account_id]
+        );
+        if (pa) {
+          cal.platform_account = pa;
+        }
+      }
+    }
 
     const reservations = await query<UnitReservation>(
       "SELECT * FROM reservations WHERE unit_id = ? ORDER BY start_date DESC",
@@ -255,6 +272,11 @@ export default async function UnitDetailsPage({
             <div className="flex items-center gap-4 mt-1 flex-wrap">
               {unit.unit_code && (
                 <span className="text-gray-500">كود: {unit.unit_code}</span>
+              )}
+              {unit.platform_account_name && (
+                <span className="text-xs text-blue-600 bg-blue-50 border border-blue-100 rounded-md px-2 py-0.5 font-medium">
+                  الحساب: {unit.platform_account_name}
+                </span>
               )}
               {(unit.unit_calendars || []).map((cal) => (
                 <span

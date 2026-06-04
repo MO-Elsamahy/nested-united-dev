@@ -26,12 +26,16 @@ interface Unit {
   capacity: number | null;
   status: string;
   unit_calendars: UnitCalendar[];
+  platform_account_name: string | null;
 }
 
 async function getUnits(): Promise<Unit[]> {
-  // Get all units
+  // Get all units with platform account names
   const units = await query<Unit>(
-    "SELECT * FROM units ORDER BY created_at DESC"
+    `SELECT u.*, pa.account_name as platform_account_name 
+     FROM units u 
+     LEFT JOIN platform_accounts pa ON u.platform_account_id = pa.id 
+     ORDER BY u.created_at DESC`
   );
 
   // Get calendars for each unit
@@ -156,6 +160,11 @@ export default async function UnitsPage({
                     <h3 className="font-semibold text-lg">{unit.unit_name}</h3>
                     {unit.unit_code && (
                       <p className="text-gray-500 text-sm">كود: {unit.unit_code}</p>
+                    )}
+                    {unit.platform_account_name && (
+                      <span className="text-[11px] text-blue-600 bg-blue-50 border border-blue-100 rounded px-1.5 py-0.5 mt-1 inline-block font-medium">
+                        الحساب: {unit.platform_account_name}
+                      </span>
                     )}
                   </div>
                 </Link>

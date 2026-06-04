@@ -1,7 +1,10 @@
 import mysql from 'mysql2/promise';
 
-// Create a connection pool
-const pool = mysql.createPool({
+// Avoid creating multiple pools during Next.js Hot Module Replacement (HMR)
+const globalForDb = global as unknown as { mysqlPool: mysql.Pool };
+
+// Create or reuse a connection pool
+const pool = globalForDb.mysqlPool || mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     port: parseInt(process.env.DB_PORT || '3306'),
     user: process.env.DB_USER || 'root',
@@ -14,6 +17,10 @@ const pool = mysql.createPool({
     keepAliveInitialDelay: 0,
     dateStrings: true, // Prevent automatic timezone conversion by keeping dates as strings
 });
+
+if (process.env.NODE_ENV !== 'production') {
+    globalForDb.mysqlPool = pool;
+}
 
 // Helper to sanitize parameters (converts undefined to null for MySQL)
 const sanitizeParams = (params?: unknown[]): any[] => {
