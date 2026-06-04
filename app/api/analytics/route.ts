@@ -93,26 +93,32 @@ export async function GET(req: NextRequest) {
         const day = now.getDay(); // 0 is Sunday, 1 is Monday, ...
         const diff = day === 0 ? 6 : day - 1;
         startOfWeek.setDate(now.getDate() - diff);
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
         startDateStr = format(startOfWeek);
-        endDateStr = format(now);
+        endDateStr = format(endOfWeek);
       } else if (range === "month") {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         startDateStr = format(startOfMonth);
-        endDateStr = format(now);
+        endDateStr = format(endOfMonth);
       } else if (range === "quarter") {
         const currentQuarter = Math.floor(now.getMonth() / 3);
         const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+        const endOfQuarter = new Date(now.getFullYear(), (currentQuarter + 1) * 3, 0);
         startDateStr = format(startOfQuarter);
-        endDateStr = format(now);
+        endDateStr = format(endOfQuarter);
       } else if (range === "year") {
         const startOfYear = new Date(now.getFullYear(), 0, 1);
+        const endOfYear = new Date(now.getFullYear(), 11, 31);
         startDateStr = format(startOfYear);
-        endDateStr = format(now);
+        endDateStr = format(endOfYear);
       } else {
         // Default to start of current month
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         startDateStr = format(startOfMonth);
-        endDateStr = format(now);
+        endDateStr = format(endOfMonth);
       }
     }
 
