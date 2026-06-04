@@ -221,7 +221,7 @@ export async function GET(req: NextRequest) {
     const totalAvailableDays = totalUnits * daysCount;
     const occupancyRate = Number(((totalBookedDays / totalAvailableDays) * 100).toFixed(1));
     const adr = bookingsDays > 0 ? Math.round(totalRevenue / bookingsDays) : 0;
-    const revpar = totalAvailableDays > 0 ? Math.round(totalRevenue / totalAvailableDays) : 0;
+    const revpar = Math.round(adr * (occupancyRate / 100));
 
     // --- Start Additional KPIs ---
     const paramsSimpleBookings = [endDateStr, startDateStr];
