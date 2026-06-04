@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { getCacheKey, analyticsCache, CACHE_TTL } from "@/lib/analytics-cache";
+import { getCacheKey, analyticsCache, CACHE_TTL, clearAnalyticsCache } from "@/lib/analytics-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
 
     // 2.5 Check Server-Side Cache
     const cacheKey = getCacheKey(account, range, customStartDate, customEndDate);
-    if (!bypass) {
+    if (bypass) {
+      clearAnalyticsCache();
+    } else {
       const cached = analyticsCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         console.log(`[Analytics API] Cache Hit for key: ${cacheKey}`);
@@ -49,8 +51,8 @@ export async function GET(req: NextRequest) {
       return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
     };
     // Fetch max database date to support Year-to-Date (YTD) capping
-    const [maxBookingsResult] = await query<any>("SELECT MAX(checkout_date) as max_d FROM bookings");
-    const [maxReservationsResult] = await query<any>("SELECT MAX(end_date) as max_d FROM reservations");
+    const maxBookingsResult = await query<any>("SELECT MAX(checkout_date) as max_d FROM bookings");
+    const maxReservationsResult = await query<any>("SELECT MAX(end_date) as max_d FROM reservations");
     const bMaxVal = maxBookingsResult[0]?.max_d;
     const rMaxVal = maxReservationsResult[0]?.max_d;
     const maxDates: Date[] = [];
@@ -59,8 +61,8 @@ export async function GET(req: NextRequest) {
     const maxDataDate = maxDates.length > 0 ? new Date(Math.max(...maxDates.map(d => d.getTime()))) : null;
 
     // Fetch min database date to support Year-to-Date (YTD) start-capping
-    const [minBookingsResult] = await query<any>("SELECT MIN(checkin_date) as min_d FROM bookings");
-    const [minReservationsResult] = await query<any>("SELECT MIN(start_date) as min_d FROM reservations");
+    const minBookingsResult = await query<any>("SELECT MIN(checkin_date) as min_d FROM bookings");
+    const minReservationsResult = await query<any>("SELECT MIN(start_date) as min_d FROM reservations");
     const bMinVal = minBookingsResult[0]?.min_d;
     const rMinVal = minReservationsResult[0]?.min_d;
     const minDates: Date[] = [];
@@ -115,11 +117,13 @@ export async function GET(req: NextRequest) {
     }
 
     // Apply YTD capping (Start Date)
+    console.log("[Analytics Debug] Capping input dates:", { startDateStr, endDateStr, minDataDate: minDataDate ? format(minDataDate) : null, maxDataDate: maxDataDate ? format(maxDataDate) : null });
     if (minDataDate) {
       const startD = new Date(startDateStr);
       const endD = new Date(endDateStr);
       if (minDataDate > startD && minDataDate <= endD) {
         startDateStr = format(minDataDate);
+        console.log("[Analytics Debug] Start date capped to:", startDateStr);
       }
     }
 
@@ -129,6 +133,7 @@ export async function GET(req: NextRequest) {
       const endD = new Date(endDateStr);
       if (maxDataDate >= startD && maxDataDate < endD) {
         endDateStr = format(maxDataDate);
+        console.log("[Analytics Debug] End date capped to:", endDateStr);
       }
     }
 
@@ -136,6 +141,7 @@ export async function GET(req: NextRequest) {
       1,
       Math.ceil((new Date(endDateStr).getTime() - new Date(startDateStr).getTime()) / (1000 * 60 * 60 * 24)) + 1
     );
+    console.log("[Analytics Debug] Final dates used:", { startDateStr, endDateStr, daysCount });
 
     // Build filter query strings
     let accountFilterReservations = "";
