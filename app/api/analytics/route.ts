@@ -58,27 +58,23 @@ export async function GET(req: NextRequest) {
     if (rMaxVal) maxDates.push(new Date(rMaxVal));
     const maxDataDate = maxDates.length > 0 ? new Date(Math.max(...maxDates.map(d => d.getTime()))) : null;
 
+    // Fetch min database date to support Year-to-Date (YTD) start-capping
+    const [minBookingsResult] = await query<any>("SELECT MIN(checkin_date) as min_d FROM bookings");
+    const [minReservationsResult] = await query<any>("SELECT MIN(start_date) as min_d FROM reservations");
+    const bMinVal = minBookingsResult[0]?.min_d;
+    const rMinVal = minReservationsResult[0]?.min_d;
+    const minDates: Date[] = [];
+    if (bMinVal) minDates.push(new Date(bMinVal));
+    if (rMinVal) minDates.push(new Date(rMinVal));
+    const minDataDate = minDates.length > 0 ? new Date(Math.min(...minDates.map(d => d.getTime()))) : null;
+
     let startDateStr = "";
     let endDateStr = "";
 
     if (range === "all") {
-      const [minBookings] = await query<any>("SELECT MIN(checkin_date) as min_d, MAX(checkout_date) as max_d FROM bookings");
-      const [minReservations] = await query<any>("SELECT MIN(start_date) as min_d, MAX(end_date) as max_d FROM reservations");
-      
-      const bMin = minBookings[0]?.min_d;
-      const bMax = minBookings[0]?.max_d;
-      const rMin = minReservations[0]?.min_d;
-      const rMax = minReservations[0]?.max_d;
-
-      const dates: Date[] = [];
-      if (bMin) dates.push(new Date(bMin));
-      if (bMax) dates.push(new Date(bMax));
-      if (rMin) dates.push(new Date(rMin));
-      if (rMax) dates.push(new Date(rMax));
-
-      if (dates.length > 0) {
-        startDateStr = format(new Date(Math.min(...dates.map(d => d.getTime()))));
-        endDateStr = format(new Date(Math.max(...dates.map(d => d.getTime()))));
+      if (minDataDate && maxDataDate) {
+        startDateStr = format(minDataDate);
+        endDateStr = format(maxDataDate);
       } else {
         startDateStr = "2025-01-01";
         endDateStr = "2026-12-31";
@@ -118,7 +114,16 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Apply YTD capping if the max data date falls within the selected range
+    // Apply YTD capping (Start Date)
+    if (minDataDate) {
+      const startD = new Date(startDateStr);
+      const endD = new Date(endDateStr);
+      if (minDataDate > startD && minDataDate <= endD) {
+        startDateStr = format(minDataDate);
+      }
+    }
+
+    // Apply YTD capping (End Date)
     if (maxDataDate) {
       const startD = new Date(startDateStr);
       const endD = new Date(endDateStr);
