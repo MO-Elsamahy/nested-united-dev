@@ -30,6 +30,7 @@ import {
   Cell,
   BarChart,
   Bar,
+  Legend,
 } from "recharts";
 
 interface Account {
@@ -918,6 +919,286 @@ export function AnalyticsDashboardClient({
                           {(data.liveUnits || []).filter((u: any) => u.status === "تحت الصيانة").length} شقة
                         </span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Advanced Analytics Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                  {/* Chart 1: Cashflow (Income vs Expenses) */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">تدفق السيولة والمصروفات شهرياً</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">مقارنة الإيرادات الحقيقية المحققة مع المصروفات الشاملة (ر.س)</p>
+                    </div>
+                    <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
+                      {isMounted ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={data.monthlyData || []}
+                            margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis
+                              dataKey="month"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                            />
+                            <YAxis
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                              tickFormatter={(v) => v.toLocaleString("en-US")}
+                              width={55}
+                            />
+                            <RechartsTooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0].payload;
+                                  return (
+                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
+                                      <p className="text-gray-400">{item.month}</p>
+                                      <p className="text-emerald-400">
+                                        الإيرادات: {Number(item.amount || 0).toLocaleString()} ر.س
+                                      </p>
+                                      <p className="text-rose-400">
+                                        المصروفات: {Number(item.expenses || 0).toLocaleString()} ر.س
+                                      </p>
+                                      <p className="text-blue-400 border-t border-slate-700/50 pt-1 mt-1">
+                                        صافي الربح: {Math.max(0, Number(item.amount || 0) - Number(item.expenses || 0)).toLocaleString()} ر.س
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Legend verticalAlign="top" height={36} />
+                            <Bar name="الإيرادات" dataKey="amount" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <Bar name="المصروفات" dataKey="expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Chart 2: Occupancy Rate Seasonality */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">منحنى مواسم نسب الإشغال الشهري</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">تتبع ذروة مواسم الإشغال على مدار السنة (%)</p>
+                    </div>
+                    <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
+                      {isMounted ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart
+                            data={data.monthlyData || []}
+                            margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                          >
+                            <defs>
+                              <linearGradient id="occupancyGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
+                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis
+                              dataKey="month"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                            />
+                            <YAxis
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                              tickFormatter={(v) => `${v}%`}
+                              width={40}
+                            />
+                            <RechartsTooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0].payload;
+                                  return (
+                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
+                                      <p className="text-gray-400">{item.month}</p>
+                                      <p className="text-purple-400">
+                                        نسبة الإشغال: {item.occupancy || 0}%
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="occupancy"
+                              stroke="#8b5cf6"
+                              strokeWidth={3}
+                              fillOpacity={1}
+                              fill="url(#occupancyGrad)"
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Chart 3: Maintenance Status & Tickets Distribution */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">تحليل الصيانة والأعطال</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">توزيع التذاكر النشطة وأكثر الوحدات طلباً للصيانة</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[280px]">
+                      {/* Left: Donut for states */}
+                      <div className="h-full relative flex items-center justify-center" style={{ direction: "ltr" }}>
+                        {isMounted && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10" style={{ direction: "rtl" }}>
+                            <span className="text-[9px] font-bold text-gray-400">تذاكر الصيانة</span>
+                            <span className="text-xs font-black text-slate-800 mt-0.5">الحالة</span>
+                          </div>
+                        )}
+                        {isMounted ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={data.maintenanceAnalytics?.statusDist || []}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={42}
+                                outerRadius={60}
+                                paddingAngle={3}
+                                dataKey="count"
+                              >
+                                {(data.maintenanceAnalytics?.statusDist || []).map((entry: any, index: number) => {
+                                  const colors = ["#ef4444", "#eab308", "#10b981"]; // Open, In Progress, Resolved
+                                  const color = colors[index % colors.length];
+                                  return <Cell key={`cell-${index}`} fill={color} />;
+                                })}
+                              </Pie>
+                              <RechartsTooltip
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const entry = payload[0];
+                                    return (
+                                      <div className="bg-slate-900 text-white p-2.5 rounded-xl shadow-md border border-slate-800 text-xs font-bold text-right dir-rtl">
+                                        <p className="font-bold text-gray-300">{entry.payload.status}</p>
+                                        <p className="mt-0.5 text-white">العدد: {entry.value}</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                        )}
+                      </div>
+
+                      {/* Right: Bar for top units */}
+                      <div className="h-full flex items-center justify-center" style={{ direction: "ltr" }}>
+                        {isMounted ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={data.maintenanceAnalytics?.topUnits || []}
+                              layout="vertical"
+                              margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                            >
+                              <XAxis type="number" hide />
+                              <YAxis
+                                dataKey="name"
+                                type="category"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#475569", fontSize: 9, fontWeight: "bold" }}
+                                width={65}
+                                orientation="right"
+                              />
+                              <RechartsTooltip
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const entry = payload[0];
+                                    return (
+                                      <div className="bg-slate-900 text-white p-2 rounded-xl shadow-md border border-slate-800 text-[10px] font-bold text-right dir-rtl">
+                                        <p className="text-gray-400">{entry.payload.name}</p>
+                                        <p className="text-white">التذاكر: {entry.value}</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Bar dataKey="count" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={10} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Chart 4: Invoice Status & Collection Rates */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">تحليل الفواتير ومعدلات التحصيل</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">مقارنة إجمالي قيم الفواتير المصدرة حسب حالتها الحالية</p>
+                    </div>
+                    <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
+                      {isMounted ? (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={data.invoiceAnalytics || []}
+                            margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis
+                              dataKey="state"
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                            />
+                            <YAxis
+                              axisLine={false}
+                              tickLine={false}
+                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                              tickFormatter={(v) => v.toLocaleString("en-US")}
+                              width={55}
+                            />
+                            <RechartsTooltip
+                              content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                  const item = payload[0].payload;
+                                  return (
+                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
+                                      <p className="text-gray-400">{item.state}</p>
+                                      <p className="text-emerald-400">
+                                        إجمالي القيمة: {Number(item.total || 0).toLocaleString()} ر.س
+                                      </p>
+                                      <p className="text-blue-400">
+                                        عدد الفواتير: {item.count}
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar name="إجمالي الفواتير" dataKey="total" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={28} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      ) : (
+                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                      )}
                     </div>
                   </div>
                 </div>

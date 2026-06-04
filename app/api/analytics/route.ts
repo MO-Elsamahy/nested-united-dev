@@ -170,11 +170,14 @@ export async function GET(req: NextRequest) {
     const bookingsRevenueResult = await query<{ revenue: number | string }>(
       `SELECT SUM(
          (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
-         GREATEST(0, DATEDIFF(LEAST(b.checkout_date - INTERVAL 1 DAY, ?), GREATEST(b.checkin_date, ?)) + 1)
+         GREATEST(0, DATEDIFF(
+           LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+           GREATEST(b.checkin_date, ?)
+         ) + 1)
        ) as revenue
        FROM bookings b
        INNER JOIN units u ON b.unit_id = u.id
-       WHERE b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
+       WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
       paramsOccupancyBookings
     );
     const bookingsRevenue = Number(bookingsRevenueResult[0]?.revenue || 0);
@@ -185,12 +188,12 @@ export async function GET(req: NextRequest) {
     // A. iCal occupied days
     const reservationsDaysResult = await query<{ days: number | string }>(
       `SELECT SUM(GREATEST(0, DATEDIFF(
-         LEAST(r.end_date - INTERVAL 1 DAY, ?),
+         LEAST(CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END, ?),
          GREATEST(r.start_date, ?)
        ) + 1)) as days
        FROM reservations r
        INNER JOIN units u ON r.unit_id = u.id
-       WHERE r.start_date <= ? AND r.end_date > ? ${accountFilterReservations}`,
+       WHERE r.start_date <= ? AND (CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END) >= ? ${accountFilterReservations}`,
       paramsOccupancyReservations
     );
     const reservationsDays = Number(reservationsDaysResult[0]?.days || 0);
@@ -198,12 +201,12 @@ export async function GET(req: NextRequest) {
     // B. Manual bookings occupied days
     const bookingsDaysResult = await query<{ days: number | string }>(
       `SELECT SUM(GREATEST(0, DATEDIFF(
-         LEAST(b.checkout_date - INTERVAL 1 DAY, ?),
+         LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
          GREATEST(b.checkin_date, ?)
        ) + 1)) as days
        FROM bookings b
        INNER JOIN units u ON b.unit_id = u.id
-       WHERE b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
+       WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
       paramsOccupancyBookings
     );
     const bookingsDays = Number(bookingsDaysResult[0]?.days || 0);
@@ -236,7 +239,7 @@ export async function GET(req: NextRequest) {
     const bookingsCountResult = await query<{ count: number }>(
       `SELECT COUNT(*) as count FROM bookings b
        INNER JOIN units u ON b.unit_id = u.id
-       WHERE b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
+       WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
       paramsSimpleBookings
     );
     const bookingsCount = Number(bookingsCountResult[0]?.count || 0);
@@ -245,7 +248,7 @@ export async function GET(req: NextRequest) {
     const reservationsCountResult = await query<{ count: number }>(
       `SELECT COUNT(*) as count FROM reservations r
        INNER JOIN units u ON r.unit_id = u.id
-       WHERE r.start_date <= ? AND r.end_date > ? ${accountFilterReservations}`,
+       WHERE r.start_date <= ? AND (CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END) >= ? ${accountFilterReservations}`,
       paramsSimpleReservations
     );
     const reservationsCount = Number(reservationsCountResult[0]?.count || 0);
@@ -297,6 +300,122 @@ export async function GET(req: NextRequest) {
     const totalExpenses = Math.round(operatingExpenses + maintenanceExpenses + allocatedPayroll + allocatedInvoices);
     const netIncome = Math.max(0, totalRevenue - totalExpenses);
 
+    // Helpers for dynamic period analytics (Cashflow & Occupancy trends)
+    const getPeriodRevenue = async (startStr: string, endStr: string) => {
+      const p = [endStr, startStr, endStr, startStr];
+      const accountIds = account !== "all" ? account.split(",") : [];
+      if (account !== "all") {
+        p.push(...accountIds);
+      }
+      const res = await query<{ revenue: number | string }>(
+        `SELECT SUM(
+           (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
+           GREATEST(0, DATEDIFF(
+             LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+             GREATEST(b.checkin_date, ?)
+           ) + 1)
+         ) as revenue
+         FROM bookings b
+         INNER JOIN units u ON b.unit_id = u.id
+         WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
+        p
+      );
+      return Number(res[0]?.revenue || 0);
+    };
+
+    const getPeriodOccupiedDays = async (startStr: string, endStr: string) => {
+      const p = [endStr, startStr, endStr, startStr];
+      const accountIds = account !== "all" ? account.split(",") : [];
+      if (account !== "all") {
+        p.push(...accountIds);
+      }
+      
+      const resB = await query<{ days: number | string }>(
+        `SELECT SUM(GREATEST(0, DATEDIFF(
+           LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+           GREATEST(b.checkin_date, ?)
+         ) + 1)) as days
+         FROM bookings b
+         INNER JOIN units u ON b.unit_id = u.id
+         WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
+        p
+      );
+      
+      const resR = await query<{ days: number | string }>(
+        `SELECT SUM(GREATEST(0, DATEDIFF(
+           LEAST(CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END, ?),
+           GREATEST(r.start_date, ?)
+         ) + 1)) as days
+         FROM reservations r
+         INNER JOIN units u ON r.unit_id = u.id
+         WHERE r.start_date <= ? AND (CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END) >= ? ${accountFilterReservations}`,
+        p
+      );
+      
+      return Number(resB[0]?.days || 0) + Number(resR[0]?.days || 0);
+    };
+
+    const getPeriodExpenses = async (startStr: string, endStr: string, daysInPeriod: number) => {
+      const pCount = [endStr, startStr];
+      const accountIds = account !== "all" ? account.split(",") : [];
+      if (account !== "all") {
+        pCount.push(...accountIds);
+      }
+
+      // Count bookings
+      const bCountRes = await query<{ count: number }>(
+        `SELECT COUNT(*) as count FROM bookings b
+         INNER JOIN units u ON b.unit_id = u.id
+         WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
+        pCount
+      );
+      const bCount = Number(bCountRes[0]?.count || 0);
+
+      // Count reservations
+      const rCountRes = await query<{ count: number }>(
+        `SELECT COUNT(*) as count FROM reservations r
+         INNER JOIN units u ON r.unit_id = u.id
+         WHERE r.start_date <= ? AND (CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END) >= ? ${accountFilterReservations}`,
+        pCount
+      );
+      const rCount = Number(rCountRes[0]?.count || 0);
+      
+      const totalBookingsVal = bCount + rCount;
+      const opExpenses = totalBookingsVal * 50;
+
+      // Maintenance resolved
+      const pMaint = [startStr, endStr];
+      if (account !== "all") {
+        pMaint.push(...accountIds);
+      }
+      const maintRes = await query<{ count: number }>(
+        `SELECT COUNT(*) as count FROM maintenance_tickets mt
+         INNER JOIN units u ON mt.unit_id = u.id
+         WHERE mt.status = 'resolved' 
+           AND mt.created_at >= ? AND mt.created_at <= ?
+           ${accountFilterUnits}`,
+        pMaint
+      );
+      const maintCount = Number(maintRes[0]?.count || 0);
+      const maintExpenses = maintCount * 120;
+
+      // Vendor Bills
+      const invoicesRes = await query<{ total: number | string }>(
+        `SELECT SUM(total_amount) as total FROM accounting_invoices 
+         WHERE invoice_type = 'vendor_bill' AND deleted_at IS NULL
+           AND invoice_date >= ? AND invoice_date <= ?`,
+        [startStr, endStr]
+      );
+      const vendorBillsVal = Number(invoicesRes[0]?.total || 0);
+
+      // Payroll overhead allocated
+      const overheadPay = (netPayrollForExpenses / 30) * daysInPeriod;
+      const allocPayroll = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * overheadPay : 0;
+      const allocInvoices = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * vendorBillsVal : 0;
+
+      return Math.round(opExpenses + maintExpenses + allocPayroll + allocInvoices);
+    };
+
     // Repeat Guest Rate
     const repeatGuestsResult = await query<{ repeated: number; total_unique: number }>(
       `SELECT 
@@ -306,7 +425,7 @@ export async function GET(req: NextRequest) {
          SELECT COALESCE(NULLIF(b.phone, ''), b.guest_name) as guest_key, COUNT(*) as booking_count
          FROM bookings b
          INNER JOIN units u ON b.unit_id = u.id
-         WHERE b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}
+         WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}
          GROUP BY COALESCE(NULLIF(b.phone, ''), b.guest_name)
        ) as guest_bookings`,
       paramsSimpleBookings
@@ -319,11 +438,14 @@ export async function GET(req: NextRequest) {
     const airbnbRevenueResult = await query<{ revenue: number | string }>(
       `SELECT SUM(
          (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
-         GREATEST(0, DATEDIFF(LEAST(b.checkout_date - INTERVAL 1 DAY, ?), GREATEST(b.checkin_date, ?)) + 1)
+         GREATEST(0, DATEDIFF(
+           LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+           GREATEST(b.checkin_date, ?)
+         ) + 1)
        ) as revenue
        FROM bookings b
        INNER JOIN units u ON b.unit_id = u.id
-       WHERE b.platform = 'airbnb' AND b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
+       WHERE b.platform = 'airbnb' AND b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
       paramsOccupancyBookings
     );
     const airbnbRevenue = Number(airbnbRevenueResult[0]?.revenue || 0);
@@ -331,11 +453,14 @@ export async function GET(req: NextRequest) {
     const gathernRevenueResult = await query<{ revenue: number | string }>(
       `SELECT SUM(
          (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
-         GREATEST(0, DATEDIFF(LEAST(b.checkout_date - INTERVAL 1 DAY, ?), GREATEST(b.checkin_date, ?)) + 1)
+         GREATEST(0, DATEDIFF(
+           LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+           GREATEST(b.checkin_date, ?)
+         ) + 1)
        ) as revenue
        FROM bookings b
        INNER JOIN units u ON b.unit_id = u.id
-       WHERE b.platform = 'gathern' AND b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
+       WHERE b.platform = 'gathern' AND b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ? ${accountFilterBookings}`,
       paramsOccupancyBookings
     );
     const gathernRevenue = Number(gathernRevenueResult[0]?.revenue || 0);
@@ -347,14 +472,9 @@ export async function GET(req: NextRequest) {
     };
 
     // 9. Dynamic Revenue Growth Trend (Daily/Weekly/Monthly)
-    const monthlyData: { month: string; amount: number; percentage: string }[] = [];
+    const monthlyData: { month: string; amount: number; expenses: number; occupancy: number; percentage: string }[] = [];
     const sDate = new Date(startDateStr);
     const eDate = new Date(endDateStr);
-    const startYear = sDate.getFullYear();
-    const startMonth = sDate.getMonth();
-    const endYear = eDate.getFullYear();
-    const endMonth = eDate.getMonth();
-    const diffMonths = (endYear - startYear) * 12 + (endMonth - startMonth) + 1;
 
     if (range === "today") {
       // Show daily trend for the 7 days of the week containing eDate
@@ -369,21 +489,17 @@ export async function GET(req: NextRequest) {
         targetDay.setDate(monday.getDate() + i);
         const dayStr = format(targetDay);
 
-        const bDayResult = await query<{ revenue: number | string }>(
-          `SELECT SUM(
-             b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)
-           ) as revenue
-           FROM bookings b
-           INNER JOIN units u ON b.unit_id = u.id
-           WHERE b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
-          [dayStr, dayStr, ...(account !== "all" ? account.split(",") : [])]
-        );
-        const dRevenue = Number(bDayResult[0]?.revenue || 0);
+        const dRevenue = await getPeriodRevenue(dayStr, dayStr);
+        const dOccupied = await getPeriodOccupiedDays(dayStr, dayStr);
+        const dOccupancy = Number(((dOccupied / totalUnits) * 100).toFixed(1));
+        const dExpenses = await getPeriodExpenses(dayStr, dayStr, 1);
         const dayNum = targetDay.getDate();
         const monthNum = targetDay.getMonth() + 1;
         monthlyData.push({
           month: `${arabicDays[i]} ${dayNum}/${monthNum}`,
           amount: dRevenue,
+          expenses: dExpenses,
+          occupancy: dOccupancy,
           percentage: `${Math.min(100, Math.max(10, Math.round((dRevenue / (totalRevenue || 1)) * 100)))}%`,
         });
       }
@@ -405,20 +521,16 @@ export async function GET(req: NextRequest) {
         const endStr = format(sunday);
         const weekNum = getISOWeekNumber(monday);
 
-        const bWeekResult = await query<{ revenue: number | string }>(
-          `SELECT SUM(
-             (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
-             GREATEST(0, DATEDIFF(LEAST(b.checkout_date - INTERVAL 1 DAY, ?), GREATEST(b.checkin_date, ?)) + 1)
-           ) as revenue
-           FROM bookings b
-           INNER JOIN units u ON b.unit_id = u.id
-           WHERE b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
-          [endStr, startStr, endStr, startStr, ...(account !== "all" ? account.split(",") : [])]
-        );
-        const wRevenue = Number(bWeekResult[0]?.revenue || 0);
+        const wRevenue = await getPeriodRevenue(startStr, endStr);
+        const wOccupied = await getPeriodOccupiedDays(startStr, endStr);
+        const wOccupancy = Number(((wOccupied / (totalUnits * 7)) * 100).toFixed(1));
+        const wExpenses = await getPeriodExpenses(startStr, endStr, 7);
+
         monthlyData.push({
           month: `أسبوع ${weekNum}`,
           amount: wRevenue,
+          expenses: wExpenses,
+          occupancy: wOccupancy,
           percentage: `${Math.min(100, Math.max(10, Math.round((wRevenue / (totalRevenue || 1)) * 100)))}%`,
         });
       }
@@ -431,23 +543,20 @@ export async function GET(req: NextRequest) {
       for (let m = 0; m < 12; m++) {
         // Start & end of target month
         const startOfMonthStr = `${targetYear}-${String(m + 1).padStart(2, "0")}-01`;
-        const endOfMonthStr = new Date(targetYear, m + 1, 0).toISOString().split("T")[0];
+        const dateObj = new Date(targetYear, m + 1, 0);
+        const endOfMonthStr = dateObj.toISOString().split("T")[0];
+        const daysInMonth = dateObj.getDate();
 
-        const bMonthResult = await query<{ revenue: number | string }>(
-          `SELECT SUM(
-             (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
-             GREATEST(0, DATEDIFF(LEAST(b.checkout_date - INTERVAL 1 DAY, ?), GREATEST(b.checkin_date, ?)) + 1)
-           ) as revenue
-           FROM bookings b
-           INNER JOIN units u ON b.unit_id = u.id
-           WHERE b.checkin_date <= ? AND b.checkout_date > ? ${accountFilterBookings}`,
-          [endOfMonthStr, startOfMonthStr, endOfMonthStr, startOfMonthStr, ...(account !== "all" ? account.split(",") : [])]
-        );
+        const mRevenue = await getPeriodRevenue(startOfMonthStr, endOfMonthStr);
+        const mOccupied = await getPeriodOccupiedDays(startOfMonthStr, endOfMonthStr);
+        const mOccupancy = Number(((mOccupied / (totalUnits * daysInMonth)) * 100).toFixed(1));
+        const mExpenses = await getPeriodExpenses(startOfMonthStr, endOfMonthStr, daysInMonth);
 
-        const mRevenue = Number(bMonthResult[0]?.revenue || 0);
         monthlyData.push({
           month: monthNames[m],
           amount: mRevenue,
+          expenses: mExpenses,
+          occupancy: mOccupancy,
           percentage: `${Math.min(100, Math.max(10, Math.round((mRevenue / (totalRevenue || 1)) * 100)))}%`,
         });
       }
@@ -463,7 +572,7 @@ export async function GET(req: NextRequest) {
       paramsUnits
     );
 
-    const liveUnits = liveUnitsList.map((unit) => {
+    const liveUnits = liveUnitsList.map((unit: any) => {
       let status = "شاغر وجاهز";
       let colorClass = "border-r-blue-500 bg-blue-50/10";
       if (unit.readiness_status === "dirty") {
@@ -507,7 +616,7 @@ export async function GET(req: NextRequest) {
       [startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr, ...paramsUnits]
     );
 
-    const profitability = profitabilityList.map((unit) => {
+    const profitability = profitabilityList.map((unit: any) => {
       const uRev = Number(unit.b_rev);
       // Clean cost estimate: Airbnb is 80, Gathern is 50, Direct is 60
       const cleanCost = (Number(unit.r_count) * 70) + (Number(unit.b_count) * 60);
@@ -560,7 +669,7 @@ export async function GET(req: NextRequest) {
        ORDER BY c.created_at DESC LIMIT 4`
     );
 
-    const recentDeals = recentDealsList.map((deal) => {
+    const recentDeals = recentDealsList.map((deal: any) => {
       let status = "تفاوض نشط";
       if (deal.stage === "won") status = "تم التأكيد";
       else if (deal.stage === "negotiation") status = "بانتظار الدفع";
@@ -606,7 +715,7 @@ export async function GET(req: NextRequest) {
        LIMIT 4`
     );
 
-    const employeeAttendance = employeeAttendanceList.map((emp) => {
+    const employeeAttendance = employeeAttendanceList.map((emp: any) => {
       const total = Number(emp.total_days || 0);
       const present = Number(emp.present_days || 0);
       const late = Number(emp.late_days || 0);
@@ -620,6 +729,60 @@ export async function GET(req: NextRequest) {
         style: `w-[${attendanceRate}%] ${attendanceRate > 90 ? "bg-emerald-500" : "bg-blue-500"}`,
       };
     });
+
+    // Maintenance status distribution
+    const mtStatusList = await query<any>(
+      `SELECT mt.status, COUNT(*) as count 
+       FROM maintenance_tickets mt
+       INNER JOIN units u ON mt.unit_id = u.id
+       WHERE 1=1 ${accountFilterUnits}
+       GROUP BY mt.status`,
+      paramsUnits
+    );
+
+    // Top 5 units with maintenance tickets
+    const mtTopUnitsList = await query<any>(
+      `SELECT u.unit_name as name, COUNT(mt.id) as count 
+       FROM maintenance_tickets mt
+       INNER JOIN units u ON mt.unit_id = u.id
+       WHERE 1=1 ${accountFilterUnits}
+       GROUP BY u.id, u.unit_name
+       ORDER BY count DESC LIMIT 5`,
+      paramsUnits
+    );
+
+    const maintenanceAnalytics = {
+      statusDist: mtStatusList.map((r: any) => ({
+        status: r.status === "resolved" ? "محلولة" : r.status === "in_progress" ? "قيد المعالجة" : "مفتوحة",
+        count: Number(r.count || 0)
+      })),
+      topUnits: mtTopUnitsList.map((r: any) => ({
+        name: r.name,
+        count: Number(r.count || 0)
+      }))
+    };
+
+    // Invoice state distribution
+    const invoiceStateList = await query<any>(
+      `SELECT state, COUNT(*) as count, SUM(total_amount) as total 
+       FROM accounting_invoices 
+       WHERE deleted_at IS NULL
+       GROUP BY state`
+    );
+
+    const arabicStates: Record<string, string> = {
+      draft: "مسودة",
+      posted: "مرحلة",
+      confirmed: "مؤكدة",
+      paid: "مدفوعة",
+      cancelled: "ملغاة"
+    };
+
+    const invoiceAnalytics = invoiceStateList.map((r: any) => ({
+      state: arabicStates[r.state] || r.state,
+      count: Number(r.count || 0),
+      total: Number(r.total || 0)
+    }));
 
     const responseData = {
       stats: {
@@ -653,6 +816,8 @@ export async function GET(req: NextRequest) {
       recentDeals,
       hrPayroll,
       employeeAttendance,
+      maintenanceAnalytics,
+      invoiceAnalytics,
     };
 
     analyticsCache.set(cacheKey, {
