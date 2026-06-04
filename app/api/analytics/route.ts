@@ -271,8 +271,8 @@ export async function GET(req: NextRequest) {
       [startDateStr, endDateStr, ...paramsUnits]
     );
     const maintenanceCount = Number(maintenanceCountResult[0]?.count || 0);
-    const maintenanceExpenses = maintenanceCount * 120;
-    const operatingExpenses = totalBookingsCount * 50;
+    const maintenanceExpenses = maintenanceCount * 0;
+    const operatingExpenses = totalBookingsCount * 0;
 
     // Vendor Bills in the period
     const invoicesResult = await query<{ total: number | string }>(
@@ -387,7 +387,7 @@ export async function GET(req: NextRequest) {
       const rCount = Number(rCountRes[0]?.count || 0);
       
       const totalBookingsVal = bCount + rCount;
-      const opExpenses = totalBookingsVal * 50;
+      const opExpenses = totalBookingsVal * 0;
 
       // Maintenance resolved
       const pMaint = [startStr, endStr];
@@ -403,7 +403,7 @@ export async function GET(req: NextRequest) {
         pMaint
       );
       const maintCount = Number(maintRes[0]?.count || 0);
-      const maintExpenses = maintCount * 120;
+      const maintExpenses = maintCount * 0;
 
       // Vendor Bills
       const invoicesRes = await query<{ total: number | string }>(
@@ -624,9 +624,9 @@ export async function GET(req: NextRequest) {
 
     const profitability = profitabilityList.map((unit: any) => {
       const uRev = Number(unit.b_rev);
-      // Clean cost estimate: Airbnb is 80, Gathern is 50, Direct is 60
-      const cleanCost = (Number(unit.r_count) * 70) + (Number(unit.b_count) * 60);
-      const maintenanceCost = Number(unit.m_tickets || 0) * 150;
+      // Clean cost estimate: Set to 0 per user instruction
+      const cleanCost = (Number(unit.r_count) * 0) + (Number(unit.b_count) * 0);
+      const maintenanceCost = Number(unit.m_tickets || 0) * 0;
       const totalCost = cleanCost + maintenanceCost;
       const netProfit = Math.max(0, uRev - totalCost);
       const margin = uRev > 0 ? ((netProfit / uRev) * 100).toFixed(1) : "0.0";
