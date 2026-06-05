@@ -95,6 +95,20 @@ export async function POST(request: Request) {
                 workEndTimeStr = shift.end_time;     // HH:MM:SS
                 lateGraceMinutes = shift.late_grace_minutes || 0;
                 shiftName = shift.name;
+
+                // ─── فحص يوم الراحة الأسبوعي ───
+                if (shift.days_off) {
+                    const offDays = shift.days_off.split(",").filter(Boolean).map(Number);
+                    // getDay() على التاريخ المحلي (0=أحد ... 6=سبت)
+                    const todayDayIndex = new Date(today).getDay();
+                    if (offDays.includes(todayDayIndex)) {
+                        const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+                        return NextResponse.json(
+                            { error: `يوم ${dayNames[todayDayIndex]} يوم راحة أسبوعية وفقاً لوردية "${shiftName}". لا يمكن تسجيل الحضور.` },
+                            { status: 400 }
+                        );
+                    }
+                }
             }
         } else {
             // Fallback to global settings
