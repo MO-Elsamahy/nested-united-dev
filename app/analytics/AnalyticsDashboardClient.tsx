@@ -16,6 +16,14 @@ import {
   Users,
   Briefcase,
   ClipboardList,
+  CheckCircle,
+  Wrench,
+  ArrowUpRight,
+  User,
+  Clock,
+  AlertTriangle,
+  Search,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -31,6 +39,7 @@ import {
   BarChart,
   Bar,
   Legend,
+  LabelList,
 } from "recharts";
 
 interface Account {
@@ -39,6 +48,18 @@ interface Account {
   account_name: string;
   ids?: string;
 }
+
+const NoDataState = () => (
+  <div className="flex flex-col items-center justify-center w-full h-full min-h-[180px] bg-slate-50/30 border border-dashed border-slate-100 rounded-xl p-4 text-center">
+    <div className="p-2.5 bg-white shadow-sm border border-slate-50 rounded-full mb-1.5">
+      <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.008 1.24l.885 1.77a2.25 2.25 0 002.007 1.24h1.98a2.25 2.25 0 002.007-1.24l.885-1.77a2.25 2.25 0 012.007-1.24h3.86m-18 0h18m-18 0V4.5A2.25 2.25 0 014.5 2.25h15A2.25 2.25 0 0121.75 4.5v9m-18 0v6.75A2.25 2.25 0 004.5 22.5h15a2.25 2.25 0 002.25-2.25V13.5m-16.5 0h16.5" />
+      </svg>
+    </div>
+    <p className="text-xs font-bold text-slate-600">لا توجد بيانات متاحة</p>
+    <p className="text-[10px] text-slate-400 mt-0.5">يرجى اختيار فترة زمنية أخرى أو تعديل التصفية</p>
+  </div>
+);
 
 interface AnalyticsDashboardClientProps {
   initialAccounts: Account[];
@@ -53,6 +74,12 @@ export function AnalyticsDashboardClient({
 }: AnalyticsDashboardClientProps) {
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("month");
+  const [liveOpsFilter, setLiveOpsFilter] = useState<"all" | "occupied" | "ready" | "cleaning" | "maintenance">("all");
+
+  // Profitability Tab interactive search and sorting states
+  const [profitabilitySearch, setProfitabilitySearch] = useState("");
+  const [profitabilitySortField, setProfitabilitySortField] = useState<"name" | "revenue" | "cost" | "profit" | "margin" | "occupancy" | "adr" | "revpar">("revenue");
+  const [profitabilitySortAsc, setProfitabilitySortAsc] = useState(false);
 
   // Date selection states
   const now = new Date();
@@ -239,15 +266,32 @@ export function AnalyticsDashboardClient({
     isRefreshing
   ]);
 
+  // Data availability checks for showing NoDataState placeholders
+  const hasRevenueTrendData = data?.monthlyData && data.monthlyData.length > 0 && data.monthlyData.some((item: any) => (item.amount || 0) > 0);
+  const hasPlatformShareData = data?.platformShare && ((data.platformShare.airbnb?.percent || 0) > 0 || (data.platformShare.gathern?.percent || 0) > 0 || (data.platformShare.external?.percent || 0) > 0);
+  const hasProfitabilityData = data?.profitability && data.profitability.length > 0 && data.profitability.some((u: any) => {
+    const rev = u.revenue ? parseFloat(u.revenue.replace(/,/g, "")) : 0;
+    return rev > 0;
+  });
+  const hasCashFlowData = data?.monthlyData && data.monthlyData.length > 0 && data.monthlyData.some((item: any) => (item.amount || 0) > 0 || (item.expenses || 0) > 0);
+  const hasOccupancyData = data?.monthlyData && data.monthlyData.length > 0 && data.monthlyData.some((item: any) => (item.occupancy || 0) > 0);
+
+  const totalTickets = data?.maintenanceAnalytics?.statusDist
+    ? data.maintenanceAnalytics.statusDist.reduce((acc: number, r: any) => acc + r.count, 0)
+    : 0;
+  const hasMaintenanceStatusData = data?.maintenanceAnalytics?.statusDist && data.maintenanceAnalytics.statusDist.length > 0 && totalTickets > 0;
+  const hasMaintenanceTopUnitsData = data?.maintenanceAnalytics?.topUnits && data.maintenanceAnalytics.topUnits.length > 0 && data.maintenanceAnalytics.topUnits.some((u: any) => u.count > 0);
+  const hasInvoiceData = data?.invoiceAnalytics && data.invoiceAnalytics.length > 0 && data.invoiceAnalytics.some((item: any) => (item.total || 0) > 0 || (item.count || 0) > 0);
+
   const formattedSyncTime = localSyncTime
     ? localSyncTime.toLocaleString("ar-EG", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-      })
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    })
     : "لم تتم المزامنة بعد";
 
   return (
@@ -262,7 +306,7 @@ export function AnalyticsDashboardClient({
         </div>
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
-            onClick={handleRefresh}
+            onClick={() => handleRefresh(true)}
             disabled={isRefreshing || loading}
             className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-4 py-2.5 rounded-xl border border-gray-200 shadow-sm transition-all text-sm font-semibold disabled:opacity-50"
           >
@@ -302,37 +346,38 @@ export function AnalyticsDashboardClient({
           </div>
 
           {/* Date Range Filter */}
-          <div className="flex flex-col gap-1.5 flex-1">
-            <label className="text-xs font-bold text-gray-600 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span>الفترة الزمنية للتقرير</span>
-            </label>
-            <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-200/60 max-w-max">
-              {[
-                { id: "today", label: "يوم" },
-                { id: "week", label: "أسبوع" },
-                { id: "month", label: "شهر" },
-                { id: "year", label: "سنة" },
-                { id: "all", label: "الكل" },
-                { id: "custom", label: "مخصص" },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    bypassCacheRef.current = true;
-                    setDateRange(opt.id);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    dateRange === opt.id
-                      ? "bg-white text-blue-600 shadow-sm border border-gray-100"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
+          {activeTab !== "live_ops" && (
+            <div className="flex flex-col gap-1.5 flex-1">
+              <label className="text-xs font-bold text-gray-600 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                <span>الفترة الزمنية للتقرير</span>
+              </label>
+              <div className="flex flex-wrap items-center gap-1.5 bg-gray-50 p-1 rounded-xl border border-gray-200/60 max-w-max">
+                {[
+                  { id: "today", label: "يوم" },
+                  { id: "week", label: "أسبوع" },
+                  { id: "month", label: "شهر" },
+                  { id: "year", label: "سنة" },
+                  { id: "all", label: "الكل" },
+                  { id: "custom", label: "مخصص" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    onClick={() => {
+                      bypassCacheRef.current = true;
+                      setDateRange(opt.id);
+                    }}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${dateRange === opt.id
+                        ? "bg-white text-blue-600 shadow-sm border border-gray-100"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                      }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Sync Info Badges */}
@@ -348,7 +393,7 @@ export function AnalyticsDashboardClient({
       </div>
 
       {/* 3. Conditional Date picker dependent on selected dateRange */}
-      {dateRange === "today" && (
+      {activeTab !== "live_ops" && dateRange === "today" && (
         <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
           <div className="flex items-center gap-2">
             <label className="text-xs font-semibold text-gray-600">اختر اليوم:</label>
@@ -365,7 +410,7 @@ export function AnalyticsDashboardClient({
         </div>
       )}
 
-      {dateRange === "week" && (
+      {activeTab !== "live_ops" && dateRange === "week" && (
         <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
           <div className="flex items-center gap-2">
             <label className="text-xs font-semibold text-gray-600">اختر الأسبوع (أسبوع رقم {getWeekNumberOnly(selectedWeek)}):</label>
@@ -382,7 +427,7 @@ export function AnalyticsDashboardClient({
         </div>
       )}
 
-      {dateRange === "month" && (
+      {activeTab !== "live_ops" && dateRange === "month" && (
         <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
           <div className="flex items-center gap-2">
             <label className="text-xs font-semibold text-gray-600">اختر الشهر:</label>
@@ -399,7 +444,7 @@ export function AnalyticsDashboardClient({
         </div>
       )}
 
-      {dateRange === "year" && (
+      {activeTab !== "live_ops" && dateRange === "year" && (
         <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
           <div className="flex items-center gap-2">
             <label className="text-xs font-semibold text-gray-600">اختر السنة:</label>
@@ -421,13 +466,13 @@ export function AnalyticsDashboardClient({
         </div>
       )}
 
-      {dateRange === "all" && (
+      {activeTab !== "live_ops" && dateRange === "all" && (
         <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex items-center gap-4 max-w-max animate-fadeIn">
           <span className="text-xs font-semibold text-gray-500">تم تحديد كامل الفترة الزمنية للبيانات تلقائياً</span>
         </div>
       )}
 
-      {dateRange === "custom" && (
+      {activeTab !== "live_ops" && dateRange === "custom" && (
         <div className="bg-gray-50 rounded-2xl border border-gray-200/70 p-4 flex flex-col sm:flex-row items-center gap-4 max-w-max animate-fadeIn">
           <div className="flex items-center gap-2">
             <label className="text-xs font-semibold text-gray-600">من:</label>
@@ -487,10 +532,10 @@ export function AnalyticsDashboardClient({
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                   {/* Card 1 */}
-                  <div className="bg-gradient-to-br from-blue-50/40 to-blue-50/10 border border-blue-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                  <div className="bg-gradient-to-br from-emerald-50/40 to-emerald-50/10 border border-emerald-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-500">إجمالي الإيرادات</span>
-                      <div className="p-2 bg-blue-500 text-white rounded-xl">
+                      <div className="p-2 bg-emerald-500 text-white rounded-xl">
                         <DollarSign className="w-4 h-4" />
                       </div>
                     </div>
@@ -503,16 +548,16 @@ export function AnalyticsDashboardClient({
                   </div>
 
                   {/* Card 2 */}
-                  <div className="bg-gradient-to-br from-emerald-50/40 to-emerald-50/10 border border-emerald-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                  <div className="bg-gradient-to-br from-teal-50/40 to-teal-50/10 border border-teal-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-500">متوسط نسبة الإشغال</span>
-                      <div className="p-2 bg-emerald-500 text-white rounded-xl">
+                      <div className="p-2 bg-teal-500 text-white rounded-xl">
                         <Percent className="w-4 h-4" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <p className="text-2xl font-black text-gray-900">{data.stats.occupancyRate}</p>
-                      <div className="flex items-center gap-1 text-emerald-600 text-xs font-bold">
+                      <div className="flex items-center gap-1 text-teal-600 text-xs font-bold">
                         <span>نسبة المساحة المشغولة حالياً</span>
                       </div>
                     </div>
@@ -583,16 +628,16 @@ export function AnalyticsDashboardClient({
                   </div>
 
                   {/* Card 7 */}
-                  <div className="bg-gradient-to-br from-teal-50/40 to-teal-50/10 border border-teal-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                  <div className="bg-gradient-to-br from-blue-50/40 to-blue-50/10 border border-blue-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-500">صافي الدخل</span>
-                      <div className="p-2 bg-teal-500 text-white rounded-xl">
+                      <div className="p-2 bg-blue-500 text-white rounded-xl">
                         <Briefcase className="w-4 h-4" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <p className="text-2xl font-black text-gray-900">{data.stats.netIncome}</p>
-                      <div className="flex items-center gap-1 text-teal-600 text-xs font-bold">
+                      <div className="flex items-center gap-1 text-blue-600 text-xs font-bold">
                         <span>صافي الأرباح بعد المصروفات</span>
                       </div>
                     </div>
@@ -624,66 +669,73 @@ export function AnalyticsDashboardClient({
                         <h3 className="text-sm font-bold text-gray-900">تحليل الإيرادات والنمو الشهري</h3>
                         <p className="text-[11px] text-gray-400 mt-0.5">منحنى نمو تدفق المبيعات للأشهر الستة الأخيرة (ر.س)</p>
                       </div>
-                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">إيرادات نشطة</span>
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">إيرادات نشطة</span>
                     </div>
 
                     {/* Recharts Area Chart */}
                     <div className="w-full h-[280px] pt-2" style={{ direction: "ltr" }}>
                       {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                          <AreaChart
-                            data={data.monthlyData || []}
-                            margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                          >
-                            <defs>
-                              <linearGradient id="rechartsAreaGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                              dataKey="month"
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                              minTickGap={10}
-                              padding={{ left: 25, right: 25 }}
-                            />
-                            <YAxis
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                              tickFormatter={(v) => (v === 0 ? "" : v.toLocaleString("en-US"))}
-                              width={55}
-                              orientation="left"
-                            />
-                            <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const item = payload[0].payload;
-                                  return (
-                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
-                                      <p className="text-gray-400">{item.month}</p>
-                                      <p className="text-white">
-                                        الإيرادات: <span className="text-blue-400">{item.amount.toLocaleString()} ر.س</span>
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="amount"
-                              stroke="#3b82f6"
-                              strokeWidth={3.5}
-                              fillOpacity={1}
-                              fill="url(#rechartsAreaGrad)"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                        hasRevenueTrendData ? (
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                            <AreaChart
+                              data={data.monthlyData || []}
+                              margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                            >
+                              <defs>
+                                <linearGradient id="rechartsAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.65} />
+                              <XAxis
+                                dataKey="month"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 9, fontWeight: "bold", angle: -25, textAnchor: "end" }}
+                                interval={0}
+                                height={50}
+                                tickMargin={8}
+                                padding={{ left: 40, right: 20 }}
+                              />
+                              <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                                tickFormatter={(v) => (v === 0 ? "" : v.toLocaleString("en-US"))}
+                                width={55}
+                                orientation="left"
+                              />
+                              <RechartsTooltip
+                                cursor={false}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const item = payload[0].payload;
+                                    return (
+                                      <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
+                                        <p className="text-gray-400">{item.month}</p>
+                                        <p className="text-white">
+                                          الإيرادات: <span className="text-emerald-400">{item.amount.toLocaleString()} ر.س</span>
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="amount"
+                                stroke="#10b981"
+                                strokeWidth={3.5}
+                                fillOpacity={1}
+                                fill="url(#rechartsAreaGrad)"
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <NoDataState />
+                        )
                       ) : (
                         <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
                       )}
@@ -699,87 +751,83 @@ export function AnalyticsDashboardClient({
 
                     {/* Recharts Pie Chart with Centered Title */}
                     <div className="w-full h-[180px] relative flex items-center justify-center" style={{ direction: "ltr" }}>
-                      {isMounted && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10" style={{ direction: "rtl" }}>
+                      {isMounted && hasPlatformShareData && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0" style={{ direction: "rtl" }}>
                           <span className="text-[10px] font-black text-gray-400">القنوات</span>
                           <span className="text-sm font-black text-slate-800 mt-0.5">حصة السوق</span>
                         </div>
                       )}
 
                       {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                          <PieChart>
-                            <Pie
-                              data={[
-                                {
-                                  name: "Airbnb Global",
-                                  value: data.platformShare.airbnb.percent,
-                                  raw: data.platformShare.airbnb.value,
-                                  color: "#3b82f6",
-                                },
-                                {
-                                  name: "Gathern Local",
-                                  value: data.platformShare.gathern.percent,
-                                  raw: data.platformShare.gathern.value,
-                                  color: "#14b8a6",
-                                },
-                                {
-                                  name: "حجز خارجي",
-                                  value: data.platformShare.external?.percent || 0,
-                                  raw: data.platformShare.external?.value || "0 ر.س",
-                                  color: "#22c55e",
-                                },
-                              ].filter(item => item.value > 0)}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={52}
-                              outerRadius={70}
-                              paddingAngle={4}
-                              dataKey="value"
-                            >
-                              {[
-                                {
-                                  name: "Airbnb Global",
-                                  value: data.platformShare.airbnb.percent,
-                                  raw: data.platformShare.airbnb.value,
-                                  color: "#3b82f6",
-                                },
-                                {
-                                  name: "Gathern Local",
-                                  value: data.platformShare.gathern.percent,
-                                  raw: data.platformShare.gathern.value,
-                                  color: "#14b8a6",
-                                },
-                                {
-                                  name: "حجز خارجي",
-                                  value: data.platformShare.external?.percent || 0,
-                                  raw: data.platformShare.external?.value || "0 ر.س",
-                                  color: "#22c55e",
-                                },
-                              ].filter(item => item.value > 0).map((entry, idx) => (
-                                <Cell key={`cell-${idx}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const entry = payload[0];
-                                  return (
-                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl">
-                                      <p className="font-bold text-sm" style={{ color: entry.payload.color }}>
-                                        {entry.name}
-                                      </p>
-                                      <p className="mt-1 text-gray-300">
-                                        الحصة: {entry.value}% ({entry.payload.raw})
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
+                        hasPlatformShareData ? (() => {
+                          const platformShareData = [
+                            {
+                              name: "Airbnb Global",
+                              value: data.platformShare.airbnb.percent,
+                              raw: data.platformShare.airbnb.value,
+                              color: "#fd385b"
+                            },
+                            {
+                              name: "Gathern Local",
+                              value: data.platformShare.gathern.percent,
+                              raw: data.platformShare.gathern.value,
+                              color: "#ff9750"
+                            },
+                            {
+                              name: "حجز خارجي",
+                              value: data.platformShare.external?.percent || 0,
+                              raw: data.platformShare.external?.value || "0 ر.س",
+                              color: "#22c55e"
+                            },
+                          ].filter(item => item.value > 0);
+
+                          return (
+                            <>
+                              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                                <PieChart>
+                                  <Pie
+                                    data={platformShareData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={52}
+                                    outerRadius={70}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                  >
+                                    {platformShareData.map((entry, idx) => (
+                                      <Cell key={`cell-${idx}`} fill={entry.color} />
+                                    ))}
+                                  </Pie>
+                                  <RechartsTooltip
+                                    cursor={false}
+                                    wrapperStyle={{ zIndex: 100 }}
+                                    content={({ active, payload }) => {
+                                      if (active && payload && payload.length) {
+                                        const entry = payload[0];
+                                        return (
+                                          <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl min-w-[150px] space-y-1.5">
+                                            <p className="font-black text-sm" style={{ color: entry.payload.color }}>
+                                              {entry.name}
+                                            </p>
+                                            <p className="text-gray-300 text-[11px] leading-tight">
+                                              الحصة: <span className="text-white font-extrabold">{entry.value}%</span>
+                                            </p>
+                                            <p className="text-gray-400 text-[10px] leading-tight">
+                                              القيمة: {entry.payload.raw}
+                                            </p>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    }}
+                                  />
+                                </PieChart>
+                              </ResponsiveContainer>
+                            </>
+                          );
+                        })() : (
+                          <NoDataState />
+                        )
                       ) : (
                         <div className="w-28 h-28 rounded-full border-4 border-gray-100 border-t-blue-500 animate-spin" />
                       )}
@@ -787,28 +835,34 @@ export function AnalyticsDashboardClient({
 
                     {/* Premium Grid Legend Details */}
                     <div className="grid grid-cols-3 gap-2 pt-2">
-                      <div className="bg-blue-50/30 border border-blue-100/50 rounded-xl p-2.5 text-center transition-all hover:bg-blue-50/60">
-                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 mb-1">
-                          <span className="w-2 h-2 rounded-full bg-blue-500" />
-                          <span>Airbnb Global</span>
+                      <div 
+                        style={{ backgroundColor: "rgba(253, 56, 91, 0.05)", borderColor: "rgba(253, 56, 91, 0.15)" }} 
+                        className="border rounded-xl p-2.5 text-center transition-all hover:bg-[rgba(253,56,91,0.08)] flex flex-col justify-between min-h-[105px]"
+                      >
+                        <div className="flex items-center justify-center h-8 mb-1">
+                          <img src="/images/platforms/airbnb.svg" className="h-7 object-contain" alt="Airbnb" />
                         </div>
-                        <p className="text-base font-black text-blue-600 leading-none">{data.platformShare.airbnb.percent}%</p>
+                        <p style={{ color: "#fd385b" }} className="text-base font-black leading-none">{data.platformShare.airbnb.percent}%</p>
                         <span className="text-[10px] font-bold text-gray-500 mt-1 block">{data.platformShare.airbnb.value}</span>
                       </div>
 
-                      <div className="bg-teal-50/30 border border-teal-100/50 rounded-xl p-2.5 text-center transition-all hover:bg-teal-50/60">
-                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 mb-1">
-                          <span className="w-2 h-2 rounded-full bg-teal-500" />
-                          <span>Gathern Local</span>
+                      <div 
+                        style={{ backgroundColor: "rgba(255, 151, 80, 0.05)", borderColor: "rgba(255, 151, 80, 0.15)" }} 
+                        className="border rounded-xl p-2.5 text-center transition-all hover:bg-[rgba(255,151,80,0.08)] flex flex-col justify-between min-h-[105px]"
+                      >
+                        <div className="flex items-center justify-center h-8 mb-1">
+                          <img src="/images/platforms/gathern.svg" className="h-6 object-contain" alt="Gathern" />
                         </div>
-                        <p className="text-base font-black text-teal-600 leading-none">{data.platformShare.gathern.percent}%</p>
+                        <p style={{ color: "#ff9750" }} className="text-base font-black leading-none">{data.platformShare.gathern.percent}%</p>
                         <span className="text-[10px] font-bold text-gray-500 mt-1 block">{data.platformShare.gathern.value}</span>
                       </div>
 
-                      <div className="bg-emerald-50/30 border border-emerald-100/50 rounded-xl p-2.5 text-center transition-all hover:bg-emerald-50/60">
-                        <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-gray-500 mb-1">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span>حجز خارجي</span>
+                      <div className="bg-emerald-50/30 border border-emerald-100/50 rounded-xl p-2.5 text-center transition-all hover:bg-emerald-50/60 flex flex-col justify-between min-h-[105px]">
+                        <div className="flex items-center justify-center h-8 mb-1">
+                          <span className="flex items-center gap-1 text-[10px] font-extrabold text-emerald-700">
+                            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                            <span>حجز خارجي</span>
+                          </span>
                         </div>
                         <p className="text-base font-black text-emerald-600 leading-none">{data.platformShare.external?.percent || 0}%</p>
                         <span className="text-[10px] font-bold text-gray-500 mt-1 block">{data.platformShare.external?.value || "0 ر.س"}</span>
@@ -828,44 +882,50 @@ export function AnalyticsDashboardClient({
 
                     <div className="w-full h-[220px]" style={{ direction: "ltr" }}>
                       {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                          <BarChart
-                            data={(data.profitability || []).slice(0, 5).map((u: any) => ({
-                              name: u.name,
-                              revenue: parseFloat(u.revenue.replace(/,/g, "")),
-                            }))}
-                            layout="vertical"
-                            margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
-                          >
-                            <XAxis type="number" tickFormatter={(v) => `${v.toLocaleString()} ر.س`} />
-                            <YAxis
-                              dataKey="name"
-                              type="category"
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#475569", fontSize: 10, fontWeight: "bold" }}
-                              width={110}
-                              orientation="right"
-                            />
-                            <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const entry = payload[0];
-                                  return (
-                                    <div className="bg-slate-900 text-white p-2.5 rounded-xl shadow-md border border-slate-800 text-[11px] font-bold text-right dir-rtl">
-                                      <p className="font-bold text-gray-400">{entry.payload.name}</p>
-                                      <p className="mt-0.5 text-white">
-                                        الإيرادات: <span className="text-teal-400">{entry.value.toLocaleString()} ر.س</span>
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Bar dataKey="revenue" fill="#14b8a6" radius={[0, 4, 4, 0]} barSize={16} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        hasProfitabilityData ? (
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                            <BarChart
+                              data={(data.profitability || []).slice(0, 5).map((u: any) => ({
+                                name: u.name,
+                                revenue: parseFloat(u.revenue.replace(/,/g, "")),
+                              }))}
+                              layout="vertical"
+                              margin={{ top: 5, right: 30, left: 5, bottom: 5 }}
+                            >
+                              <XAxis type="number" tickFormatter={(v) => (v === 0 ? "" : `${v.toLocaleString()} ر.س`)} />
+                              <YAxis
+                                dataKey="name"
+                                type="category"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#475569", fontSize: 10, fontWeight: "bold" }}
+                                width={75}
+                                tickMargin={8}
+                                orientation="left"
+                              />
+                              <RechartsTooltip
+                                cursor={false}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const entry = payload[0];
+                                    return (
+                                      <div className="bg-slate-900 text-white p-2.5 rounded-xl shadow-md border border-slate-800 text-[11px] font-bold text-right dir-rtl">
+                                        <p className="font-bold text-gray-400">{entry.payload.name}</p>
+                                        <p className="mt-0.5 text-white">
+                                          الإيرادات: <span className="text-emerald-400">{Number(entry.value || 0).toLocaleString()} ر.س</span>
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Bar dataKey="revenue" fill="#10b981" radius={[0, 4, 4, 0]} barSize={16} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <NoDataState />
+                        )
                       ) : (
                         <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
                       )}
@@ -923,62 +983,78 @@ export function AnalyticsDashboardClient({
                   </div>
                 </div>
 
+                {/* Section Title: Advanced Financial and Operational Analytics */}
+                <div className="mt-10 mb-6">
+                  <h2 className="text-base font-bold text-gray-900">التحليلات المالية والتشغيلية المتقدمة</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">مقارنات التدفقات النقدية الشهرية، تذبذب المواسم، الصيانة، ومستويات تحصيل الفواتير</p>
+                </div>
+
                 {/* Advanced Analytics Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {/* Chart 1: Cashflow (Income vs Expenses) */}
-                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4 justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900">تدفق السيولة والمصروفات شهرياً</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">مقارنة الإيرادات الحقيقية المحققة مع المصروفات الشاملة (ر.س)</p>
+                      <h3 className="text-sm font-bold text-gray-900">مقارنة التدفق النقدي شهرياً (الإيرادات مقابل المصروفات)</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">تحليل الإيرادات المحققة مقابل المصاريف الكلية والرواتب والصيانة (ر.س)</p>
                     </div>
                     <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
                       {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={data.monthlyData || []}
-                            margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                              dataKey="month"
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                            />
-                            <YAxis
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                              tickFormatter={(v) => v.toLocaleString("en-US")}
-                              width={55}
-                            />
-                            <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const item = payload[0].payload;
-                                  return (
-                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
-                                      <p className="text-gray-400">{item.month}</p>
-                                      <p className="text-emerald-400">
-                                        الإيرادات: {Number(item.amount || 0).toLocaleString()} ر.س
-                                      </p>
-                                      <p className="text-rose-400">
-                                        المصروفات: {Number(item.expenses || 0).toLocaleString()} ر.س
-                                      </p>
-                                      <p className="text-blue-400 border-t border-slate-700/50 pt-1 mt-1">
-                                        صافي الربح: {Math.max(0, Number(item.amount || 0) - Number(item.expenses || 0)).toLocaleString()} ر.س
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Legend verticalAlign="top" height={36} />
-                            <Bar name="الإيرادات" dataKey="amount" fill="#10b981" radius={[4, 4, 0, 0]} />
-                            <Bar name="المصروفات" dataKey="expenses" fill="#f43f5e" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        hasCashFlowData ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={data.monthlyData || []}
+                              margin={{ top: 15, right: 10, left: 10, bottom: 0 }}
+                              barGap={6}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.65} />
+                              <XAxis
+                                dataKey="month"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 9, fontWeight: "bold", angle: -25, textAnchor: "end" }}
+                                interval={0}
+                                height={50}
+                                tickMargin={8}
+                                padding={{ left: 40, right: 20 }}
+                              />
+                              <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                                tickFormatter={(v) => (v === 0 ? "" : v.toLocaleString("en-US"))}
+                                width={55}
+                              />
+                              <RechartsTooltip
+                                cursor={{ fill: "#f8fafc", opacity: 0.5 }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const item = payload[0].payload;
+                                    return (
+                                      <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
+                                        <p className="text-gray-400">{item.month}</p>
+                                        <p className="text-emerald-400">
+                                          الأساسي / الإيرادات: {Number(item.amount || 0).toLocaleString()} ر.س
+                                        </p>
+                                        <p className="text-rose-400">
+                                          المصروفات: {Number(item.expenses || 0).toLocaleString()} ر.س
+                                        </p>
+                                        <p className="text-blue-400 border-t border-slate-700/50 pt-1 mt-1">
+                                          صافي الربح: {Math.max(0, Number(item.amount || 0) - Number(item.expenses || 0)).toLocaleString()} ر.س
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Legend verticalAlign="bottom" height={36} iconType="circle" />
+                              <Bar name="إجمالي الإيرادات" dataKey="amount" fill="#10b981" radius={[6, 6, 0, 0]} barSize={14} />
+                              <Bar name="إجمالي المصروفات" dataKey="expenses" fill="#f43f5e" radius={[6, 6, 0, 0]} barSize={14} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <NoDataState />
+                        )
                       ) : (
                         <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
                       )}
@@ -986,104 +1062,131 @@ export function AnalyticsDashboardClient({
                   </div>
 
                   {/* Chart 2: Occupancy Rate Seasonality */}
-                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4 justify-between">
                     <div>
                       <h3 className="text-sm font-bold text-gray-900">منحنى مواسم نسب الإشغال الشهري</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">تتبع ذروة مواسم الإشغال على مدار السنة (%)</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">تحليل تقلبات نسب الإشغال على مدار أشهر السنة لتحديد فترات الذروة (%)</p>
                     </div>
                     <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
                       {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart
-                            data={data.monthlyData || []}
-                            margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                          >
-                            <defs>
-                              <linearGradient id="occupancyGrad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
-                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                              dataKey="month"
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                            />
-                            <YAxis
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                              tickFormatter={(v) => `${v}%`}
-                              width={40}
-                            />
-                            <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const item = payload[0].payload;
-                                  return (
-                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
-                                      <p className="text-gray-400">{item.month}</p>
-                                      <p className="text-purple-400">
-                                        نسبة الإشغال: {item.occupancy || 0}%
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Area
-                              type="monotone"
-                              dataKey="occupancy"
-                              stroke="#8b5cf6"
-                              strokeWidth={3}
-                              fillOpacity={1}
-                              fill="url(#occupancyGrad)"
-                            />
-                          </AreaChart>
-                        </ResponsiveContainer>
+                        hasOccupancyData ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart
+                              data={data.monthlyData || []}
+                              margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+                            >
+                              <defs>
+                                <linearGradient id="occupancyGrad" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.25} />
+                                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.65} />
+                              <XAxis
+                                dataKey="month"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 9, fontWeight: "bold", angle: -25, textAnchor: "end" }}
+                                interval={0}
+                                height={50}
+                                tickMargin={8}
+                                padding={{ left: 40, right: 20 }}
+                              />
+                              <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                                tickFormatter={(v) => (v === 0 ? "" : `${v}%`)}
+                                width={40}
+                              />
+                              <RechartsTooltip
+                                cursor={false}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const item = payload[0].payload;
+                                    return (
+                                      <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
+                                        <p className="text-gray-400">{item.month}</p>
+                                        <p className="text-purple-400">
+                                          نسبة الإشغال: {item.occupancy || 0}%
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Area
+                                type="monotone"
+                                dataKey="occupancy"
+                                stroke="#8b5cf6"
+                                strokeWidth={3}
+                                fillOpacity={1}
+                                fill="url(#occupancyGrad)"
+                                dot={{ r: 3.5, strokeWidth: 1.5, stroke: "#8b5cf6", fill: "#ffffff" }}
+                                activeDot={{ r: 6, strokeWidth: 0, fill: "#8b5cf6" }}
+                              />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <NoDataState />
+                        )
                       ) : (
                         <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
                       )}
                     </div>
-                  </div>
-
-                  {/* Chart 3: Maintenance Status & Tickets Distribution */}
-                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">تحليل الصيانة والأعطال</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">توزيع التذاكر النشطة وأكثر الوحدات طلباً للصيانة</p>
+                    <div className="flex justify-center mt-2">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-purple-50 rounded-full text-[10px] font-bold text-purple-700 border border-purple-100/50">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                        % تذبذب الطلب الموسمي للوحدات النشطة
+                      </span>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-[280px]">
-                      {/* Left: Donut for states */}
-                      <div className="h-full relative flex items-center justify-center" style={{ direction: "ltr" }}>
-                        {isMounted && (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10" style={{ direction: "rtl" }}>
-                            <span className="text-[9px] font-bold text-gray-400">تذاكر الصيانة</span>
-                            <span className="text-xs font-black text-slate-800 mt-0.5">الحالة</span>
-                          </div>
-                        )}
-                        {isMounted ? (
+                  </div>
+                </div>
+
+                {/* 3-Column Grid for Maintenance & Invoices */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+                  {/* Card 1: Maintenance Status Distribution (Donut) */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm justify-between min-h-[360px]">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">توزيع تذاكر الصيانة حسب الحالة</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">نسب ومقادير تذاكر الأعطال القائمة والمكتملة</p>
+                    </div>
+                    <div className="w-full h-[180px] relative flex items-center justify-center mt-2" style={{ direction: "ltr" }}>
+                      {isMounted && hasMaintenanceStatusData && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0" style={{ direction: "rtl" }}>
+                          <span className="text-[9px] font-bold text-gray-400">الإجمالي</span>
+                          <span className="text-xs font-black text-slate-800 mt-0.5">
+                            {(data.maintenanceAnalytics?.statusDist || []).reduce((acc: number, r: any) => acc + r.count, 0)} تذكرة
+                          </span>
+                        </div>
+                      )}
+                      {isMounted ? (
+                        hasMaintenanceStatusData ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                               <Pie
                                 data={data.maintenanceAnalytics?.statusDist || []}
                                 cx="50%"
                                 cy="50%"
-                                innerRadius={42}
-                                outerRadius={60}
+                                innerRadius={47}
+                                outerRadius={65}
                                 paddingAngle={3}
                                 dataKey="count"
                               >
                                 {(data.maintenanceAnalytics?.statusDist || []).map((entry: any, index: number) => {
-                                  const colors = ["#ef4444", "#eab308", "#10b981"]; // Open, In Progress, Resolved
-                                  const color = colors[index % colors.length];
+                                  const statusColors: Record<string, string> = {
+                                    "محلولة": "#10b981",       // Green
+                                    "قيد المعالجة": "#f59e0b",  // Amber
+                                    "مفتوحة": "#ef4444"         // Red
+                                  };
+                                  const color = statusColors[entry.status] || "#64748b";
                                   return <Cell key={`cell-${index}`} fill={color} />;
                                 })}
                               </Pie>
                               <RechartsTooltip
+                                cursor={false}
+                                wrapperStyle={{ zIndex: 100 }}
                                 content={({ active, payload }) => {
                                   if (active && payload && payload.length) {
                                     const entry = payload[0];
@@ -1100,30 +1203,73 @@ export function AnalyticsDashboardClient({
                             </PieChart>
                           </ResponsiveContainer>
                         ) : (
-                          <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
-                        )}
+                          <NoDataState />
+                        )
+                      ) : (
+                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                      )}
+                    </div>
+                    {/* Status Badges Grid */}
+                    <div className="grid grid-cols-3 gap-2 mt-4 text-center">
+                      <div className="bg-emerald-50/40 border border-emerald-100/50 rounded-xl p-2 flex flex-col items-center justify-between">
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          محلولة
+                        </span>
+                        <span className="text-xs font-black text-emerald-800 mt-1">
+                          {(data.maintenanceAnalytics?.statusDist || []).find((r: any) => r.status === "محلولة")?.count || 0}
+                        </span>
                       </div>
+                      <div className="bg-amber-50/40 border border-amber-100/50 rounded-xl p-2 flex flex-col items-center justify-between">
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-amber-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          جاري العمل
+                        </span>
+                        <span className="text-xs font-black text-amber-800 mt-1">
+                          {(data.maintenanceAnalytics?.statusDist || []).find((r: any) => r.status === "قيد المعالجة")?.count || 0}
+                        </span>
+                      </div>
+                      <div className="bg-rose-50/40 border border-rose-100/50 rounded-xl p-2 flex flex-col items-center justify-between">
+                        <span className="flex items-center gap-1 text-[9px] font-bold text-rose-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                          جديدة
+                        </span>
+                        <span className="text-xs font-black text-rose-800 mt-1">
+                          {(data.maintenanceAnalytics?.statusDist || []).find((r: any) => r.status === "مفتوحة")?.count || 0}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                      {/* Right: Bar for top units */}
-                      <div className="h-full flex items-center justify-center" style={{ direction: "ltr" }}>
-                        {isMounted ? (
+                  {/* Card 2: Top Units Maintenance Horizontal Bar */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm justify-between min-h-[360px]">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">أعلى الوحدات طلباً للصيانة</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">الشقق الأكثر تسجيلاً للأعطال والطلبات</p>
+                    </div>
+                    <div className="w-full h-[240px] mt-2" style={{ direction: "ltr" }}>
+                      {isMounted ? (
+                        hasMaintenanceTopUnitsData ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart
                               data={data.maintenanceAnalytics?.topUnits || []}
                               layout="vertical"
-                              margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                              margin={{ top: 10, right: 30, left: 10, bottom: 5 }}
                             >
+                              <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={false} stroke="#e2e8f0" strokeOpacity={0.65} />
                               <XAxis type="number" hide />
                               <YAxis
                                 dataKey="name"
                                 type="category"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: "#475569", fontSize: 9, fontWeight: "bold" }}
-                                width={65}
+                                tick={{ fill: "#475569", fontSize: 10, fontWeight: "bold" }}
+                                width={75}
+                                tickMargin={8}
                                 orientation="right"
                               />
                               <RechartsTooltip
+                                cursor={{ fill: "#f8fafc", opacity: 0.5 }}
                                 content={({ active, payload }) => {
                                   if (active && payload && payload.length) {
                                     const entry = payload[0];
@@ -1137,65 +1283,98 @@ export function AnalyticsDashboardClient({
                                   return null;
                                 }}
                               />
-                              <Bar dataKey="count" fill="#f43f5e" radius={[0, 4, 4, 0]} barSize={10} />
+                              <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={12}>
+                                {(data.maintenanceAnalytics?.topUnits || []).map((entry: any, index: number) => {
+                                  let color = "#3b82f6"; // Blue for low tickets (2 or fewer)
+                                  if (entry.count >= 5) color = "#ef4444";      // Red for high tickets (5 or more)
+                                  else if (entry.count >= 3) color = "#f59e0b"; // Amber/Orange for medium tickets (3 or 4)
+                                  return <Cell key={`cell-${index}`} fill={color} />;
+                                })}
+                                <LabelList dataKey="count" position="right" style={{ fill: "#475569", fontSize: 10, fontWeight: "bold" }} offset={8} />
+                              </Bar>
                             </BarChart>
                           </ResponsiveContainer>
                         ) : (
-                          <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
-                        )}
-                      </div>
+                          <NoDataState />
+                        )
+                      ) : (
+                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                      )}
                     </div>
                   </div>
 
-                  {/* Chart 4: Invoice Status & Collection Rates */}
-                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4">
+                  {/* Card 3: Invoice Status & Collection Rates */}
+                  <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm justify-between min-h-[360px]">
                     <div>
                       <h3 className="text-sm font-bold text-gray-900">تحليل الفواتير ومعدلات التحصيل</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">مقارنة إجمالي قيم الفواتير المصدرة حسب حالتها الحالية</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">حالة المبالغ المالية للفواتير المحاسبية المعتمدة</p>
                     </div>
-                    <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
+                    <div className="w-full h-[240px] mt-2" style={{ direction: "ltr" }}>
                       {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
-                            data={data.invoiceAnalytics || []}
-                            margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
-                          >
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                              dataKey="state"
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                            />
-                            <YAxis
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
-                              tickFormatter={(v) => v.toLocaleString("en-US")}
-                              width={55}
-                            />
-                            <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const item = payload[0].payload;
-                                  return (
-                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
-                                      <p className="text-gray-400">{item.state}</p>
-                                      <p className="text-emerald-400">
-                                        إجمالي القيمة: {Number(item.total || 0).toLocaleString()} ر.س
-                                      </p>
-                                      <p className="text-blue-400">
-                                        عدد الفواتير: {item.count}
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Bar name="إجمالي الفواتير" dataKey="total" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={28} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                        hasInvoiceData ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={data.invoiceAnalytics || []}
+                              margin={{ top: 25, right: 10, left: 5, bottom: 0 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.65} />
+                              <XAxis
+                                dataKey="state"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                              />
+                              <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: "#64748b", fontSize: 10, fontWeight: "bold" }}
+                                tickFormatter={(v) => (v === 0 ? "" : `${v.toLocaleString("en-US")} ر.س`)}
+                                width={75}
+                              />
+                              <RechartsTooltip
+                                cursor={{ fill: "#f8fafc", opacity: 0.5 }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const item = payload[0].payload;
+                                    return (
+                                      <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
+                                        <p className="text-gray-400">{item.state}</p>
+                                        <p className="text-emerald-400">
+                                          إجمالي القيمة: {Number(item.total || 0).toLocaleString()} ر.س
+                                        </p>
+                                        <p className="text-blue-400">
+                                          عدد الفواتير: {item.count}
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Bar name="إجمالي الفواتير" dataKey="total" radius={[6, 6, 0, 0]} barSize={24}>
+                                {(data.invoiceAnalytics || []).map((entry: any, index: number) => {
+                                  const invoiceColors: Record<string, string> = {
+                                    "مؤكدة": "#3b82f6",  // Blue (Confirmed/Awaiting payment)
+                                    "ملغاة": "#ef4444",  // Red (Cancelled)
+                                    "مدفوعة": "#10b981",  // Green (Paid)
+                                    "مسودة": "#64748b",  // Gray/Slate (Draft)
+                                    "مرحلة": "#8b5cf6"   // Purple (Posted)
+                                  };
+                                  return <Cell key={`cell-${index}`} fill={invoiceColors[entry.state] || "#4f46e5"} />;
+                                })}
+                                <LabelList
+                                  dataKey="total"
+                                  position="top"
+                                  formatter={(v: any) => Number(v) > 0 ? `${Number(v).toLocaleString("en-US")} ر.س` : ""}
+                                  style={{ fill: "#475569", fontSize: 9, fontWeight: "bold" }}
+                                  offset={6}
+                                />
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        ) : (
+                          <NoDataState />
+                        )
                       ) : (
                         <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
                       )}
@@ -1208,50 +1387,521 @@ export function AnalyticsDashboardClient({
             {activeTab === "live_ops" && (
               <div className="space-y-8 animate-fadeIn">
                 {/* Tab Header */}
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">الحالة التشغيلية المباشرة للوحدات</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">مراقبة لحظية لحجوزات اليوم والوحدات الجاهزة وعمليات الصيانة القائمة</p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">الحالة التشغيلية المباشرة للوحدات</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">مراقبة لحظية لحجوزات اليوم والوحدات الجاهزة وعمليات الصيانة القائمة</p>
+                  </div>
+                  {liveOpsFilter !== "all" && (
+                    <button
+                      onClick={() => setLiveOpsFilter("all")}
+                      className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold border border-blue-100 transition-all self-start sm:self-auto flex items-center gap-1.5"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>عرض جميع الشقق</span>
+                    </button>
+                  )}
                 </div>
 
-                {/* Active Operational Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {(data.liveUnits || []).map((unit: any, idx: number) => (
-                    <div key={idx} className={`border border-gray-150 border-r-4 rounded-xl p-4 flex flex-col justify-between min-h-[120px] transition-all hover:shadow-md ${unit.color}`}>
-                      <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-gray-900">{unit.title}</h4>
-                        <span className="text-[10px] font-bold px-2 py-0.5 bg-gray-100 rounded-md text-gray-500">
-                          {unit.platform}
-                        </span>
+                {/* Operations KPI Grid (3x2 layout) */}
+                {(() => {
+                  const totalUnits = data.liveUnits?.length || 0;
+                  const occupiedUnits = (data.liveUnits || []).filter((u: any) => u.status === "مأهول" || u.status === "إشغال" || u.status === "لم يغادر").length;
+                  const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+                  const readyUnits = (data.liveUnits || []).filter((u: any) => u.status === "شاغر وجاهز" || u.status === "دخول اليوم" || u.status === "خروج اليوم").length;
+                  const cleaningUnits = (data.liveUnits || []).filter((u: any) => u.status === "تنظيف").length;
+                  const maintUnits = (data.liveUnits || []).filter((u: any) => u.status === "تحت الصيانة" || u.activeMaintTickets > 0).length;
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      {/* Card 1: Total Units */}
+                      <div
+                        onClick={() => setLiveOpsFilter("all")}
+                        className={`bg-gradient-to-br from-slate-50/50 to-slate-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "all" ? "border-slate-400 ring-2 ring-slate-500/20 bg-slate-50/80" : "border-slate-100/70"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">إجمالي الوحدات النشطة</span>
+                          <div className="p-2 bg-slate-500 text-white rounded-xl">
+                            <Building2 className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-2xl font-black text-gray-900">{totalUnits} شقة</p>
+                          <div className="text-[10px] text-gray-400 font-bold">
+                            <span>اضغط هنا لعرض كافة الشقق</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="text-[11px] space-y-0.5">
-                          <p className="text-gray-500">العميل: <span className="font-bold text-gray-700">{unit.guest}</span></p>
-                          <p className="text-gray-400">{unit.time}</p>
+                      {/* Card 2: Occupied Units */}
+                      <div
+                        onClick={() => setLiveOpsFilter("occupied")}
+                        className={`bg-gradient-to-br from-emerald-50/50 to-emerald-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "occupied" ? "border-emerald-400 ring-2 ring-emerald-500/20 bg-emerald-50/80" : "border-emerald-100/40"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">الشقق المأهولة (شغالة)</span>
+                          <div className="p-2 bg-emerald-500 text-white rounded-xl">
+                            <Users className="w-4 h-4" />
+                          </div>
                         </div>
+                        <div className="space-y-1">
+                          <p className="text-2xl font-black text-gray-900">{occupiedUnits} شقة</p>
+                          <div className="text-[10px] text-emerald-600 font-bold">
+                            <span>تصفية بحسب الشقق المسكونة</span>
+                          </div>
+                        </div>
+                      </div>
 
-                        <span className={`text-[10px] font-bold px-2 py-1 rounded-md ${
-                          unit.status === "مأهول" ? "bg-emerald-100 text-emerald-800" :
-                          unit.status === "شاغر وجاهز" ? "bg-blue-100 text-blue-800" :
-                          unit.status === "تنظيف" ? "bg-amber-100 text-amber-800" :
-                          "bg-rose-100 text-rose-800"
-                        }`}>
-                          {unit.status}
-                        </span>
+                      {/* Card 3: Occupancy Rate */}
+                      <div
+                        onClick={() => setLiveOpsFilter("occupied")}
+                        className={`bg-gradient-to-br from-blue-50/50 to-blue-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "occupied" ? "border-blue-400 ring-2 ring-blue-500/20 bg-blue-50/80" : "border-blue-100/40"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">نسبة الإشغال اللحظي</span>
+                          <div className="p-2 bg-blue-500 text-white rounded-xl">
+                            <Percent className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-2xl font-black text-gray-900">{occupancyRate}%</p>
+                          <div className="text-[10px] text-blue-600 font-bold">
+                            <span>معدل التشغيل الفوري للوحدات</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Vacant & Ready */}
+                      <div
+                        onClick={() => setLiveOpsFilter("ready")}
+                        className={`bg-gradient-to-br from-teal-50/50 to-teal-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "ready" ? "border-teal-400 ring-2 ring-teal-500/20 bg-teal-50/80" : "border-teal-100/40"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">شاغر وجاهز</span>
+                          <div className="p-2 bg-teal-500 text-white rounded-xl">
+                            <CheckCircle className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-2xl font-black text-gray-900">{readyUnits} شقة</p>
+                          <div className="text-[10px] text-teal-600 font-bold">
+                            <span>تصفية بالشقق النظيفة الجاهزة</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 5: Cleaning */}
+                      <div
+                        onClick={() => setLiveOpsFilter("cleaning")}
+                        className={`bg-gradient-to-br from-amber-50/50 to-amber-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "cleaning" ? "border-amber-400 ring-2 ring-amber-500/20 bg-amber-50/80" : "border-amber-100/40"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">تحت التنظيف والتحضير</span>
+                          <div className="p-2 bg-amber-500 text-white rounded-xl">
+                            <RefreshCw className="w-4 h-4 animate-spin-slow" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-2xl font-black text-gray-900">{cleaningUnits} شقة</p>
+                          <div className="text-[10px] text-amber-600 font-bold">
+                            <span>تصفية بحسب شقق التدبير المنزلي</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 6: Maintenance */}
+                      <div
+                        onClick={() => setLiveOpsFilter("maintenance")}
+                        className={`bg-gradient-to-br from-rose-50/50 to-rose-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "maintenance" ? "border-rose-400 ring-2 ring-rose-500/20 bg-rose-50/80" : "border-rose-100/40"
+                          }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">يوجد بها أعطال تحتاج صيانة</span>
+                          <div className="p-2 bg-rose-500 text-white rounded-xl">
+                            <Wrench className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-2xl font-black text-gray-900">{maintUnits} شقة</p>
+                          <div className="text-[10px] text-rose-600 font-bold">
+                            <span>تصفية بالشقق التي بها بلاغات صيانة</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
+
+                {/* Active Operational Grid */}
+                {(() => {
+                  const filteredUnits = (data.liveUnits || []).filter((unit: any) => {
+                    if (liveOpsFilter === "all") return true;
+                    if (liveOpsFilter === "occupied") return unit.status === "مأهول" || unit.status === "إشغال" || unit.status === "لم يغادر";
+                    if (liveOpsFilter === "ready") return unit.status === "شاغر وجاهز" || unit.status === "دخول اليوم" || unit.status === "خروج اليوم";
+                    if (liveOpsFilter === "cleaning") return unit.status === "تنظيف";
+                    if (liveOpsFilter === "maintenance") return unit.status === "تحت الصيانة" || unit.activeMaintTickets > 0;
+                    return true;
+                  });
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Section Title with Divider */}
+                      <div className="border-t border-gray-100 pt-6 mt-8 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-800">
+                            {liveOpsFilter === "all" ? "جميع الوحدات العقارية" :
+                              liveOpsFilter === "occupied" ? "الوحدات المأهولة حالياً" :
+                                liveOpsFilter === "ready" ? "الوحدات الشاغرة والجاهزة" :
+                                  liveOpsFilter === "cleaning" ? "الوحدات قيد التنظيف والتحضير" :
+                                    "وحدات بها أعطال تحتاج صيانة"}
+                          </h3>
+                          <p className="text-[11px] text-gray-400 mt-0.5">
+                            عرض تفصيلي للوحدات المطابقة للحالة المحددة أعلاه
+                          </p>
+                        </div>
+                        <span className="text-[11px] font-bold px-2.5 py-1 bg-gray-50 border border-gray-150 rounded-lg text-gray-500">
+                          {filteredUnits.length} وحدة
+                        </span>
+                      </div>
+
+                      {filteredUnits.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-12 text-center bg-gray-50/30 rounded-2xl border border-dashed border-gray-200 p-8">
+                          <div className="p-3 bg-white shadow-sm border border-gray-100 rounded-full mb-3 text-gray-400">
+                            <Building2 className="w-6 h-6" />
+                          </div>
+                          <p className="text-sm font-bold text-gray-700">لا توجد شقق في هذه الحالة حالياً</p>
+                          <p className="text-xs text-gray-400 mt-1">المحفظة المحددة لا تحتوي على أي وحدات تنطبق عليها هذه الحالة حالياً.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                          {filteredUnits.map((unit: any, idx: number) => {
+                            const isAirbnb = unit.platform === "Airbnb";
+                            const isGathern = unit.platform === "Gathern";
+
+                            return (
+                              <div key={idx} className={`bg-white border border-gray-150 border-r-4 rounded-2xl p-5 flex flex-col justify-between min-h-[220px] transition-all hover:shadow-md hover:scale-[1.01] duration-205 ${unit.status === "مأهول" ? "border-r-emerald-500" :
+                                  unit.status === "إشغال" ? "border-r-indigo-500" :
+                                    unit.status === "لم يغادر" ? "border-r-rose-500" :
+                                      unit.status === "شاغر وجاهز" ? "border-r-blue-500" :
+                                        unit.status === "دخول اليوم" ? "border-r-sky-500" :
+                                          unit.status === "خروج اليوم" ? "border-r-purple-500" :
+                                            unit.status === "تنظيف" ? "border-r-amber-500" :
+                                              "border-r-rose-500"
+                                }`}>
+                                {/* Header: Title, Code, Status & Platform */}
+                                <div className="space-y-1.5">
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <h4 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                                        {unit.title}
+                                        {unit.unitCode && (
+                                          <span className="text-[10px] font-mono text-gray-400">({unit.unitCode})</span>
+                                        )}
+                                      </h4>
+                                    </div>
+
+                                    {/* Platform Badge */}
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isAirbnb ? "bg-red-50 text-red-600 border border-red-100" :
+                                        isGathern ? "bg-orange-50 text-orange-600 border border-orange-100" :
+                                          "bg-slate-50 text-slate-600 border border-slate-100"
+                                      }`}>
+                                      {unit.platform}
+                                    </span>
+                                  </div>
+
+                                  {/* Status Pill */}
+                                  <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${unit.status === "مأهول" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                                        unit.status === "إشغال" ? "bg-indigo-50 text-indigo-700 border border-indigo-100" :
+                                          unit.status === "لم يغادر" ? "bg-rose-50 text-rose-700 border border-rose-100" :
+                                            unit.status === "شاغر وجاهز" ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                                              unit.status === "دخول اليوم" ? "bg-sky-50 text-sky-700 border border-sky-100" :
+                                                unit.status === "خروج اليوم" ? "bg-purple-50 text-purple-700 border border-purple-100" :
+                                                  unit.status === "تنظيف" ? "bg-amber-50 text-amber-700 border border-amber-100" :
+                                                    "bg-rose-50 text-rose-700 border border-rose-100"
+                                      }`}>
+                                      <span className={`w-1.5 h-1.5 rounded-full ${unit.status === "مأهول" ? "bg-emerald-500" :
+                                          unit.status === "إشغال" ? "bg-indigo-500" :
+                                            unit.status === "لم يغادر" ? "bg-rose-500" :
+                                              unit.status === "شاغر وجاهز" ? "bg-blue-500" :
+                                                unit.status === "دخول اليوم" ? "bg-sky-500" :
+                                                  unit.status === "خروج اليوم" ? "bg-purple-500" :
+                                                    unit.status === "تنظيف" ? "bg-amber-500" :
+                                                      "bg-rose-500"
+                                        }`} />
+                                      {unit.status}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Body 1: Operational Status (Guest & Dates) */}
+                                <div className="my-4 py-3 border-y border-gray-100/70 space-y-2.5">
+                                  {(unit.guest || unit.checkinDate || unit.checkoutDate) ? (
+                                    <div className="space-y-2">
+                                      {unit.guest ? (
+                                        <div className="flex items-center gap-2 text-xs text-gray-650">
+                                          <User className="w-3.5 h-3.5 text-gray-400" />
+                                          <span>العميل: <span className="font-bold text-gray-800">{unit.guest}</span></span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex items-center gap-2 text-xs text-gray-450 italic">
+                                          <User className="w-3.5 h-3.5 text-gray-300" />
+                                          <span>العميل: <span className="text-gray-400">-- لا يوجد ضيف --</span></span>
+                                        </div>
+                                      )}
+
+                                      <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-500">
+                                        {unit.checkinDate && (
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-gray-400">دخول:</span>
+                                            <span className="font-semibold text-gray-700">{unit.checkinDate}</span>
+                                          </div>
+                                        )}
+                                        {unit.checkoutDate && (
+                                          <div className="flex items-center gap-1">
+                                            <span className="text-gray-400">خروج:</span>
+                                            <span className="font-semibold text-gray-700">{unit.checkoutDate}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-gray-400 py-1.5 italic flex items-center gap-1.5 justify-center bg-gray-50/50 rounded-lg border border-dashed border-gray-150">
+                                      <CheckCircle className="w-3.5 h-3.5 text-teal-500" />
+                                      <span>الوحدة جاهزة ولا توجد حجوزات نشطة اليوم</span>
+                                    </div>
+                                  )}
+
+                                  {/* Notes (if any) */}
+                                  {unit.notes && (
+                                    <div className="bg-amber-50/40 border border-amber-100/50 p-2 rounded-lg text-[10px] text-amber-800 leading-normal flex items-start gap-1">
+                                      <AlertTriangle className="w-3 h-3 mt-0.5 text-amber-500 flex-shrink-0" />
+                                      <span className="line-clamp-2">{unit.notes}</span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Body 2: Analytics & Performance Metrics */}
+                                <div className="space-y-2">
+                                  <span className="text-[10px] font-bold text-gray-450 tracking-wider block">مؤشرات الأداء والتشغيل للشهر الحالي</span>
+                                  <div className="grid grid-cols-3 gap-2 bg-gray-50/80 p-2.5 rounded-xl border border-gray-100">
+                                    <div className="text-center space-y-0.5">
+                                      <span className="text-[9px] text-gray-400 font-bold block">إجمالي الدخل</span>
+                                      <span className="text-[11px] font-black text-gray-800 block">
+                                        {unit.revenue > 0 ? `${unit.revenue.toLocaleString()} ر.س` : "0 ر.س"}
+                                      </span>
+                                    </div>
+                                    <div className="text-center space-y-0.5 border-x border-gray-200/60">
+                                      <span className="text-[9px] text-gray-400 font-bold block">الحجوزات</span>
+                                      <span className="text-[11px] font-black text-gray-800 block">
+                                        {unit.bookingsCount} {unit.bookingsCount === 1 ? "حجز" : "حجوزات"}
+                                      </span>
+                                    </div>
+                                    <div className="text-center space-y-0.5">
+                                      <span className="text-[9px] text-gray-400 font-bold block">بلاغات صيانة</span>
+                                      <span className={`text-[11px] font-black block ${unit.activeMaintTickets > 0 ? "text-rose-600" : "text-gray-800"}`}>
+                                        {unit.activeMaintTickets} {unit.activeMaintTickets === 1 ? "عطل" : "أعطال"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Miniature Occupancy Calendar */}
+                                <div className="mt-4 space-y-1.5">
+                                  <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold">
+                                    <span>مخطط إشغال الشهر الحالي</span>
+                                    <span className="text-gray-500 font-medium">
+                                      {(() => {
+                                        const months = [
+                                          "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+                                          "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+                                        ];
+                                        const cDate = new Date();
+                                        return `${months[cDate.getMonth()]} ${cDate.getFullYear()}`;
+                                      })()}
+                                    </span>
+                                  </div>
+
+                                  {/* Calendar Grid */}
+                                  <div className="border border-gray-100 rounded-xl p-2 bg-slate-50/30" dir="rtl">
+                                    {/* Weekdays header */}
+                                    <div className="grid grid-cols-7 gap-1 text-center text-[9px] font-bold text-gray-400 mb-1">
+                                      {["ح", "ن", "ث", "ر", "خ", "ج", "س"].map((dayName, dIdx) => (
+                                        <div key={dIdx} className="h-4 flex items-center justify-center">
+                                          {dayName}
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* Days Grid */}
+                                    <div className="grid grid-cols-7 gap-1 text-center">
+                                      {(() => {
+                                        const cDate = new Date();
+                                        const cYear = cDate.getFullYear();
+                                        const cMonth = cDate.getMonth();
+                                        const todayDay = cDate.getDate();
+
+                                        // First day of current month
+                                        const firstDayDate = new Date(cYear, cMonth, 1);
+                                        const offset = firstDayDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+                                        const daysInM = new Date(cYear, cMonth + 1, 0).getDate();
+                                        const cells = [];
+
+                                        // Push offset empty cells
+                                        for (let i = 0; i < offset; i++) {
+                                          cells.push(<div key={`empty-${i}`} className="h-5" />);
+                                        }
+
+                                        // Push actual day cells
+                                        const bDays = new Set(unit.bookedDays || []);
+                                        for (let day = 1; day <= daysInM; day++) {
+                                          const isBooked = bDays.has(day);
+                                          const isToday = day === todayDay;
+
+                                          cells.push(
+                                            <div
+                                              key={`day-${day}`}
+                                              className={`h-5 w-full flex items-center justify-center text-[9px] rounded-md font-bold transition-all ${isBooked
+                                                  ? "bg-emerald-500 text-white shadow-[0_1px_3px_rgba(16,185,129,0.3)]"
+                                                  : "text-gray-600 hover:bg-slate-100 bg-white border border-gray-100/50"
+                                                } ${isToday ? "ring-1 ring-blue-500" : ""}`}
+                                              title={isBooked ? "محجوز" : "متاح"}
+                                            >
+                                              {day}
+                                            </div>
+                                          );
+                                        }
+
+                                        return cells;
+                                      })()}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Card Footer: Quick links */}
+                                <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px]">
+                                  <div className="flex items-center gap-1 text-gray-400">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>
+                                      {unit.updatedAt
+                                        ? `آخر تحديث: ${new Date(unit.updatedAt).toLocaleTimeString("ar-SA", { hour: '2-digit', minute: '2-digit' })}`
+                                        : "حالة تلقائية"}
+                                    </span>
+                                  </div>
+
+                                  <a
+                                    href={`/dashboard/units/${unit.id}?from=analytics`}
+                                    className="text-blue-600 hover:text-blue-700 font-bold flex items-center gap-0.5 transition-colors"
+                                  >
+                                    <span>ملف الوحدة</span>
+                                    <ArrowUpRight className="w-3.5 h-3.5" />
+                                  </a>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
             {activeTab === "profitability" && (
               <div className="space-y-8 animate-fadeIn">
-                {/* Tab Header */}
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">تحليل ربحية الوحدات العقارية</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">بيان تفصيلي بصافي الربح والهامش المئوي لكل وحدة بعد خصم تكاليف التشغيل والصيانة</p>
+                {/* Tab Header & Search Input */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">تحليل ربحية الوحدات العقارية</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">بيان تفصيلي بصافي الربح ومؤشرات الإشغال ومتوسط السعر اليومي لكل وحدة عقارية</p>
+                  </div>
+
+                  {/* Search box inside the tab */}
+                  <div className="relative min-w-[280px] self-start md:self-auto">
+                    <input
+                      type="text"
+                      placeholder="ابحث عن وحدة عقارية..."
+                      value={profitabilitySearch}
+                      onChange={(e) => setProfitabilitySearch(e.target.value)}
+                      className="w-full bg-gray-50/50 hover:bg-gray-50 focus:bg-white border border-gray-200 text-gray-800 rounded-xl pr-9 pl-3 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-right"
+                    />
+                    <Search className="w-4 h-4 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
+
+                {/* Advanced Hospitality KPI Summary Cards for Profitability */}
+                {(() => {
+                  const list = data.profitability || [];
+                  if (list.length === 0) return null;
+
+                  // Find top earning unit
+                  const topUnit = [...list].sort((a: any, b: any) => b.revenueVal - a.revenueVal)[0];
+
+                  // Calculate average ADR for units with bookings
+                  const unitsWithBookings = list.filter((u: any) => u.adrVal > 0);
+                  const avgADR = unitsWithBookings.length > 0
+                    ? Math.round(unitsWithBookings.reduce((sum: number, u: any) => sum + u.adrVal, 0) / unitsWithBookings.length)
+                    : 0;
+
+                  // Calculate average occupancy
+                  const avgOccupancy = Math.round(list.reduce((sum: number, u: any) => sum + u.occupancyVal, 0) / list.length);
+
+                  return (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                      {/* Top Earning Unit Card */}
+                      <div className="bg-gradient-to-br from-indigo-50/40 to-indigo-50/10 border border-indigo-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg">الوحدة الأعلى دخلاً</span>
+                          <Building2 className="w-5 h-5 text-indigo-500" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-base font-black text-gray-800">{topUnit ? topUnit.name : "N/A"}</h4>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xl font-black text-indigo-600">{topUnit ? topUnit.revenue : "0 ر.س"}</span>
+                            <span className="text-[10px] text-gray-450 font-bold">بمعدل إشغال {topUnit ? topUnit.occupancy : "0%"}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Average ADR Card */}
+                      <div className="bg-gradient-to-br from-emerald-50/40 to-emerald-50/10 border border-emerald-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg">متوسط سعر الليلة (ADR)</span>
+                          <DollarSign className="w-5 h-5 text-emerald-500" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-base font-black text-gray-800">معدل البيع لليوم المأهول</h4>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xl font-black text-emerald-600">{avgADR.toLocaleString()} ر.س</span>
+                            <span className="text-[10px] text-gray-450 font-bold">للغرف المحجوزة</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Average Occupancy Card */}
+                      <div className="bg-gradient-to-br from-sky-50/40 to-sky-50/10 border border-sky-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-sky-700 bg-sky-50 px-2.5 py-1 rounded-lg">متوسط نسبة الإشغال للوحدات</span>
+                          <Percent className="w-5 h-5 text-sky-500" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <h4 className="text-base font-black text-gray-800">متوسط الأيام المأهولة</h4>
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-xl font-black text-sky-600">{avgOccupancy}%</span>
+                            <span className="text-[10px] text-gray-450 font-bold">من إجمالي الأيام المتاحة</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Profitability Table */}
                 <div className="border border-gray-150 rounded-2xl overflow-hidden bg-white shadow-sm">
@@ -1259,31 +1909,105 @@ export function AnalyticsDashboardClient({
                     <table className="w-full text-sm text-right">
                       <thead className="bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-600">
                         <tr>
-                          <th className="px-5 py-4">اسم الوحدة العقارية</th>
-                          <th className="px-5 py-4">القناة المهيمنة</th>
-                          <th className="px-5 py-4">إجمالي الإيراد</th>
-                          <th className="px-5 py-4">التكاليف التقديرية</th>
-                          <th className="px-5 py-4">صافي الأرباح</th>
-                          <th className="px-5 py-4 text-left">هامش الربحية</th>
+                          {(() => {
+                            const renderSortHeader = (field: "name" | "revenue" | "cost" | "profit" | "margin" | "occupancy" | "adr" | "revpar", label: string, isLeft: boolean = false) => {
+                              const isActive = profitabilitySortField === field;
+                              return (
+                                <th
+                                  onClick={() => {
+                                    if (isActive) {
+                                      setProfitabilitySortAsc(!profitabilitySortAsc);
+                                    } else {
+                                      setProfitabilitySortField(field);
+                                      setProfitabilitySortAsc(false); // default DESC
+                                    }
+                                  }}
+                                  className={`px-4 py-4 cursor-pointer hover:bg-gray-100/70 hover:text-gray-900 transition-colors select-none ${isLeft ? "text-left" : "text-right"}`}
+                                >
+                                  <div className={`flex items-center gap-1.5 ${isLeft ? "justify-start" : "justify-end"}`}>
+                                    <span>{label}</span>
+                                    <ArrowUpDown className={`w-3.5 h-3.5 ${isActive ? "text-blue-500 font-bold" : "text-gray-405"}`} />
+                                  </div>
+                                </th>
+                              );
+                            };
+                            return (
+                              <>
+                                {renderSortHeader("name", "اسم الوحدة")}
+                                {renderSortHeader("occupancy", "نسبة الإشغال")}
+                                {renderSortHeader("adr", "سعر الليلة (ADR)")}
+                                {renderSortHeader("revpar", "العائد المتاح (RevPAR)")}
+                                {renderSortHeader("revenue", "إجمالي الإيراد")}
+                                {renderSortHeader("cost", "التكاليف التقديرية")}
+                                {renderSortHeader("profit", "صافي الأرباح")}
+                                {renderSortHeader("margin", "هامش الربح", true)}
+                              </>
+                            );
+                          })()}
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
-                        {(data.profitability || []).map((row: any, idx: number) => (
-                          <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-5 py-4 font-bold text-gray-900">{row.name}</td>
-                            <td className="px-5 py-4 text-gray-500">{row.platform}</td>
-                            <td className="px-5 py-4 text-gray-900">{row.revenue}</td>
-                            <td className="px-5 py-4 text-rose-600">{row.cost}</td>
-                            <td className="px-5 py-4 text-emerald-600 font-bold">{row.profit}</td>
-                            <td className="px-5 py-4 text-left">
-                              <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                                row.status === "high" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
-                              }`}>
-                                {row.margin}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {(() => {
+                          const filtered = (data.profitability || [])
+                            .filter((row: any) => row.name.toLowerCase().includes(profitabilitySearch.toLowerCase()));
+
+                          const sorted = [...filtered].sort((a: any, b: any) => {
+                            let aVal: any = a[profitabilitySortField + (profitabilitySortField === "name" ? "" : "Val")];
+                            let bVal: any = b[profitabilitySortField + (profitabilitySortField === "name" ? "" : "Val")];
+
+                            if (typeof aVal === 'string') {
+                              aVal = aVal.toLowerCase();
+                              bVal = bVal.toLowerCase();
+                            }
+
+                            if (aVal < bVal) return profitabilitySortAsc ? -1 : 1;
+                            if (aVal > bVal) return profitabilitySortAsc ? 1 : -1;
+                            return 0;
+                          });
+
+                          if (sorted.length === 0) {
+                            return (
+                              <tr>
+                                <td colSpan={8} className="px-5 py-8 text-center text-gray-400">
+                                  لا توجد نتائج مطابقة لبحثك.
+                                </td>
+                              </tr>
+                            );
+                          }
+
+                          return sorted.map((row: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-4 py-4 font-bold text-gray-900">{row.name}</td>
+
+                              {/* Occupancy Rate Column */}
+                              <td className="px-4 py-4">
+                                <div className="flex items-center gap-2 justify-end">
+                                  <span className="text-xs font-bold text-gray-800">{row.occupancy}</span>
+                                  <div className="w-12 bg-gray-100 h-1.5 rounded-full overflow-hidden hidden sm:block">
+                                    <div
+                                      className="bg-sky-500 h-full rounded-full"
+                                      style={{ width: row.occupancy }}
+                                    />
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* ADR & RevPAR Column */}
+                              <td className="px-4 py-4 text-gray-700">{row.adr}</td>
+                              <td className="px-4 py-4 text-gray-500">{row.revpar}</td>
+
+                              <td className="px-4 py-4 text-gray-900">{row.revenue}</td>
+                              <td className="px-4 py-4 text-rose-600">{row.cost}</td>
+                              <td className="px-4 py-4 text-emerald-600 font-bold">{row.profit}</td>
+                              <td className="px-4 py-4 text-left">
+                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${row.status === "high" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                  }`}>
+                                  {row.margin}
+                                </span>
+                              </td>
+                            </tr>
+                          ));
+                        })()}
                       </tbody>
                     </table>
                   </div>
@@ -1296,59 +2020,114 @@ export function AnalyticsDashboardClient({
                 {/* Tab Header */}
                 <div>
                   <h2 className="text-lg font-bold text-gray-900">توقعات المبيعات وعلاقات العملاء</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">تحليل تدفق صفقات المبيعات النشطة واحتمالية الإقفال المالي للحجوزات</p>
+                  <p className="text-xs text-gray-500 mt-0.5">تحليل تدفق صفقات المبيعات النشطة، توزيع الحالات، وتوقعات التحصيل المالي</p>
                 </div>
 
-                {/* Sales Funnel and Recent Deals */}
+                {/* CRM Advanced KPI Summary Cards */}
+                {data?.crmKPIs && (
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                    {/* Pipeline Value */}
+                    <div className="bg-white border border-gray-150 rounded-2xl p-5 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between text-gray-400">
+                        <span className="text-[11px] font-bold text-gray-500">قيمة الفرص النشطة</span>
+                        <DollarSign className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="text-lg font-black text-gray-900">{data.crmKPIs.pipelineValue}</h4>
+                        <p className="text-[10px] text-blue-600 font-bold">{data.crmKPIs.openCount} صفقات نشطة</p>
+                      </div>
+                    </div>
+
+                    {/* Won Value */}
+                    <div className="bg-white border border-gray-150 rounded-2xl p-5 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between text-gray-400">
+                        <span className="text-[11px] font-bold text-gray-500">قيمة الصفقات المؤكدة</span>
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="text-lg font-black text-gray-900">{data.crmKPIs.wonValue}</h4>
+                        <p className="text-[10px] text-emerald-600 font-bold">{data.crmKPIs.wonCount} صفقات مغلقة ناجحة</p>
+                      </div>
+                    </div>
+
+                    {/* Average Deal Value */}
+                    <div className="bg-white border border-gray-150 rounded-2xl p-5 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between text-gray-400">
+                        <span className="text-[11px] font-bold text-gray-500">متوسط قيمة الصفقة</span>
+                        <Briefcase className="w-4 h-4 text-purple-500" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="text-lg font-black text-gray-900">{data.crmKPIs.avgDealValue}</h4>
+                        <p className="text-[10px] text-purple-600 font-bold">لكل عميل محتمل</p>
+                      </div>
+                    </div>
+
+                    {/* Conversion Rate */}
+                    <div className="bg-white border border-gray-150 rounded-2xl p-5 space-y-2 shadow-sm">
+                      <div className="flex items-center justify-between text-gray-400">
+                        <span className="text-[11px] font-bold text-gray-500">معدل نجاح الصفقات</span>
+                        <Percent className="w-4 h-4 text-indigo-500" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="text-lg font-black text-gray-900">{data.crmKPIs.conversionRate}</h4>
+                        <p className="text-[10px] text-indigo-600 font-bold">إجمالي العملاء: {data.crmKPIs.totalCustomers}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Sales Funnel and Status Distribution Chart Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Pipeline Stages */}
-                  <div className="lg:col-span-2 border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900">قمع المبيعات ومراحل الصفقات (Pipeline)</h3>
+                  {/* Pipeline Stages (Col-span 2) */}
+                  <div className="lg:col-span-2 border border-gray-150 rounded-2xl p-5 bg-white shadow-sm space-y-4">
+                    <h3 className="text-sm font-bold text-gray-900">قمع المبيعات ومراحل الصفقات النشطة (Pipeline Funnel)</h3>
 
                     {/* Recharts CRM BarChart */}
-                    <div className="w-full h-[220px] pt-2" style={{ direction: "ltr" }}>
+                    <div className="w-full h-[240px] pt-2" style={{ direction: "ltr" }}>
                       {isMounted ? (
                         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                           <BarChart
                             data={(data.crmPipeline || []).map((item: any) => ({
                               name: item.stage.split(" / ")[0],
-                              percentage: parseFloat(item.percent.replace("%", "")),
+                              value: Number(item.rawValue || 0),
                               valueText: item.value,
                               countText: item.count,
                             }))}
                             layout="vertical"
-                            margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                            margin={{ top: 5, right: 75, left: 10, bottom: 5 }}
                           >
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                            <XAxis type="number" domain={[0, 100]} hide />
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" strokeOpacity={0.65} />
+                            <XAxis type="number" hide />
                             <YAxis
                               dataKey="name"
                               type="category"
                               axisLine={false}
                               tickLine={false}
                               tick={{ fill: "#334155", fontSize: 10, fontWeight: "bold" }}
-                              width={120}
+                              width={140}
                             />
                             <RechartsTooltip
+                              cursor={false}
                               content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
                                   const item = payload[0].payload;
                                   return (
                                     <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
-                                      <p className="text-gray-400">{item.name}</p>
-                                      <p className="text-white">الصفقات: {item.countText}</p>
-                                      <p className="text-emerald-400">القيمة الإجمالية: {item.valueText}</p>
+                                      <p className="text-gray-400 font-black">{item.name}</p>
+                                      <p className="text-white">العدد: {item.countText}</p>
+                                      <p className="text-emerald-400">القيمة المتوقعة: {item.valueText}</p>
                                     </div>
                                   );
                                 }
                                 return null;
                               }}
                             />
-                            <Bar dataKey="percentage" radius={[0, 8, 8, 0]} barSize={16}>
-                              {(data.crmPipeline || []).map((_, index) => {
-                                const colors = ["#3b82f6", "#6366f1", "#f59e0b", "#10b981"];
+                            <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={16}>
+                              {(data.crmPipeline || []).map((_: any, index: number) => {
+                                const colors = ["#3b82f6", "#f59e0b", "#10b981", "#6366f1"];
                                 return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
                               })}
+                              <LabelList dataKey="valueText" position="right" style={{ fill: "#475569", fontSize: 10, fontWeight: "bold" }} />
                             </Bar>
                           </BarChart>
                         </ResponsiveContainer>
@@ -1358,27 +2137,128 @@ export function AnalyticsDashboardClient({
                     </div>
                   </div>
 
-                  {/* Recent Active Deals */}
-                  <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900">أحدث صفقات CRM النشطة</h3>
+                  {/* Deals Distribution Pie Chart (Col-span 1) */}
+                  <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between space-y-4">
+                    <h3 className="text-sm font-bold text-gray-900">توزيع صفقات CRM حسب الحالة</h3>
 
-                    <div className="space-y-4 flex-1">
-                      {(data.recentDeals || []).map((deal: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                          <div className="text-xs space-y-0.5">
-                            <p className="font-bold text-gray-800 truncate max-w-[150px]">{deal.company}</p>
-                            <p className="text-gray-500 font-semibold">{deal.price}</p>
+                    <div className="w-full h-[200px] flex items-center justify-center relative" style={{ direction: "ltr" }}>
+                      {isMounted && data?.crmStatusDistribution ? (
+                        <>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={data.crmStatusDistribution}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={4}
+                                dataKey="value"
+                              >
+                                {data.crmStatusDistribution.map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={entry.color} />
+                                ))}
+                              </Pie>
+                              <RechartsTooltip
+                                wrapperStyle={{ zIndex: 100 }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    const pData = payload[0].payload;
+                                    return (
+                                      <div className="bg-slate-900 text-white p-2.5 rounded-xl shadow-lg text-xs font-bold text-right dir-rtl">
+                                        <p className="font-bold">{pData.name}</p>
+                                        <p className="text-emerald-400">العدد: {pData.value} صفقة</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0" style={{ direction: "rtl" }}>
+                            <span className="text-2xl font-black text-gray-900 leading-none">
+                              {data.crmStatusDistribution.reduce((acc: number, item: any) => acc + item.value, 0)}
+                            </span>
+                            <span className="text-[10px] text-gray-400 font-bold mt-1">إجمالي الصفقات</span>
                           </div>
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-md ${
-                            deal.status === "تم التأكيد" ? "bg-emerald-100 text-emerald-800" :
-                            deal.status === "بانتظار الدفع" ? "bg-amber-100 text-amber-800" :
-                            "bg-blue-100 text-blue-800"
-                          }`}>
-                            {deal.status}
-                          </span>
-                        </div>
-                      ))}
+                        </>
+                      ) : (
+                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
+                      )}
                     </div>
+
+                    {/* Custom Legend */}
+                    {data?.crmStatusDistribution && (
+                      <div className="flex justify-center gap-4 flex-wrap">
+                        {data.crmStatusDistribution.map((entry: any, index: number) => (
+                          <div key={index} className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
+                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                            <span>{entry.name} ({entry.value})</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Detailed CRM Active Deals List */}
+                <div className="border border-gray-150 rounded-2xl bg-white shadow-sm overflow-hidden space-y-4 p-5">
+                  <h3 className="text-sm font-bold text-gray-900">أحدث الصفقات والفرص البيعية النشطة</h3>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-right">
+                      <thead className="bg-gray-50 border-b border-gray-100 text-xs font-bold text-gray-600">
+                        <tr>
+                          <th className="px-5 py-3 text-right">اسم الصفقة</th>
+                          <th className="px-5 py-3 text-right">العميل</th>
+                          <th className="px-5 py-3 text-right">المبلغ المتوقع</th>
+                          <th className="px-5 py-3 text-right">المرحلة الحالية</th>
+                          <th className="px-5 py-3 text-right">الأولوية</th>
+                          <th className="px-5 py-3 text-left">تاريخ الإغلاق المتوقع</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 text-gray-700 font-medium">
+                        {(data.recentDeals || []).length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-5 py-8 text-center text-gray-400">
+                              لا توجد صفقات مسجلة حالياً.
+                            </td>
+                          </tr>
+                        ) : (
+                          (data.recentDeals || []).map((deal: any, idx: number) => (
+                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
+                              <td className="px-5 py-4 font-bold text-gray-900">{deal.title}</td>
+                              <td className="px-5 py-4 text-gray-500">{deal.customer}</td>
+                              <td className="px-5 py-4 text-gray-900 font-bold">{deal.price}</td>
+
+                              {/* Stage Badge */}
+                              <td className="px-5 py-4">
+                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${deal.stage === "completed" || deal.stage === "management" ? "bg-emerald-50 text-emerald-700" :
+                                    deal.stage === "partial_payment" ? "bg-amber-50 text-amber-700" :
+                                      deal.stage === "negotiation" ? "bg-blue-50 text-blue-700" :
+                                        "bg-gray-50 text-gray-600"
+                                  }`}>
+                                  {deal.status}
+                                </span>
+                              </td>
+
+                              {/* Priority Badge */}
+                              <td className="px-5 py-4">
+                                <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${deal.priority === "high" ? "bg-rose-50 text-rose-700" :
+                                    deal.priority === "medium" ? "bg-amber-50 text-amber-700" :
+                                      "bg-blue-50 text-blue-700"
+                                  }`}>
+                                  {deal.priority === "high" ? "مرتفعة" : deal.priority === "medium" ? "متوسطة" : "منخفضة"}
+                                </span>
+                              </td>
+
+                              <td className="px-5 py-4 text-left text-xs text-gray-500 font-semibold">{deal.expectedClose}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -1446,6 +2326,7 @@ export function AnalyticsDashboardClient({
                               width={120}
                             />
                             <RechartsTooltip
+                              cursor={false}
                               content={({ active, payload }) => {
                                 if (active && payload && payload.length) {
                                   const item = payload[0].payload;

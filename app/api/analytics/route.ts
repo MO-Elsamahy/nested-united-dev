@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query } from "@/lib/db";
+import { query, queryOne } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { getCacheKey, analyticsCache, CACHE_TTL, clearAnalyticsCache } from "@/lib/analytics-cache";
@@ -283,24 +283,63 @@ export async function GET(req: NextRequest) {
     );
     const vendorBills = Number(invoicesResult[0]?.total || 0);
 
-    // HR payroll
-    const hrEmployeeStatsForExpenses = await query<{ basic: number | string; allowances: number | string }>(
-      `SELECT SUM(basic_salary) as basic, 
-              SUM(housing_allowance + transport_allowance + other_allowances) as allowances 
+    // HR payroll - Fetched and calculated dynamically by hire_date
+    interface EmployeeRow {
+      basic_salary: number | string;
+      housing_allowance: number | string;
+      transport_allowance: number | string;
+      other_allowances: number | string;
+      hire_date: string | null;
+      salary_currency: string | null;
+    }
+    const employees = await query<EmployeeRow>(
+      `SELECT basic_salary, housing_allowance, transport_allowance, other_allowances, hire_date, salary_currency 
        FROM hr_employees 
        WHERE status = 'active' AND exclude_from_payroll = 0`
     );
-    const basicSalaryForExpenses = Number(hrEmployeeStatsForExpenses[0]?.basic || 0);
-    const allowancesForExpenses = Number(hrEmployeeStatsForExpenses[0]?.allowances || 0);
-    const deductionsForExpenses = Math.round(basicSalaryForExpenses * 0.02); 
-    const netPayrollForExpenses = basicSalaryForExpenses + allowancesForExpenses - deductionsForExpenses;
+
+    const calculatePayrollForPeriod = (startStr: string, endStr: string) => {
+      const start = new Date(startStr);
+      const end = new Date(endStr);
+      let totalPayroll = 0;
+
+      for (const emp of employees) {
+        const hireDate = emp.hire_date ? new Date(emp.hire_date) : null;
+        if (hireDate && hireDate > end) {
+          continue;
+        }
+
+        const currency = emp.salary_currency || 'SAR';
+        let basic = Number(emp.basic_salary || 0);
+        let allowances = Number(emp.housing_allowance || 0) + 
+                           Number(emp.transport_allowance || 0) + 
+                           Number(emp.other_allowances || 0);
+
+        // Convert EGP to SAR (Exchange rate: 1 SAR = 13.80 EGP -> 1 EGP = 0.0725 SAR)
+        if (currency.toUpperCase() === 'EGP') {
+          basic = basic * 0.0725;
+          allowances = allowances * 0.0725;
+        }
+
+        const deductions = Math.round(basic * 0.02);
+        const monthlyNet = basic + allowances - deductions;
+
+        if (!hireDate || hireDate <= start) {
+          const days = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+          totalPayroll += (monthlyNet / 30) * days;
+        } else {
+          const days = Math.max(1, Math.ceil((end.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+          totalPayroll += (monthlyNet / 30) * days;
+        }
+      }
+      return Math.round(totalPayroll);
+    };
 
     // Total active units count company-wide
     const totalUnitsCountResult = await query<{ count: number }>("SELECT COUNT(*) as count FROM units WHERE status = 'active'");
     const totalUnitsCount = Number(totalUnitsCountResult[0]?.count || 24);
 
-    const overheadPayroll = (netPayrollForExpenses / 30) * daysCount;
-    const allocatedPayroll = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * overheadPayroll : 0;
+    const allocatedPayroll = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * calculatePayrollForPeriod(startDateStr, endDateStr) : 0;
     const allocatedInvoices = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * vendorBills : 0;
 
     const totalExpenses = Math.round(operatingExpenses + maintenanceExpenses + allocatedPayroll + allocatedInvoices);
@@ -415,8 +454,8 @@ export async function GET(req: NextRequest) {
       const vendorBillsVal = Number(invoicesRes[0]?.total || 0);
 
       // Payroll overhead allocated
-      const overheadPay = (netPayrollForExpenses / 30) * daysInPeriod;
-      const allocPayroll = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * overheadPay : 0;
+      const periodPayroll = calculatePayrollForPeriod(startStr, endStr);
+      const allocPayroll = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * periodPayroll : 0;
       const allocInvoices = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * vendorBillsVal : 0;
 
       return Math.round(opExpenses + maintExpenses + allocPayroll + allocInvoices);
@@ -568,41 +607,191 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 10. Live Unit Operations
+    // 10. Live Unit Operations (Synced with Unit Readiness Page Logic)
+    const calNow = new Date();
+    const todayStr = `${calNow.getFullYear()}-${String(calNow.getMonth() + 1).padStart(2, '0')}-${String(calNow.getDate()).padStart(2, '0')}`;
+    const currentMonthStart = `${calNow.getFullYear()}-${String(calNow.getMonth() + 1).padStart(2, '0')}-01`;
+    const calLastDay = new Date(calNow.getFullYear(), calNow.getMonth() + 1, 0).getDate();
+    const currentMonthEnd = `${calNow.getFullYear()}-${String(calNow.getMonth() + 1).padStart(2, '0')}-${String(calLastDay).padStart(2, '0')}`;
+
+    const activeBookings = await query<any>(
+      `SELECT unit_id, checkin_date as start_date, checkout_date as end_date FROM bookings
+       WHERE checkout_date >= ? AND checkin_date <= ?`,
+      [currentMonthStart, currentMonthEnd]
+    );
+
+    const activeReservations = await query<any>(
+      `SELECT unit_id, start_date, end_date FROM reservations
+       WHERE end_date >= ? AND start_date <= ?`,
+      [currentMonthStart, currentMonthEnd]
+    );
+
     const liveUnitsList = await query<any>(
-      `SELECT u.unit_name, u.readiness_status, u.readiness_guest_name, u.readiness_checkout_date,
-              (SELECT platform FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= CURRENT_DATE() AND r.end_date >= CURRENT_DATE() LIMIT 1) as platform
+      `SELECT u.*,
+              (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date = ? LIMIT 1) as manual_checkin_guest,
+              (SELECT r.summary FROM reservations r WHERE r.unit_id = u.id AND r.start_date = ? LIMIT 1) as ical_checkin_guest,
+              (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkout_date = ? LIMIT 1) as manual_checkout_guest,
+              (SELECT r.summary FROM reservations r WHERE r.unit_id = u.id AND r.end_date = ? LIMIT 1) as ical_checkout_guest,
+              (SELECT b.checkin_date FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date = ? LIMIT 1) as manual_checkin_date,
+              (SELECT r.start_date FROM reservations r WHERE r.unit_id = u.id AND r.start_date = ? LIMIT 1) as ical_checkin_date,
+              (SELECT b.checkout_date FROM bookings b WHERE b.unit_id = u.id AND b.checkout_date = ? LIMIT 1) as manual_checkout_date,
+              (SELECT r.end_date FROM reservations r WHERE r.unit_id = u.id AND r.end_date = ? LIMIT 1) as ical_checkout_date,
+              (SELECT b.guest_name FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_guest,
+              (SELECT r.summary FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= ? AND r.end_date >= ? ORDER BY r.start_date DESC LIMIT 1) as active_ical_guest,
+              (SELECT b.checkin_date FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_checkin,
+              (SELECT r.start_date FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= ? AND r.end_date >= ? ORDER BY r.start_date DESC LIMIT 1) as active_ical_checkin,
+              (SELECT b.checkout_date FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_checkout,
+              (SELECT r.end_date FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= ? AND r.end_date >= ? ORDER BY r.start_date DESC LIMIT 1) as active_ical_checkout,
+              (SELECT b.notes FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date <= ? AND b.checkout_date >= ? ORDER BY b.checkin_date DESC LIMIT 1) as active_manual_notes,
+              (SELECT platform FROM reservations r WHERE r.unit_id = u.id AND r.start_date <= CURRENT_DATE() AND r.end_date >= CURRENT_DATE() LIMIT 1) as platform,
+              COALESCE((SELECT SUM(amount) FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date >= ? AND b.checkin_date <= ?), 0) as total_revenue,
+              (SELECT COUNT(*) FROM bookings b2 WHERE b2.unit_id = u.id AND b2.checkin_date >= ? AND b2.checkin_date <= ?) as bookings_count,
+              (SELECT COUNT(*) FROM maintenance_tickets mt WHERE mt.unit_id = u.id AND mt.status != 'resolved') as active_maint_tickets
        FROM units u
        WHERE u.status = 'active' ${accountFilterUnits}
-       ORDER BY u.unit_name ASC LIMIT 12`,
-      paramsUnits
+       ORDER BY u.unit_name ASC`,
+      [
+        todayStr, todayStr, todayStr, todayStr, todayStr, todayStr, todayStr, todayStr, // Today checkin/checkout flags
+        todayStr, todayStr, // active_manual_guest
+        todayStr, todayStr, // active_ical_guest
+        todayStr, todayStr, // active_manual_checkin
+        todayStr, todayStr, // active_ical_checkin
+        todayStr, todayStr, // active_manual_checkout
+        todayStr, todayStr, // active_ical_checkout
+        todayStr, todayStr, // active_manual_notes
+        startDateStr, endDateStr, startDateStr, endDateStr,
+        ...paramsUnits
+      ]
     );
 
     const liveUnits = liveUnitsList.map((unit: any) => {
+      // 1. Sync from active booking if present and staff hasn't manually overridden it
+      const activeGuest = unit.active_manual_guest || unit.active_ical_guest;
+      const activeCheckinDate = unit.active_manual_checkin || unit.active_ical_checkin;
+
+      let readinessGuest = unit.readiness_guest_name;
+      let readinessCheckin = unit.readiness_checkin_date;
+      let readinessCheckout = unit.readiness_checkout_date;
+      let readinessNotes = unit.readiness_notes;
+
+      if (activeGuest) {
+        const bookingStart = activeCheckinDate ? new Date(activeCheckinDate) : null;
+        const lastManualUpdate = unit.readiness_updated_at ? new Date(unit.readiness_updated_at) : null;
+        const staffOverrodeAfterBooking = lastManualUpdate && bookingStart && lastManualUpdate > bookingStart;
+
+        if (!staffOverrodeAfterBooking) {
+          readinessGuest = activeGuest;
+          readinessCheckin = activeCheckinDate;
+          readinessCheckout = unit.active_manual_checkout || unit.active_ical_checkout;
+          readinessNotes = unit.active_manual_notes || unit.readiness_notes || (unit.active_ical_guest ? `iCal: ${unit.active_ical_guest}` : null);
+        }
+      }
+
+      // 2. Compute dynamic Today flags
+      const hasCheckinToday = !!(unit.manual_checkin_date || unit.ical_checkin_date);
+      const hasCheckoutToday = !!(unit.manual_checkout_date || unit.ical_checkout_date);
+      
+      const updatedAt = unit.readiness_updated_at ? new Date(unit.readiness_updated_at) : null;
+      const wasUpdatedToday = updatedAt && 
+        `${updatedAt.getFullYear()}-${String(updatedAt.getMonth() + 1).padStart(2, '0')}-\${String(updatedAt.getDate()).padStart(2, '0')}` === todayStr;
+      
+      let computed = unit.readiness_status || "ready";
+
+      if (!wasUpdatedToday || !unit.readiness_status) {
+        if (hasCheckoutToday && (computed === "occupied" || !unit.readiness_status)) {
+          computed = "checkout_today";
+        } else if (hasCheckinToday && (computed === "ready" || computed === "booked" || !unit.readiness_status)) {
+          computed = "checkin_today";
+        }
+      }
+
+      // Map computed status to Arabic text and matching classes
       let status = "شاغر وجاهز";
       let colorClass = "border-r-blue-500 bg-blue-50/10";
-      if (unit.readiness_status === "dirty") {
+      
+      if (computed === "dirty" || computed === "awaiting_cleaning" || computed === "cleaning_in_progress") {
         status = "تنظيف";
         colorClass = "border-r-amber-500 bg-amber-50/10";
-      } else if (unit.readiness_status === "maintenance") {
+      } else if (computed === "maintenance") {
         status = "تحت الصيانة";
         colorClass = "border-r-rose-500 bg-rose-50/10";
-      } else if (unit.readiness_guest_name) {
+      } else if (computed === "occupied") {
         status = "مأهول";
         colorClass = "border-r-emerald-500 bg-emerald-50/10";
+      } else if (computed === "booked") {
+        status = "إشغال";
+        colorClass = "border-r-indigo-500 bg-indigo-50/10";
+      } else if (computed === "checkout_today") {
+        status = "خروج اليوم";
+        colorClass = "border-r-purple-500 bg-purple-50/10";
+      } else if (computed === "checkin_today") {
+        status = "دخول اليوم";
+        colorClass = "border-r-sky-500 bg-sky-50/10";
+      } else if (computed === "guest_not_checked_out") {
+        status = "لم يغادر";
+        colorClass = "border-r-rose-500 bg-rose-50/10";
+      }
+
+      // Calculate booked days for calendar (Timezone-safe YYYY-MM-DD string comparison)
+      const bookedDays = new Set<number>();
+      const unitBookings = activeBookings.filter((b: any) => b.unit_id === unit.id);
+      const unitReservations = activeReservations.filter((r: any) => r.unit_id === unit.id);
+      
+      const parseToYYYYMMDD = (val: any) => {
+        if (!val) return "";
+        if (val instanceof Date) {
+          const year = val.getFullYear();
+          const month = String(val.getMonth() + 1).padStart(2, '0');
+          const day = String(val.getDate()).padStart(2, '0');
+          return `${year}-${month}-\${day}`;
+        }
+        if (typeof val === 'string') {
+          return val.split('T')[0];
+        }
+        return "";
+      };
+
+      const allIntervals = [
+        ...unitBookings.map((b: any) => ({ start: parseToYYYYMMDD(b.start_date), end: parseToYYYYMMDD(b.end_date) })),
+        ...unitReservations.map((r: any) => ({ start: parseToYYYYMMDD(r.start_date), end: parseToYYYYMMDD(r.end_date) }))
+      ];
+
+      const calYear = calNow.getFullYear();
+      const calMonthStr = String(calNow.getMonth() + 1).padStart(2, '0');
+
+      for (let day = 1; day <= calLastDay; day++) {
+        const checkDateStr = `${calYear}-${calMonthStr}-${String(day).padStart(2, '0')}`;
+        for (const interval of allIntervals) {
+          if (interval.start && interval.end) {
+            if (checkDateStr >= interval.start && checkDateStr <= interval.end) {
+              bookedDays.add(day);
+              break;
+            }
+          }
+        }
       }
 
       return {
+        id: unit.id,
         title: unit.unit_name,
+        unitCode: unit.unit_code || null,
         platform: unit.platform ? (unit.platform === "airbnb" ? "Airbnb" : "Gathern") : "مباشر",
         status,
-        time: unit.readiness_checkout_date ? `مغادرة: ${unit.readiness_checkout_date.split("T")[0]}` : "استقبال متاح",
-        guest: unit.readiness_guest_name || "-",
+        readinessStatus: computed,
+        guest: readinessGuest || null,
+        checkinDate: readinessCheckin ? (typeof readinessCheckin === 'string' ? readinessCheckin.split("T")[0] : readinessCheckin.toISOString().split("T")[0]) : null,
+        checkoutDate: readinessCheckout ? (typeof readinessCheckout === 'string' ? readinessCheckout.split("T")[0] : readinessCheckout.toISOString().split("T")[0]) : null,
+        notes: readinessNotes || null,
+        updatedAt: unit.readiness_updated_at ? (typeof unit.readiness_updated_at === 'string' ? unit.readiness_updated_at : unit.readiness_updated_at.toISOString()) : null,
+        revenue: Number(unit.total_revenue),
+        bookingsCount: Number(unit.bookings_count),
+        activeMaintTickets: Number(unit.active_maint_tickets),
+        bookedDays: Array.from(bookedDays),
         color: colorClass,
       };
     });
 
-    // 11. Profitability Table (Group by Unit)
+    // 11. Profitability Table (Group by Unit) - Synced with Date Filters and Hospitality Metrics (ADR, Occupancy, RevPAR)
     const profitabilityList = await query<any>(
       `SELECT * FROM (
         SELECT u.id, u.unit_name, 
@@ -610,48 +799,159 @@ export async function GET(req: NextRequest) {
                   (SELECT platform FROM bookings b WHERE b.unit_id = u.id ORDER BY b.checkin_date DESC LIMIT 1),
                   (SELECT platform FROM reservations r WHERE r.unit_id = u.id ORDER BY r.start_date DESC LIMIT 1)
                 ) as platform,
-                COALESCE((SELECT SUM(amount) FROM bookings b WHERE b.unit_id = u.id AND b.checkin_date >= ? AND b.checkin_date <= ?), 0) as b_rev,
-                (SELECT COUNT(*) FROM reservations r2 WHERE r2.unit_id = u.id AND r2.start_date >= ? AND r2.start_date <= ?) as r_count,
-                (SELECT COUNT(*) FROM bookings b2 WHERE b2.unit_id = u.id AND b2.checkin_date >= ? AND b2.checkin_date <= ?) as b_count,
-                (SELECT COUNT(*) FROM maintenance_tickets mt WHERE mt.unit_id = u.id AND mt.status = 'resolved') as m_tickets
+                COALESCE(
+                  (SELECT SUM(
+                     (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
+                     GREATEST(0, DATEDIFF(
+                       LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+                       GREATEST(b.checkin_date, ?)
+                     ) + 1)
+                   )
+                   FROM bookings b
+                   WHERE b.unit_id = u.id 
+                     AND b.checkin_date <= ? 
+                     AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ?
+                  ), 0
+                ) as b_rev,
+                COALESCE(
+                  (SELECT SUM(GREATEST(0, DATEDIFF(
+                     LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+                     GREATEST(b.checkin_date, ?)
+                   ) + 1))
+                   FROM bookings b
+                   WHERE b.unit_id = u.id 
+                     AND b.checkin_date <= ? 
+                     AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ?
+                  ), 0
+                ) as b_days,
+                COALESCE(
+                  (SELECT SUM(GREATEST(0, DATEDIFF(
+                     LEAST(CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END, ?),
+                     GREATEST(r.start_date, ?)
+                   ) + 1))
+                   FROM reservations r
+                   WHERE r.unit_id = u.id 
+                     AND r.start_date <= ? 
+                     AND (CASE WHEN r.end_date = r.start_date THEN r.end_date ELSE r.end_date - INTERVAL 1 DAY END) >= ?
+                  ), 0
+                ) as r_days,
+                (SELECT COUNT(*) FROM reservations r2 WHERE r2.unit_id = u.id AND r2.start_date <= ? AND (CASE WHEN r2.end_date = r2.start_date THEN r2.end_date ELSE r2.end_date - INTERVAL 1 DAY END) >= ?) as r_count,
+                (SELECT COUNT(*) FROM bookings b2 WHERE b2.unit_id = u.id AND b2.checkin_date <= ? AND (CASE WHEN b2.checkout_date = b2.checkin_date THEN b2.checkout_date ELSE b2.checkout_date - INTERVAL 1 DAY END) >= ?) as b_count,
+                (SELECT COUNT(*) FROM maintenance_tickets mt WHERE mt.unit_id = u.id AND mt.status = 'resolved' AND mt.created_at >= ? AND mt.created_at <= ?) as m_tickets
          FROM units u
          WHERE u.status = 'active' ${accountFilterUnits}
          GROUP BY u.id, u.unit_name
        ) as tmp
-       ORDER BY b_rev DESC LIMIT 5`,
-      [startDateStr, endDateStr, startDateStr, endDateStr, startDateStr, endDateStr, ...paramsUnits]
+       ORDER BY b_rev DESC`,
+      [
+        endDateStr, startDateStr, endDateStr, startDateStr, // b_rev
+        endDateStr, startDateStr, endDateStr, startDateStr, // b_days
+        endDateStr, startDateStr, endDateStr, startDateStr, // r_days
+        endDateStr, startDateStr, // r_count
+        endDateStr, startDateStr, // b_count
+        startDateStr, endDateStr, // m_tickets
+        ...paramsUnits
+      ]
     );
 
     const profitability = profitabilityList.map((unit: any) => {
       const uRev = Number(unit.b_rev);
+      const bDays = Number(unit.b_days);
+      const rDays = Number(unit.r_days);
+      const occupiedDays = bDays + rDays;
+      const availableDays = daysCount;
+
+      const occupancy = availableDays > 0 ? Math.min(100, Math.round((occupiedDays / availableDays) * 100)) : 0;
+      const adr = bDays > 0 ? Math.round(uRev / bDays) : 0;
+      const revpar = availableDays > 0 ? Math.round(uRev / availableDays) : 0;
+
       // Clean cost estimate: Set to 0 per user instruction
-      const cleanCost = (Number(unit.r_count) * 0) + (Number(unit.b_count) * 0);
-      const maintenanceCost = Number(unit.m_tickets || 0) * 0;
-      const totalCost = cleanCost + maintenanceCost;
+      const cleanCost = 0;
+      const totalCost = 0;
       const netProfit = Math.max(0, uRev - totalCost);
       const margin = uRev > 0 ? ((netProfit / uRev) * 100).toFixed(1) : "0.0";
 
       return {
         name: unit.unit_name,
         platform: unit.platform ? (unit.platform === "airbnb" ? "Airbnb" : "Gathern") : "حجز مباشر",
+        revenueVal: uRev,
+        costVal: totalCost,
+        profitVal: netProfit,
+        marginVal: Number(margin),
+        occupancyVal: occupancy,
+        adrVal: adr,
+        revparVal: revpar,
         revenue: `${uRev.toLocaleString("en-US")} ر.س`,
         cost: `${totalCost.toLocaleString("en-US")} ر.س`,
         profit: `${netProfit.toLocaleString("en-US")} ر.س`,
         margin: `${margin}%`,
+        occupancy: `${occupancy}%`,
+        adr: `${adr.toLocaleString("en-US")} ر.س`,
+        revpar: `${revpar.toLocaleString("en-US")} ر.س`,
         status: Number(margin) > 75 ? "high" : "normal",
       };
     });
 
-    // 12. CRM Pipeline
+    // 12. CRM Pipeline & Analytics with Date and Unit/Account filters
+    let crmAccountFilter = "";
+    const paramsCrm: unknown[] = [startDateStr + " 00:00:00", endDateStr + " 23:59:59"];
+    if (account !== "all") {
+      const accountIds = account.split(",");
+      const placeholders = accountIds.map(() => "?").join(",");
+      crmAccountFilter = ` AND c.unit_id IN (SELECT id FROM units WHERE platform_account_id IN (${placeholders})) `;
+      paramsCrm.push(...accountIds);
+    }
+
+    const crmStats = await queryOne<any>(
+      `SELECT 
+         COUNT(*) as total_deals,
+         SUM(CASE WHEN c.status = 'open' THEN 1 ELSE 0 END) as open_count,
+         COALESCE(SUM(CASE WHEN c.status = 'open' THEN c.value ELSE 0 END), 0) as open_value,
+         SUM(CASE WHEN c.status = 'closed' AND c.stage IN ('completed', 'management') THEN 1 ELSE 0 END) as won_count,
+         COALESCE(SUM(CASE WHEN c.status = 'closed' AND c.stage IN ('completed', 'management') THEN c.value ELSE 0 END), 0) as won_value,
+         SUM(CASE WHEN c.stage = 'lost' THEN 1 ELSE 0 END) as lost_count,
+         COALESCE(AVG(CASE WHEN c.value > 0 THEN c.value ELSE NULL END), 0) as avg_value
+       FROM crm_deals c
+       WHERE c.created_at >= ? AND c.created_at <= ? ${crmAccountFilter}`,
+      paramsCrm
+    );
+
+    const totalCustomersRes = await queryOne<any>("SELECT COUNT(*) as count FROM customers");
+    const totalCustomersCount = Number(totalCustomersRes?.count || 0);
+
+    const totalResolved = Number(crmStats?.won_count || 0) + Number(crmStats?.lost_count || 0);
+    const crmKPIs = {
+      pipelineValue: `${Number(crmStats?.open_value || 0).toLocaleString("en-US")} ر.س`,
+      wonValue: `${Number(crmStats?.won_value || 0).toLocaleString("en-US")} ر.س`,
+      avgDealValue: `${Math.round(Number(crmStats?.avg_value || 0)).toLocaleString("en-US")} ر.س`,
+      conversionRate: totalResolved > 0 
+        ? `${((Number(crmStats?.won_count || 0) / totalResolved) * 100).toFixed(1)}%` 
+        : "0.0%",
+      totalCustomers: totalCustomersCount.toLocaleString("en-US"),
+      openCount: Number(crmStats?.open_count || 0),
+      wonCount: Number(crmStats?.won_count || 0),
+      lostCount: Number(crmStats?.lost_count || 0),
+    };
+
+    const crmStatusDistribution = [
+      { name: "صفقات نشطة", value: Number(crmStats?.open_count || 0), color: "#3b82f6" },
+      { name: "صفقات مؤكدة", value: Number(crmStats?.won_count || 0), color: "#10b981" },
+      { name: "صفقات خاسرة", value: Number(crmStats?.lost_count || 0), color: "#ef4444" },
+    ].filter(item => item.value > 0);
+
     const crmPipelineList = await query<any>(
-      `SELECT stage, COUNT(*) as count, SUM(value) as val FROM crm_deals GROUP BY stage`
+      `SELECT c.stage, COUNT(*) as count, SUM(c.value) as val 
+       FROM crm_deals c 
+       WHERE c.status = 'open' AND c.created_at >= ? AND c.created_at <= ? ${crmAccountFilter}
+       GROUP BY c.stage`,
+      paramsCrm
     );
 
     const stagesMapping: Record<string, { label: string; percent: string; bg: string }> = {
-      qualified: { label: "اتصالات أولية / استعلامات جديدة", percent: "100%", bg: "bg-blue-500" },
-      proposal: { label: "تفاوض وتخصيص أسعار", percent: "75%", bg: "bg-indigo-500" },
-      negotiation: { label: "بانتظار تأكيد الدفع والتعميد", percent: "45%", bg: "bg-amber-500" },
-      won: { label: "صفقات مغلقة ومكتملة (Won)", percent: "90%", bg: "bg-emerald-500" },
+      negotiation: { label: "مفاوضات وبانتظار الدفع", percent: "30%", bg: "bg-blue-500" },
+      partial_payment: { label: "تم دفع عربون / دفعة جزئية", percent: "60%", bg: "bg-amber-500" },
+      completed: { label: "صفقات مكتملة ومؤكدة", percent: "90%", bg: "bg-emerald-500" },
+      management: { label: "تحت التشغيل والإدارة", percent: "100%", bg: "bg-indigo-500" },
     };
 
     const crmPipeline = Object.entries(stagesMapping).map(([key, meta]) => {
@@ -663,40 +963,58 @@ export async function GET(req: NextRequest) {
         stage: meta.label,
         count: count === 1 ? "1 صفقة" : count > 1 ? `${count} صفقات` : "0 صفقة",
         value: `${value.toLocaleString("en-US")} ر.س`,
+        rawValue: value,
+        rawCount: count,
         percent: meta.percent,
         bg: meta.bg,
       };
     });
 
     const recentDealsList = await query<any>(
-      `SELECT c.title, c.value, c.stage, cust.full_name as customer_name
+      `SELECT c.id, c.title, c.value, c.stage, c.priority, c.expected_close_date, cust.full_name as customer_name
        FROM crm_deals c
        LEFT JOIN customers cust ON c.customer_id = cust.id
-       ORDER BY c.created_at DESC LIMIT 4`
+       WHERE c.created_at >= ? AND c.created_at <= ? ${crmAccountFilter}
+       ORDER BY c.created_at DESC`,
+      paramsCrm
     );
 
     const recentDeals = recentDealsList.map((deal: any) => {
       let status = "تفاوض نشط";
-      if (deal.stage === "won") status = "تم التأكيد";
+      if (deal.stage === "completed" || deal.stage === "management") status = "تم التأكيد";
       else if (deal.stage === "negotiation") status = "بانتظار الدفع";
+      else if (deal.stage === "partial_payment") status = "دفعة جزئية";
 
       return {
-        company: deal.title || deal.customer_name || "صفقة جديدة",
+        id: deal.id,
+        title: deal.title || "صفقة جديدة",
+        customer: deal.customer_name || "عميل عام",
+        value: Number(deal.value),
         price: `${Number(deal.value).toLocaleString("en-US")} ر.س`,
+        stage: deal.stage,
+        priority: deal.priority || "medium",
+        expectedClose: deal.expected_close_date ? deal.expected_close_date.toString().slice(0, 10) : "غير محدد",
         status,
       };
     });
 
-    // 13. HR & Payroll Overview
-    const hrEmployeeStats = await query<{ basic: number | string; allowances: number | string }>(
-      `SELECT SUM(basic_salary) as basic, 
-              SUM(housing_allowance + transport_allowance + other_allowances) as allowances 
-       FROM hr_employees 
-       WHERE status = 'active' AND exclude_from_payroll = 0`
-    );
-
-    const basicSalary = Number(hrEmployeeStats[0]?.basic || 0);
-    const allowances = Number(hrEmployeeStats[0]?.allowances || 0);
+    // 13. HR & Payroll Overview (Dynamically calculated and converted to SAR if needed)
+    let basicSalary = 0;
+    let allowances = 0;
+    for (const emp of employees) {
+      let b = Number(emp.basic_salary || 0);
+      let a = Number(emp.housing_allowance || 0) + 
+              Number(emp.transport_allowance || 0) + 
+              Number(emp.other_allowances || 0);
+      if (emp.salary_currency?.toUpperCase() === 'EGP') {
+        b = b * 0.0725;
+        a = a * 0.0725;
+      }
+      basicSalary += b;
+      allowances += a;
+    }
+    basicSalary = Math.round(basicSalary);
+    allowances = Math.round(allowances);
     // Dummy deductions since no active payroll_run_details are finalized in sandbox
     const deductions = Math.round(basicSalary * 0.02); 
     const netPayroll = basicSalary + allowances - deductions;
@@ -741,9 +1059,9 @@ export async function GET(req: NextRequest) {
       `SELECT mt.status, COUNT(*) as count 
        FROM maintenance_tickets mt
        INNER JOIN units u ON mt.unit_id = u.id
-       WHERE 1=1 ${accountFilterUnits}
+       WHERE mt.created_at >= ? AND mt.created_at <= ? ${accountFilterUnits}
        GROUP BY mt.status`,
-      paramsUnits
+      [startDateStr + " 00:00:00", endDateStr + " 23:59:59", ...paramsUnits]
     );
 
     // Top 5 units with maintenance tickets
@@ -751,10 +1069,10 @@ export async function GET(req: NextRequest) {
       `SELECT u.unit_name as name, COUNT(mt.id) as count 
        FROM maintenance_tickets mt
        INNER JOIN units u ON mt.unit_id = u.id
-       WHERE 1=1 ${accountFilterUnits}
+       WHERE mt.created_at >= ? AND mt.created_at <= ? ${accountFilterUnits}
        GROUP BY u.id, u.unit_name
        ORDER BY count DESC LIMIT 5`,
-      paramsUnits
+      [startDateStr + " 00:00:00", endDateStr + " 23:59:59", ...paramsUnits]
     );
 
     const maintenanceAnalytics = {
@@ -773,7 +1091,9 @@ export async function GET(req: NextRequest) {
       `SELECT state, COUNT(*) as count, SUM(total_amount) as total 
        FROM accounting_invoices 
        WHERE deleted_at IS NULL
-       GROUP BY state`
+         AND invoice_date >= ? AND invoice_date <= ?
+       GROUP BY state`,
+      [startDateStr, endDateStr]
     );
 
     const arabicStates: Record<string, string> = {
@@ -820,6 +1140,8 @@ export async function GET(req: NextRequest) {
       profitability,
       crmPipeline,
       recentDeals,
+      crmKPIs,
+      crmStatusDistribution,
       hrPayroll,
       employeeAttendance,
       maintenanceAnalytics,
