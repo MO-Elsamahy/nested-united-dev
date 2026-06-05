@@ -162,6 +162,18 @@ export async function DELETE(request: Request) {
         const move = await queryOne<AccountingMove>("SELECT * FROM accounting_moves WHERE id = ?", [id]);
         if (!move) return NextResponse.json({ error: "غير موجود" }, { status: 404 });
 
+        // Check if linked to an active invoice
+        const linkedInvoice = await queryOne<{ invoice_number: string }>(
+            "SELECT invoice_number FROM accounting_invoices WHERE accounting_move_id = ? AND deleted_at IS NULL",
+            [id]
+        );
+        if (linkedInvoice) {
+            return NextResponse.json(
+                { error: `لا يمكن حذف هذا القيد مباشرة لأنه مرتبط بالفاتورة رقم ${linkedInvoice.invoice_number}. يرجى إلغاء أو حذف الفاتورة أولاً لكي يتم حذف القيد تلقائياً.` },
+                { status: 400 }
+            );
+        }
+
         // Soft Delete
         await execute("UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?", [id]);
 
