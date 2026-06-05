@@ -14,7 +14,7 @@ interface Partner {
 }
 
 export default function PartnersPage() {
-    const { confirm } = useDialog();
+    const { confirm, alert } = useDialog();
     const [partners, setPartners] = useState<Partner[]>([]);
     const [_loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -36,8 +36,17 @@ export default function PartnersPage() {
 
     const handleDelete = async (id: string) => {
         if (!await confirm("حذف هذا الشريك؟")) return;
-        await fetch(`/api/accounting/partners?id=${id}`, { method: 'DELETE' });
-        fetchPartners();
+        try {
+            const res = await fetch(`/api/accounting/partners?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchPartners();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                await alert(data.error || "فشل حذف الشريك");
+            }
+        } catch (_e) {
+            await alert("حدث خطأ أثناء الاتصال بالخادم");
+        }
     };
 
     const filtered = partners.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));

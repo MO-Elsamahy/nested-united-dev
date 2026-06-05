@@ -7,7 +7,7 @@ import { CostCenter } from "@/lib/types/accounting";
 import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function CostCentersPage() {
-    const { confirm } = useDialog();
+    const { confirm, alert } = useDialog();
     const [centers, setCenters] = useState<CostCenter[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -22,8 +22,17 @@ export default function CostCentersPage() {
 
     const handleDelete = async (id: string) => {
         if (!await confirm("حذف مركز التكلفة؟")) return;
-        await fetch(`/api/accounting/cost-centers?id=${id}`, { method: 'DELETE' });
-        fetchCenters();
+        try {
+            const res = await fetch(`/api/accounting/cost-centers?id=${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                fetchCenters();
+            } else {
+                const data = await res.json().catch(() => ({}));
+                await alert(data.error || "فشل حذف مركز التكلفة");
+            }
+        } catch (_e) {
+            await alert("حدث خطأ أثناء الاتصال بالخادم");
+        }
     };
 
     return (

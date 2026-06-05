@@ -36,7 +36,8 @@ export default function JournalsPage() {
             if (res.ok) {
                 fetchJournals();
             } else {
-                await alert("فشل الحذف. قد لا تملك الصلاحيات الكافية.");
+                const data = await res.json().catch(() => ({}));
+                await alert(data.error || "فشل الحذف. قد لا تملك الصلاحيات الكافية.");
             }
         } catch (_error) {
             await alert("حدث خطأ في الاتصال");

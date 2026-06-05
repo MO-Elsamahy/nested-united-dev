@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function JournalEntriesPage() {
-    const { confirm } = useDialog();
+    const { confirm, alert } = useDialog();
     const { id } = useParams();
     const [moves, setMoves] = useState<AccountingMove[]>([]);
     const [loading, setLoading] = useState(true);
@@ -84,7 +84,17 @@ export default function JournalEntriesPage() {
                                         <button
                                             onClick={async () => {
                                                 if (await confirm('حذف هذا القيد؟ سيتم نقله إلى سلة المحذوفات (Backlog).')) {
-                                                    fetch(`/api/accounting/moves?id=${move.id}`, { method: 'DELETE' }).then(() => fetchMoves());
+                                                    try {
+                                                        const res = await fetch(`/api/accounting/moves?id=${move.id}`, { method: 'DELETE' });
+                                                        if (res.ok) {
+                                                            fetchMoves();
+                                                        } else {
+                                                            const data = await res.json().catch(() => ({}));
+                                                            await alert(data.error || "فشل حذف القيد");
+                                                        }
+                                                    } catch (_e) {
+                                                        await alert("حدث خطأ أثناء الاتصال بالخادم");
+                                                    }
                                                 }
                                             }}
                                             className="text-red-500 hover:bg-red-50 p-1 rounded"

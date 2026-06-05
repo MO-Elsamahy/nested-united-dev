@@ -15,7 +15,7 @@ interface Account {
 }
 
 export default function AccountsPage() {
-    const { confirm } = useDialog();
+    const { confirm, alert } = useDialog();
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -161,7 +161,17 @@ export default function AccountsPage() {
                                             <button
                                                 onClick={async () => {
                                                     if (await confirm('هل أنت متأكد من حذف هذا الحساب؟')) {
-                                                        fetch(`/api/accounting/accounts?id=${account.id}`, { method: 'DELETE' }).then(() => fetchAccounts());
+                                                        try {
+                                                            const res = await fetch(`/api/accounting/accounts?id=${account.id}`, { method: 'DELETE' });
+                                                            if (res.ok) {
+                                                                fetchAccounts();
+                                                            } else {
+                                                                const data = await res.json().catch(() => ({}));
+                                                                await alert(data.error || "فشل حذف الحساب");
+                                                            }
+                                                        } catch (_e) {
+                                                            await alert("حدث خطأ أثناء الاتصال بالخادم");
+                                                        }
                                                     }
                                                 }}
                                                 className="p-1 text-red-600 hover:bg-red-50 rounded"
