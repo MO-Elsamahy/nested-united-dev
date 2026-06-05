@@ -1002,58 +1002,77 @@ export async function GET(req: NextRequest) {
     const hrActiveEmployees = await query<any>(
       `SELECT basic_salary, housing_allowance, transport_allowance, other_allowances, hire_date, salary_currency 
        FROM hr_employees 
-       WHERE status = 'active'`
+       WHERE status = 'active' AND (hire_date IS NULL OR hire_date <= ?)`,
+      [endDateStr]
     );
 
     let sarBasic = 0;
     let sarAllowances = 0;
     let egpBasic = 0;
     let egpAllowances = 0;
+    let sarDeductions = 0;
+    let egpDeductions = 0;
+
+    const start = new Date(startDateStr);
+    const end = new Date(endDateStr);
+    const periodDays = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1);
 
     for (const emp of hrActiveEmployees) {
+      const hireDate = emp.hire_date ? new Date(emp.hire_date) : null;
       const b = Number(emp.basic_salary || 0);
       const a = Number(emp.housing_allowance || 0) + 
                 Number(emp.transport_allowance || 0) + 
                 Number(emp.other_allowances || 0);
+      const d = Math.round(b * 0.02);
+
+      // Prorate by days in period
+      let days = periodDays;
+      if (hireDate && hireDate > start) {
+        days = Math.max(1, Math.ceil((end.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+      }
+
+      const factor = days / 30;
+      const proratedB = b * factor;
+      const proratedA = a * factor;
+      const proratedD = d * factor;
 
       if (emp.salary_currency?.toUpperCase() === 'EGP') {
-        egpBasic += b;
-        egpAllowances += a;
+        egpBasic += proratedB;
+        egpAllowances += proratedA;
+        egpDeductions += proratedD;
       } else {
-        sarBasic += b;
-        sarAllowances += a;
+        sarBasic += proratedB;
+        sarAllowances += proratedA;
+        sarDeductions += proratedD;
       }
     }
 
-    const sarDeductions = Math.round(sarBasic * 0.02);
-    const sarNet = sarBasic + sarAllowances - sarDeductions;
-
-    const egpDeductions = Math.round(egpBasic * 0.02);
-    const egpNet = egpBasic + egpAllowances - egpDeductions;
+    const sarNet = Math.round(sarBasic + sarAllowances - sarDeductions);
+    const egpNet = Math.round(egpBasic + egpAllowances - egpDeductions);
 
     // Convert EGP to SAR for the unified expenses and cashflow calculation
     const convertedEgpNet = egpNet * 0.0725;
     const totalPayrollSAR = Math.round(sarNet + convertedEgpNet);
 
     const hrPayroll = {
-      basic: `${(sarBasic + Math.round(egpBasic * 0.0725)).toLocaleString("en-US")} ر.س`,
-      allowances: `${(sarAllowances + Math.round(egpAllowances * 0.0725)).toLocaleString("en-US")} ر.س`,
-      deductions: `${(sarDeductions + Math.round(egpDeductions * 0.0725)).toLocaleString("en-US")} ر.س`,
+      basic: `${Math.round(sarBasic + egpBasic * 0.0725).toLocaleString("en-US")} ر.س`,
+      allowances: `${Math.round(sarAllowances + egpAllowances * 0.0725).toLocaleString("en-US")} ر.س`,
+      deductions: `${Math.round(sarDeductions + egpDeductions * 0.0725).toLocaleString("en-US")} ر.س`,
       net: `${totalPayrollSAR.toLocaleString("en-US")} ر.س`,
     };
 
     const hrPayrollDetails = {
       sar: {
-        basic: `${sarBasic.toLocaleString("en-US")} ر.س`,
-        allowances: `${sarAllowances.toLocaleString("en-US")} ر.س`,
-        deductions: `${sarDeductions.toLocaleString("en-US")} ر.س`,
+        basic: `${Math.round(sarBasic).toLocaleString("en-US")} ر.س`,
+        allowances: `${Math.round(sarAllowances).toLocaleString("en-US")} ر.س`,
+        deductions: `${Math.round(sarDeductions).toLocaleString("en-US")} ر.س`,
         net: `${sarNet.toLocaleString("en-US")} ر.س`,
         rawNet: sarNet,
       },
       egp: {
-        basic: `${egpBasic.toLocaleString("en-US")} ج.م`,
-        allowances: `${egpAllowances.toLocaleString("en-US")} ج.م`,
-        deductions: `${egpDeductions.toLocaleString("en-US")} ج.م`,
+        basic: `${Math.round(egpBasic).toLocaleString("en-US")} ج.م`,
+        allowances: `${Math.round(egpAllowances).toLocaleString("en-US")} ج.م`,
+        deductions: `${Math.round(egpDeductions).toLocaleString("en-US")} ج.م`,
         net: `${egpNet.toLocaleString("en-US")} ج.م`,
         rawNet: egpNet,
       },
@@ -1062,26 +1081,27 @@ export async function GET(req: NextRequest) {
       totalActiveEmployees: hrActiveEmployees.length,
     };
 
-    // Employee attendance for all employees
+    // Employee attendance for all employees (filtered by date range)
     const employeeAttendanceList = await query<any>(
       `SELECT e.id, e.full_name, e.job_title, e.salary_currency, e.basic_salary,
               e.housing_allowance, e.transport_allowance, e.other_allowances,
               COUNT(a.id) as total_days,
               SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_days,
-              SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as late_days,
+              SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as present_days_late,
               SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_days,
               SUM(CASE WHEN a.status = 'leave' THEN 1 ELSE 0 END) as leave_days
        FROM hr_employees e
-       LEFT JOIN hr_attendance a ON e.id = a.employee_id
-       WHERE e.status = 'active'
+       LEFT JOIN hr_attendance a ON e.id = a.employee_id AND a.date >= ? AND a.date <= ?
+       WHERE e.status = 'active' AND (e.hire_date IS NULL OR e.hire_date <= ?)
        GROUP BY e.id, e.full_name, e.job_title, e.salary_currency, e.basic_salary,
-                e.housing_allowance, e.transport_allowance, e.other_allowances`
+                e.housing_allowance, e.transport_allowance, e.other_allowances`,
+      [startDateStr, endDateStr, endDateStr]
     );
 
     const employeeAttendance = employeeAttendanceList.map((emp: any) => {
       const total = Number(emp.total_days || 0);
       const present = Number(emp.present_days || 0);
-      const late = Number(emp.late_days || 0);
+      const late = Number(emp.present_days_late || 0);
       const absent = Number(emp.absent_days || 0);
       const leave = Number(emp.leave_days || 0);
       
@@ -1114,13 +1134,14 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Attendance stats status distribution (for Pie/Donut Chart)
+    // Attendance stats status distribution (filtered by date range)
     const attendanceStatsList = await query<any>(
       `SELECT a.status, COUNT(*) as count 
        FROM hr_attendance a
        INNER JOIN hr_employees e ON a.employee_id = e.id
-       WHERE e.status = 'active'
-       GROUP BY a.status`
+       WHERE e.status = 'active' AND a.date >= ? AND a.date <= ?
+       GROUP BY a.status`,
+      [startDateStr, endDateStr]
     );
 
     const arabicAttStatuses: Record<string, string> = {
@@ -1136,24 +1157,27 @@ export async function GET(req: NextRequest) {
       count: Number(r.count || 0),
     }));
 
-    // Job Title distribution count (for Pie/Donut Chart)
+    // Job Title distribution count (filtered by date range)
     const jobTitleStatsList = await query<any>(
       `SELECT job_title, COUNT(*) as count 
        FROM hr_employees 
-       WHERE status = 'active' 
-       GROUP BY job_title`
+       WHERE status = 'active' AND (hire_date IS NULL OR hire_date <= ?)
+       GROUP BY job_title`,
+      [endDateStr]
     );
     const jobTitleStats = jobTitleStatsList.map((r: any) => ({
       name: r.job_title || "غير محدد",
       value: Number(r.count || 0),
     }));
 
-    // Active Leave Requests
+    // Active Leave Requests (filtered by date range overlap)
     const leaveRequestsList = await query<any>(
       `SELECT r.id, r.request_type, r.start_date, r.end_date, r.days_count, r.reason, r.status, e.full_name as employee_name
        FROM hr_requests r
        INNER JOIN hr_employees e ON r.employee_id = e.id
-       ORDER BY r.created_at DESC`
+       WHERE (r.start_date <= ? AND r.end_date >= ?)
+       ORDER BY r.created_at DESC`,
+      [endDateStr, startDateStr]
     );
 
     const arabicRequestTypes: Record<string, string> = {

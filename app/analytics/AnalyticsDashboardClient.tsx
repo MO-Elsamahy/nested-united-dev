@@ -2278,6 +2278,19 @@ export function AnalyticsDashboardClient({
                 const matchesCurrency = hrCurrencyFilter === "all" || emp.currency === hrCurrencyFilter;
                 return matchesSearch && matchesCurrency;
               }).sort((a: any, b: any) => {
+                if (hrSortField === "net") {
+                  const isASAR = a.currency?.toUpperCase() === "SAR";
+                  const isBSAR = b.currency?.toUpperCase() === "SAR";
+                  
+                  if (isASAR && !isBSAR) return -1;
+                  if (!isASAR && isBSAR) return 1;
+                  
+                  const netA = Number(a.net || 0);
+                  const netB = Number(b.net || 0);
+                  if (netA < netB) return hrSortAsc ? -1 : 1;
+                  if (netA > netB) return hrSortAsc ? 1 : -1;
+                  return 0;
+                }
                 let fieldA: any = a[hrSortField];
                 let fieldB: any = b[hrSortField];
                 if (typeof fieldA === "string") {
