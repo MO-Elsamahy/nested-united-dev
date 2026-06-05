@@ -27,6 +27,7 @@ export async function GET(request: Request) {
       JOIN accounting_accounts a ON l.account_id = a.id
       WHERE l.partner_id = ? 
       AND m.state = 'posted'
+      AND m.deleted_at IS NULL
       AND m.date < ?
       AND (a.type = 'asset_receivable' OR a.type = 'liability_payable')
     `;
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
     JOIN accounting_journals j ON m.journal_id = j.id
     WHERE l.partner_id = ?
     AND m.state = 'posted'
+    AND m.deleted_at IS NULL
     AND (a.type = 'asset_receivable' OR a.type = 'liability_payable')
   `;
 

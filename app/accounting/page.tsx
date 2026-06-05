@@ -13,7 +13,7 @@ export default async function AccountingDashboard() {
     const stats = await getAccountingDashboardStats();
 
     const cards = [
-        { label: "النقدية", value: stats.cash, borderClass: "border-t-blue-500", colorLabel: "text-gray-500" },
+        { label: "الخزينة", value: stats.cash, borderClass: "border-t-amber-500", colorLabel: "text-gray-500" },
         { label: "البنك", value: stats.bank, borderClass: "border-t-emerald-500", colorLabel: "text-gray-500" },
         { label: "مستحقات عملاء", value: stats.receivables, borderClass: "border-t-violet-500", colorLabel: "text-gray-500" },
         { label: "مستحقات موردين", value: stats.payables, borderClass: "border-t-rose-500", colorLabel: "text-gray-500" },

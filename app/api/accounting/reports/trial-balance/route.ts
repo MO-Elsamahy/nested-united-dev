@@ -24,6 +24,7 @@ export async function GET(request: Request) {
     LEFT JOIN accounting_move_lines l ON a.id = l.account_id
     LEFT JOIN accounting_moves m ON l.move_id = m.id
     WHERE m.state = 'posted'
+      AND m.deleted_at IS NULL
   `;
 
     const params: (string | number | boolean | null)[] = [];
