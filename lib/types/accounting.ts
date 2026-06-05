@@ -1,7 +1,8 @@
 
 export type InvoiceState = "draft" | "confirmed" | "partial" | "paid" | "cancelled" | "posted" | "overdue";
 export type PaymentMethod = "cash" | "bank_transfer" | "credit_card" | "other";
-export type InvoiceType = "customer_invoice" | "supplier_bill" | "credit_note";
+export type InvoiceType = "customer_invoice" | "vendor_bill" | "supplier_bill" | "credit_note";
+export type AccountSubtype = "cash" | "bank" | null;
 
 export interface AccountingPartner {
     id: string;
@@ -149,6 +150,8 @@ export interface AccountingAccount {
     code: string;
     name: string;
     type: string;
+    /** تمييز الحسابات البنكية: cash = خزينة/صندوق، bank = بنك */
+    account_subtype?: AccountSubtype;
     parent_id?: string | null;
     is_group: boolean;
     is_reconcilable: boolean;

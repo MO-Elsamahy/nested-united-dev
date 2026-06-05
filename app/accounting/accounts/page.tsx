@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, FolderOpen, FileText, Folder, Trash2 } from "lucide-react";
+import { Plus, Search, FolderOpen, FileText, Folder, Trash2, Vault, Landmark } from "lucide-react";
 import { AccountForm } from "./form";
 
 interface Account {
@@ -9,6 +9,7 @@ interface Account {
     code: string;
     name: string;
     type: string;
+    account_subtype?: "cash" | "bank" | null;
     is_reconcilable: boolean;
 }
 
@@ -36,6 +37,15 @@ export default function AccountsPage() {
         }
     }
 
+    async function handleSetSubtype(id: string, account_subtype: "cash" | "bank" | null) {
+        const res = await fetch("/api/accounting/accounts", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id, account_subtype }),
+        });
+        if (res.ok) fetchAccounts();
+    }
+
     const filtered = accounts.filter(
         (acc) =>
             acc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -52,7 +62,7 @@ export default function AccountsPage() {
 
     const typeLabels: Record<string, string> = {
         asset_receivable: "الأصول المتداولة (مدينون)",
-        asset_bank: "النقدية والبنوك",
+        asset_bank: "الخزينة والبنوك",
         asset_current: "أصول متداولة أخرى",
         asset_fixed: "أصول ثابتة",
         liability_payable: "الخصوم المتداولة (دائنون)",
@@ -115,10 +125,37 @@ export default function AccountsPage() {
                                                 <p className="font-medium text-gray-900 flex items-center gap-2">
                                                     <span className="font-mono text-gray-500 text-sm bg-gray-50 px-1 rounded">{account.code}</span>
                                                     {account.name}
+                                                    {/* badge نوع حساب البنك */}
+                                                    {account.type === "asset_bank" && (
+                                                        account.account_subtype === "cash"
+                                                            ? <span className="inline-flex items-center gap-1 text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full"><Vault className="w-3 h-3" />خزينة</span>
+                                                            : account.account_subtype === "bank"
+                                                                ? <span className="inline-flex items-center gap-1 text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full"><Landmark className="w-3 h-3" />بنك</span>
+                                                                : <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">غير مصنف</span>
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {/* تصنيف الخزينة/البنك لحسابات asset_bank */}
+                                            {account.type === "asset_bank" && (
+                                                <div className="flex items-center gap-1 text-xs">
+                                                    <button
+                                                        onClick={() => handleSetSubtype(account.id, "cash")}
+                                                        title="تعيين كخزينة"
+                                                        className={`px-2 py-1 rounded border transition ${account.account_subtype === "cash" ? "bg-amber-100 border-amber-400 text-amber-700 font-bold" : "border-gray-300 text-gray-500 hover:bg-amber-50"}`}
+                                                    >
+                                                        <Vault className="w-3 h-3 inline ml-1" />خزينة
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSetSubtype(account.id, "bank")}
+                                                        title="تعيين كبنك"
+                                                        className={`px-2 py-1 rounded border transition ${account.account_subtype === "bank" ? "bg-emerald-100 border-emerald-400 text-emerald-700 font-bold" : "border-gray-300 text-gray-500 hover:bg-emerald-50"}`}
+                                                    >
+                                                        <Landmark className="w-3 h-3 inline ml-1" />بنك
+                                                    </button>
+                                                </div>
+                                            )}
                                             <button
                                                 onClick={() => {
                                                     if (confirm('هل أنت متأكد من حذف هذا الحساب؟')) {

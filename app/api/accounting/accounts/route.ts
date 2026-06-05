@@ -85,7 +85,7 @@ export async function POST(request: Request) {
 
     try {
         const body = await request.json();
-        const { code, name, type, is_reconcilable, description } = body;
+        const { code, name, type, account_subtype, is_reconcilable, description } = body;
 
         // Basic validation
         if (!code || !name || !type) {
@@ -95,6 +95,9 @@ export async function POST(request: Request) {
             );
         }
 
+        // account_subtype مسموح فقط على حسابات asset_bank
+        const resolvedSubtype = type === "asset_bank" ? (account_subtype || null) : null;
+
         // Check strict code uniqueness
         const existing = await query("SELECT id FROM accounting_accounts WHERE code = ?", [code]);
         if (existing.length > 0) {
@@ -103,12 +106,50 @@ export async function POST(request: Request) {
 
         const id = generateUUID();
         await execute(
-            `INSERT INTO accounting_accounts (id, code, name, type, is_reconcilable, description)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, code, name, type, is_reconcilable || false, description || null]
+            `INSERT INTO accounting_accounts (id, code, name, type, account_subtype, is_reconcilable, description)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, code, name, type, resolvedSubtype, is_reconcilable || false, description || null]
         );
 
         return NextResponse.json({ success: true, id }, { status: 201 });
+    } catch (error: unknown) {
+        return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
+    }
+}
+
+// PATCH: Update account_subtype (treasury vs bank classification)
+export async function PATCH(request: Request) {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
+
+    const hasAccess = await hasSystemAccess(user.role, "accounting");
+    if (!hasAccess) {
+        return NextResponse.json({ error: "Forbidden: Cannot update accounting accounts" }, { status: 403 });
+    }
+
+    try {
+        const body = await request.json();
+        const { id, account_subtype } = body;
+
+        if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+        const validSubtypes = ["cash", "bank", null];
+        if (!validSubtypes.includes(account_subtype)) {
+            return NextResponse.json({ error: "account_subtype يجب أن يكون: cash, bank, أو null" }, { status: 400 });
+        }
+
+        await execute(
+            `UPDATE accounting_accounts SET account_subtype = ? WHERE id = ? AND type = 'asset_bank'`,
+            [account_subtype, id]
+        );
+
+        await execute(
+            `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+             VALUES (?, ?, 'update_subtype', 'account', ?, ?)`,
+            [generateUUID(), user.id, id, JSON.stringify({ account_subtype })]
+        );
+
+        return NextResponse.json({ success: true });
     } catch (error: unknown) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
