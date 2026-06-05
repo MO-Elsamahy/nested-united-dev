@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { RefreshCw, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useCallback } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface AuditLog {
     id: string;
@@ -16,6 +17,7 @@ interface AuditLog {
 }
 
 export default function BacklogPage() {
+    const { confirm, alert } = useDialog();
     const [logs, setLogs] = useState<AuditLog[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -33,17 +35,17 @@ export default function BacklogPage() {
     }, [fetchLogs]);
 
     async function handleRestore(type: string, id: string) {
-        if (!confirm("هل أنت متأكد من استعادة هذا العنصر؟")) return;
+        if (!await confirm("هل أنت متأكد من استعادة هذا العنصر؟")) return;
         try {
             const res = await fetch(`/api/accounting/restore?type=${type}&id=${id}`, { method: "POST" });
             if (res.ok) {
-                alert("تمت الاستعادة بنجاح");
+                await alert("تمت الاستعادة بنجاح");
                 fetchLogs();
             } else {
-                alert("فشل الاستعادة");
+                await alert("فشل الاستعادة");
             }
         } catch (_e) {
-            alert("حدث خطأ");
+            await alert("حدث خطأ");
         }
     }
 

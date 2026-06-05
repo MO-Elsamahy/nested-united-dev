@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, Users, Phone, Trash2 } from "lucide-react";
 import { PartnerForm } from "./form";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Partner {
     id: string;
@@ -13,6 +14,7 @@ interface Partner {
 }
 
 export default function PartnersPage() {
+    const { confirm } = useDialog();
     const [partners, setPartners] = useState<Partner[]>([]);
     const [_loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -33,7 +35,7 @@ export default function PartnersPage() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("حذف هذا الشريك؟")) return;
+        if (!await confirm("حذف هذا الشريك؟")) return;
         await fetch(`/api/accounting/partners?id=${id}`, { method: 'DELETE' });
         fetchPartners();
     };

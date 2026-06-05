@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { Plus, Target, Trash2 } from "lucide-react";
 import { CostCenterForm } from "./form";
 import { CostCenter } from "@/lib/types/accounting";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function CostCentersPage() {
+    const { confirm } = useDialog();
     const [centers, setCenters] = useState<CostCenter[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -19,7 +21,7 @@ export default function CostCentersPage() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("حذف مركز التكلفة؟")) return;
+        if (!await confirm("حذف مركز التكلفة؟")) return;
         await fetch(`/api/accounting/cost-centers?id=${id}`, { method: 'DELETE' });
         fetchCenters();
     };

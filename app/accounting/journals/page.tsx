@@ -5,8 +5,10 @@ import { Plus, Book, ArrowRight, Wallet, Building2, ShoppingCart, ShoppingBag, T
 import Link from "next/link";
 import { AccountingJournal } from "@/lib/types/accounting";
 import { JournalForm } from "./form";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function JournalsPage() {
+    const { confirm, alert } = useDialog();
     const [journals, setJournals] = useState<AccountingJournal[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -28,16 +30,16 @@ export default function JournalsPage() {
     }
 
     const handleDelete = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذا الدفتر؟")) return;
+        if (!await confirm("هل أنت متأكد من حذف هذا الدفتر؟")) return;
         try {
             const res = await fetch(`/api/accounting/journals?id=${id}`, { method: "DELETE" });
             if (res.ok) {
                 fetchJournals();
             } else {
-                alert("فشل الحذف. قد لا تملك الصلاحيات الكافية.");
+                await alert("فشل الحذف. قد لا تملك الصلاحيات الكافية.");
             }
         } catch (_error) {
-            alert("حدث خطأ في الاتصال");
+            await alert("حدث خطأ في الاتصال");
         }
     };
 

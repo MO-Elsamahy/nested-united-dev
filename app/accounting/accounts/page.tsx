@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Search, FolderOpen, FileText, Folder, Trash2, Vault, Landmark } from "lucide-react";
 import { AccountForm } from "./form";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Account {
     id: string;
@@ -14,6 +15,7 @@ interface Account {
 }
 
 export default function AccountsPage() {
+    const { confirm } = useDialog();
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -157,8 +159,8 @@ export default function AccountsPage() {
                                                 </div>
                                             )}
                                             <button
-                                                onClick={() => {
-                                                    if (confirm('هل أنت متأكد من حذف هذا الحساب؟')) {
+                                                onClick={async () => {
+                                                    if (await confirm('هل أنت متأكد من حذف هذا الحساب؟')) {
                                                         fetch(`/api/accounting/accounts?id=${account.id}`, { method: 'DELETE' }).then(() => fetchAccounts());
                                                     }
                                                 }}

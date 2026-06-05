@@ -6,8 +6,10 @@ import { ArrowRight, Plus, FileText, CheckCircle, Clock, Trash2 } from "lucide-r
 import { AccountingMove } from "@/lib/types/accounting";
 import { useCallback } from "react";
 import Link from "next/link";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function JournalEntriesPage() {
+    const { confirm } = useDialog();
     const { id } = useParams();
     const [moves, setMoves] = useState<AccountingMove[]>([]);
     const [loading, setLoading] = useState(true);
@@ -80,8 +82,8 @@ export default function JournalEntriesPage() {
                                     <td className="px-6 py-4">{getStatus(move.state)}</td>
                                     <td className="px-6 py-4 text-left flex items-center gap-2 justify-end">
                                         <button
-                                            onClick={() => {
-                                                if (confirm('حذف هذا القيد؟ سيتم نقله إلى سلة المحذوفات (Backlog).')) {
+                                            onClick={async () => {
+                                                if (await confirm('حذف هذا القيد؟ سيتم نقله إلى سلة المحذوفات (Backlog).')) {
                                                     fetch(`/api/accounting/moves?id=${move.id}`, { method: 'DELETE' }).then(() => fetchMoves());
                                                 }
                                             }}

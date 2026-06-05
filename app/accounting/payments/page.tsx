@@ -8,6 +8,7 @@ import {
     BookOpen
 } from "lucide-react";
 import { useCallback } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Payment {
     id: string;
@@ -35,6 +36,7 @@ interface JournalMove {
 type ActiveSection = "payments" | "journal_moves";
 
 export default function PaymentsPage() {
+    const { confirm, alert } = useDialog();
     const [activeSection, setActiveSection] = useState<ActiveSection>("payments");
     const [payments, setPayments] = useState<Payment[]>([]);
     const [journalMoves, setJournalMoves] = useState<JournalMove[]>([]);
@@ -81,15 +83,15 @@ export default function PaymentsPage() {
     }, [activeSection, fetchPayments, fetchJournalMoves]);
 
     const handleDelete = async (id: string, number: string) => {
-        if (!confirm(`هل أنت متأكد من حذف السند رقم ${number}؟ سيتم تحديث أرصدة الفواتير المرتبطة به.`)) return;
+        if (!await confirm(`هل أنت متأكد من حذف السند رقم ${number}؟ سيتم تحديث أرصدة الفواتير المرتبطة به.`)) return;
 
         const res = await fetch(`/api/accounting/payments/${id}`, { method: "DELETE" });
         if (res.ok) {
             fetchPayments();
-            alert("تم حذف السند بنجاح");
+            await alert("تم حذف السند بنجاح");
         } else {
             const error = await res.json();
-            alert(error.error || "فشل الحذف");
+            await alert(error.error || "فشل الحذف");
         }
     };
 

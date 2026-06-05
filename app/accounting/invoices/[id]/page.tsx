@@ -8,8 +8,10 @@ import { ArrowRight, Edit, Trash2, Check, Download, Mail, FileText, X } from "lu
 import Image from "next/image";
 import { AccountingInvoice, CompanySettings } from "@/lib/types/accounting";
 import { useCallback } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function InvoiceDetailPage() {
+    const { alert, confirm, prompt } = useDialog();
     const params = useParams();
     const router = useRouter();
     const [invoice, setInvoice] = useState<AccountingInvoice | null>(null);
@@ -47,7 +49,7 @@ export default function InvoiceDetailPage() {
     }, [params.id, fetchInvoice, fetchCompany]);
 
     const handleConfirm = async () => {
-        if (!confirm("هل أنت متأكد من تأكيد الفاتورة؟ لن يمكن التعديل بعد التأكيد.")) return;
+        if (!await confirm("هل أنت متأكد من تأكيد الفاتورة؟ لن يمكن التعديل بعد التأكيد.")) return;
 
         const res = await fetch(`/api/accounting/invoices/${params.id}/confirm`, {
             method: "POST",
@@ -55,15 +57,15 @@ export default function InvoiceDetailPage() {
 
         if (res.ok) {
             fetchInvoice();
-            alert("تم تأكيد الفاتورة بنجاح");
+            await alert("تم تأكيد الفاتورة بنجاح");
         } else {
             const error = await res.json();
-            alert(`فشل التأكيد: ${error.error}`);
+            await alert(`فشل التأكيد: ${error.error}`);
         }
     };
 
     const handleDelete = async () => {
-        if (!confirm("هل أنت متأكد من حذف الفاتورة؟")) return;
+        if (!await confirm("هل أنت متأكد من حذف الفاتورة؟")) return;
 
         const res = await fetch(`/api/accounting/invoices/${params.id}`, {
             method: "DELETE",
@@ -73,12 +75,12 @@ export default function InvoiceDetailPage() {
             router.push("/accounting/invoices");
         } else {
             const error = await res.json();
-            alert(`فشل الحذف: ${error.error}`);
+            await alert(`فشل الحذف: ${error.error}`);
         }
     };
 
     const handleCancel = async () => {
-        const reason = prompt("يرجى إدخال سبب إلغاء الفاتورة:");
+        const reason = await prompt("يرجى إدخال سبب إلغاء الفاتورة:");
         if (reason === null) return; // Cancelled prompt
 
         const res = await fetch(`/api/accounting/invoices/${params.id}`, {
@@ -89,15 +91,15 @@ export default function InvoiceDetailPage() {
 
         if (res.ok) {
             fetchInvoice();
-            alert("تم إلغاء الفاتورة وعكس القيد المحاسبي بنجاح");
+            await alert("تم إلغاء الفاتورة وعكس القيد المحاسبي بنجاح");
         } else {
             const error = await res.json();
-            alert(`فشل الإلغاء: ${error.error}`);
+            await alert(`فشل الإلغاء: ${error.error}`);
         }
     };
 
     const handleDeletePayment = async (paymentId: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذا السند؟ سيتم تحديث رصيد الفاتورة.")) return;
+        if (!await confirm("هل أنت متأكد من حذف هذا السند؟ سيتم تحديث رصيد الفاتورة.")) return;
 
         const res = await fetch(`/api/accounting/payments/${paymentId}`, {
             method: "DELETE",
@@ -105,10 +107,10 @@ export default function InvoiceDetailPage() {
 
         if (res.ok) {
             fetchInvoice();
-            alert("تم حذف السند وتحديث الرصيد");
+            await alert("تم حذف السند وتحديث الرصيد");
         } else {
             const error = await res.json();
-            alert(`فشل الحذف: ${error.error}`);
+            await alert(`فشل الحذف: ${error.error}`);
         }
     };
 

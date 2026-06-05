@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Plus, Search, FileText, Eye, Edit, Trash2, Check, X } from "lucide-react";
 import { useCallback } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Invoice {
     id: string;
@@ -22,6 +23,7 @@ interface Invoice {
 type InvoiceTab = "customer_invoice" | "vendor_bill";
 
 export default function InvoicesPage() {
+    const { alert, confirm, prompt } = useDialog();
     const [activeTab, setActiveTab] = useState<InvoiceTab>("customer_invoice");
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
@@ -55,19 +57,19 @@ export default function InvoicesPage() {
             ? "هل أنت متأكد من حذف هذه الفاتورة؟"
             : "تحذير: هذه فاتورة مؤكدة. حذفها سيؤدي لحذف القيود المحاسبية المرتبطة بها نهائياً. هل أنت متأكد؟";
 
-        if (!confirm(confirmMsg)) return;
+        if (!await confirm(confirmMsg)) return;
 
         const res = await fetch(`/api/accounting/invoices/${id}`, { method: "DELETE" });
         if (res.ok) {
             fetchInvoices();
         } else {
             const error = await res.json();
-            alert(error.error || "فشل الحذف");
+            await alert(error.error || "فشل الحذف");
         }
     };
 
     const handleCancel = async (id: string) => {
-        const reason = prompt("يرجى إدخال سبب إلغاء الفاتورة:");
+        const reason = await prompt("يرجى إدخال سبب إلغاء الفاتورة:");
         if (reason === null) return;
 
         const res = await fetch(`/api/accounting/invoices/${id}`, {
@@ -78,10 +80,10 @@ export default function InvoicesPage() {
 
         if (res.ok) {
             fetchInvoices();
-            alert("تم إلغاء الفاتورة وعكس القيود بنجاح");
+            await alert("تم إلغاء الفاتورة وعكس القيود بنجاح");
         } else {
             const error = await res.json();
-            alert(`فشل الإلغاء: ${error.error}`);
+            await alert(`فشل الإلغاء: ${error.error}`);
         }
     };
 

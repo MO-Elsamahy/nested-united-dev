@@ -1,13 +1,13 @@
 import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
-import { query } from "@/lib/db";
+import { query, executeTransaction } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 
 interface InvoiceRow {
     id: string;
     invoice_number: string;
-    invoice_type: 'customer_invoice' | 'supplier_bill' | 'credit_note';
+    invoice_type: 'customer_invoice' | 'supplier_bill' | 'vendor_bill' | 'credit_note';
     state: string;
     invoice_date: string;
     due_date: string;
@@ -104,11 +104,19 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         // For supplier bill: Debit Expense, Credit Payable
 
         const receivableAccounts = await query<AccountRow>(
-            "SELECT * FROM accounting_accounts WHERE type = 'asset_receivable' AND deleted_at IS NULL LIMIT 1"
+            `SELECT * FROM accounting_accounts 
+             WHERE (type = 'asset_receivable' 
+                OR (type = 'asset_current' AND (name LIKE '%عميل%' OR name LIKE '%العملاء%' OR LOWER(name) LIKE '%customer%' OR LOWER(name) LIKE '%receivable%')))
+               AND deleted_at IS NULL 
+             LIMIT 1`
         );
 
         const payableAccounts = await query<AccountRow>(
-            "SELECT * FROM accounting_accounts WHERE type = 'liability_payable' AND deleted_at IS NULL LIMIT 1"
+            `SELECT * FROM accounting_accounts 
+             WHERE (type = 'liability_payable' 
+                OR (type = 'liability_current' AND (name LIKE '%مورد%' OR name LIKE '%الموردين%' OR LOWER(name) LIKE '%supplier%' OR LOWER(name) LIKE '%payable%')))
+               AND deleted_at IS NULL 
+             LIMIT 1`
         );
 
         const incomeAccounts = await query<AccountRow>(
@@ -130,77 +138,63 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             );
         }
 
-        if (invoice.invoice_type === "supplier_bill" && (!payableAccounts || payableAccounts.length === 0)) {
+        if ((invoice.invoice_type === "supplier_bill" || invoice.invoice_type === "vendor_bill") && (!payableAccounts || payableAccounts.length === 0)) {
             return NextResponse.json(
                 { error: "No payable account found. Please create an 'Accounts Payable' account first." },
                 { status: 400 }
             );
         }
 
-        // Create accounting move (journal entry)
+        // Create accounting move (journal entry) inside transaction
         const moveId = uuidv4();
         const moveRef = `Invoice: ${invoice.invoice_number}`;
 
-        await query(
-            `INSERT INTO accounting_moves (
-                id, journal_id, date, ref, narration, state,
-                partner_id, amount_total, created_by
-            ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
-            [
-                moveId,
-                journal.id,
-                invoice.invoice_date,
-                moveRef,
-                invoice.notes || `Confirmed invoice ${invoice.invoice_number}`,
-                invoice.partner_id,
-                invoice.total_amount,
-                user.id,
-            ]
-        );
+        let updatedInvoice: InvoiceRow & { partner_name: string };
 
-        // Create move lines (double entry)
-        if (invoice.invoice_type === "customer_invoice") {
-            // Debit: Accounts Receivable (Full Amount)
-            await query(
-                `INSERT INTO accounting_move_lines (
-                    id, move_id, account_id, partner_id, name,
-                    debit, credit, date_maturity
-                ) VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+        await executeTransaction(async (conn) => {
+            await conn.execute(
+                `INSERT INTO accounting_moves (
+                    id, journal_id, date, ref, narration, state,
+                    partner_id, amount_total, created_by
+                ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
                 [
-                    uuidv4(),
                     moveId,
-                    receivableAccounts[0].id,
+                    journal.id,
+                    invoice.invoice_date,
+                    moveRef,
+                    invoice.notes || `Confirmed invoice ${invoice.invoice_number}`,
                     invoice.partner_id,
-                    `Invoice ${invoice.invoice_number}`,
                     invoice.total_amount,
-                    invoice.due_date,
+                    user.id,
                 ]
             );
 
-            // Credit: Revenue accounts (Net Amount) + Tax (Tax Amount)
-            for (const line of lines) {
-                const revenueAccountId = line.account_id || (incomeAccounts.length > 0 ? incomeAccounts[0].id : null);
+            // Create move lines (double entry)
+            if (invoice.invoice_type === "customer_invoice") {
+                // Debit: Accounts Receivable (Full Amount)
+                await conn.execute(
+                    `INSERT INTO accounting_move_lines (
+                        id, move_id, account_id, partner_id, name,
+                        debit, credit, date_maturity
+                    ) VALUES (?, ?, ?, ?, ?, ?, 0, ?)`,
+                    [
+                        uuidv4(),
+                        moveId,
+                        receivableAccounts[0].id,
+                        invoice.partner_id,
+                        `Invoice ${invoice.invoice_number}`,
+                        invoice.total_amount,
+                        invoice.due_date,
+                    ]
+                );
 
-                if (revenueAccountId) {
-                    // 1. Credit Revenue (Net amount)
-                    await query(
-                        `INSERT INTO accounting_move_lines (
-                            id, move_id, account_id, partner_id, name,
-                            debit, credit
-                        ) VALUES (?, ?, ?, ?, ?, 0, ?)`,
-                        [
-                            uuidv4(),
-                            moveId,
-                            revenueAccountId,
-                            invoice.partner_id,
-                            line.description,
-                            line.line_total, // Net amount
-                        ]
-                    );
+                // Credit: Revenue accounts (Net Amount) + Tax (Tax Amount)
+                for (const line of lines) {
+                    const revenueAccountId = line.account_id || (incomeAccounts.length > 0 ? incomeAccounts[0].id : null);
 
-                    // 2. Credit VAT (if applicable)
-                    if (Number(line.tax_amount) > 0 && taxAccounts.length > 0) {
-                        await query(
+                    if (revenueAccountId) {
+                        // 1. Credit Revenue (Net amount)
+                        await conn.execute(
                             `INSERT INTO accounting_move_lines (
                                 id, move_id, account_id, partner_id, name,
                                 debit, credit
@@ -208,43 +202,42 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                             [
                                 uuidv4(),
                                 moveId,
-                                taxAccounts[0].id,
+                                revenueAccountId,
                                 invoice.partner_id,
-                                `VAT ${line.tax_rate}% - ${line.description}`,
-                                line.tax_amount,
+                                line.description,
+                                line.line_total, // Net amount
                             ]
                         );
+
+                        // 2. Credit VAT (if applicable)
+                        if (Number(line.tax_amount) > 0 && taxAccounts.length > 0) {
+                            await conn.execute(
+                                `INSERT INTO accounting_move_lines (
+                                    id, move_id, account_id, partner_id, name,
+                                    debit, credit
+                                ) VALUES (?, ?, ?, ?, ?, 0, ?)`,
+                                [
+                                    uuidv4(),
+                                    moveId,
+                                    taxAccounts[0].id,
+                                    invoice.partner_id,
+                                    `VAT ${line.tax_rate}% - ${line.description}`,
+                                    line.tax_amount,
+                                ]
+                            );
+                        }
                     }
                 }
-            }
-        } else if (invoice.invoice_type === "supplier_bill") {
-            // Debit: Expense accounts (Net Amount) + Tax Receivable? (For now simplify: Debit Expense with Total or Split)
-            // Simplified: Debit Expense (Net) + Debit VAT (Tax)
+            } else if (invoice.invoice_type === "supplier_bill" || invoice.invoice_type === "vendor_bill") {
+                // Debit: Expense accounts (Net Amount) + Tax Receivable? (For now simplify: Debit Expense with Total or Split)
+                // Simplified: Debit Expense (Net) + Debit VAT (Tax)
 
-            for (const line of lines) {
-                const expenseAccountId = line.account_id || (expenseAccounts.length > 0 ? expenseAccounts[0].id : null);
+                for (const line of lines) {
+                    const expenseAccountId = line.account_id || (expenseAccounts.length > 0 ? expenseAccounts[0].id : null);
 
-                if (expenseAccountId) {
-                    // 1. Debit Expense (Net)
-                    await query(
-                        `INSERT INTO accounting_move_lines (
-                            id, move_id, account_id, partner_id, name,
-                            debit, credit
-                        ) VALUES (?, ?, ?, ?, ?, ?, 0)`,
-                        [
-                            uuidv4(),
-                            moveId,
-                            expenseAccountId,
-                            invoice.partner_id,
-                            line.description,
-                            line.line_total,
-                        ]
-                    );
-
-                    // 2. Debit VAT (Input Tax) - allowing claim check
-                    // Ideally this goes to a Tax Receivable account, but using same Tax account as debit for now (claiming back)
-                    if (Number(line.tax_amount) > 0 && taxAccounts.length > 0) {
-                        await query(
+                    if (expenseAccountId) {
+                        // 1. Debit Expense (Net)
+                        await conn.execute(
                             `INSERT INTO accounting_move_lines (
                                 id, move_id, account_id, partner_id, name,
                                 debit, credit
@@ -252,205 +245,225 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                             [
                                 uuidv4(),
                                 moveId,
-                                taxAccounts[0].id,
+                                expenseAccountId,
                                 invoice.partner_id,
-                                `VAT Input ${line.tax_rate}% - ${line.description}`,
-                                line.tax_amount,
+                                line.description,
+                                line.line_total,
                             ]
                         );
+
+                        // 2. Debit VAT (Input Tax) - allowing claim check
+                        // Ideally this goes to a Tax Receivable account, but using same Tax account as debit for now (claiming back)
+                        if (Number(line.tax_amount) > 0 && taxAccounts.length > 0) {
+                            await conn.execute(
+                                `INSERT INTO accounting_move_lines (
+                                    id, move_id, account_id, partner_id, name,
+                                    debit, credit
+                                ) VALUES (?, ?, ?, ?, ?, ?, 0)`,
+                                [
+                                    uuidv4(),
+                                    moveId,
+                                    taxAccounts[0].id,
+                                    invoice.partner_id,
+                                    `VAT Input ${line.tax_rate}% - ${line.description}`,
+                                    line.tax_amount,
+                                ]
+                            );
+                        }
                     }
                 }
-            }
 
-            // Credit: Accounts Payable
-            await query(
-                `INSERT INTO accounting_move_lines (
-                    id, move_id, account_id, partner_id, name,
-                    debit, credit, date_maturity
-                ) VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
-                [
-                    uuidv4(),
-                    moveId,
-                    payableAccounts[0].id,
-                    invoice.partner_id,
-                    `Bill ${invoice.invoice_number}`,
-                    invoice.total_amount,
-                    invoice.due_date,
-                ]
-            );
-        }
-
-        // --- AUTOMATIC PAYMENT REGISTRATION ---
-        // Since confirmed = paid in this business flow, we automatically register a full payment.
-        const paymentId = uuidv4();
-
-        // 1. Generate payment number
-        const countRes = await query<{ count: number }>("SELECT COUNT(*) as count FROM accounting_payments");
-        const nextCount = (countRes[0]?.count || 0) + 1;
-        const paymentNumber = `PAY-${new Date().getFullYear()}-${String(nextCount).padStart(4, "0")}`;
-
-        // 2. Get default cash/bank journal
-        const cashJournals = await query<JournalRow>(
-            "SELECT * FROM accounting_journals WHERE (type = 'cash' OR type = 'bank') AND deleted_at IS NULL LIMIT 1"
-        );
-        const paymentJournalId = cashJournals[0]?.id || journal.id;
-
-        // 3. Get default cash/bank account
-        const cashAccounts = await query<AccountRow>(
-            "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL LIMIT 1"
-        );
-
-        if (cashAccounts && cashAccounts.length > 0) {
-            const cashAccount = cashAccounts[0];
-            const paymentType = invoice.invoice_type === "customer_invoice" ? "inbound" : "outbound";
-
-            // Create Payment
-            await query(
-                `INSERT INTO accounting_payments (
-                    id, payment_number, payment_type, partner_id, payment_date,
-                    amount, currency, payment_method, journal_id, state,
-                    notes, created_by
-                ) VALUES (?, ?, ?, ?, ?, ?, 'SAR', 'cash', ?, 'posted', ?, ?)`,
-                [
-                    paymentId,
-                    paymentNumber,
-                    paymentType,
-                    invoice.partner_id,
-                    invoice.invoice_date,
-                    invoice.total_amount,
-                    paymentJournalId,
-                    `سداد تلقائي للفاتورة رقم ${invoice.invoice_number}`,
-                    user.id
-                ]
-            );
-
-            // Create Payment Allocation
-            await query(
-                `INSERT INTO accounting_payment_allocations (
-                    id, payment_id, invoice_id, amount
-                ) VALUES (UUID(), ?, ?, ?)`,
-                [paymentId, invoiceId, invoice.total_amount]
-            );
-
-            // Create Payment Move (Journal Entry)
-            const paymentMoveId = uuidv4();
-            await query(
-                `INSERT INTO accounting_moves (
-                    id, journal_id, date, ref, narration, state,
-                    partner_id, amount_total, created_by
-                ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
-                [
-                    paymentMoveId,
-                    paymentJournalId,
-                    invoice.invoice_date,
-                    `Payment: ${paymentNumber}`,
-                    `سداد الفاتورة رقم ${invoice.invoice_number}`,
-                    invoice.partner_id,
-                    invoice.total_amount,
-                    user.id
-                ]
-            );
-
-            // Create Payment Move Lines (Double Entry)
-            if (paymentType === "inbound") {
-                // Debit: Cash/Bank Account (Full Amount)
-                await query(
+                // Credit: Accounts Payable
+                await conn.execute(
                     `INSERT INTO accounting_move_lines (
                         id, move_id, account_id, partner_id, name,
-                        debit, credit
-                    ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
+                        debit, credit, date_maturity
+                    ) VALUES (?, ?, ?, ?, ?, 0, ?, ?)`,
                     [
-                        paymentMoveId,
-                        cashAccount.id,
-                        invoice.partner_id,
-                        `سداد الفاتورة رقم ${invoice.invoice_number}`,
-                        invoice.total_amount
-                    ]
-                );
-
-                // Credit: Accounts Receivable (Full Amount)
-                await query(
-                    `INSERT INTO accounting_move_lines (
-                        id, move_id, account_id, partner_id, name,
-                        debit, credit
-                    ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
-                    [
-                        paymentMoveId,
-                        receivableAccounts[0].id,
-                        invoice.partner_id,
-                        `تسوية الفاتورة رقم ${invoice.invoice_number}`,
-                        invoice.total_amount
-                    ]
-                );
-            } else {
-                // Debit: Accounts Payable (Full Amount)
-                await query(
-                    `INSERT INTO accounting_move_lines (
-                        id, move_id, account_id, partner_id, name,
-                        debit, credit
-                    ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
-                    [
-                        paymentMoveId,
+                        uuidv4(),
+                        moveId,
                         payableAccounts[0].id,
                         invoice.partner_id,
-                        `سداد الفاتورة رقم ${invoice.invoice_number}`,
-                        invoice.total_amount
-                    ]
-                );
-
-                // Credit: Cash/Bank Account (Full Amount)
-                await query(
-                    `INSERT INTO accounting_move_lines (
-                        id, move_id, account_id, partner_id, name,
-                        debit, credit
-                    ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
-                    [
-                        paymentMoveId,
-                        cashAccount.id,
-                        invoice.partner_id,
-                        `تسوية الفاتورة رقم ${invoice.invoice_number}`,
-                        invoice.total_amount
+                        `Bill ${invoice.invoice_number}`,
+                        invoice.total_amount,
+                        invoice.due_date,
                     ]
                 );
             }
 
-            // Update Invoice to confirmed with full payment details
-            await query(
-                `UPDATE accounting_invoices SET
-                    state = 'confirmed',
-                    amount_paid = ?,
-                    amount_due = 0,
-                    accounting_move_id = ?,
-                    journal_id = ?,
-                    updated_at = NOW()
-                 WHERE id = ?`,
-                [invoice.total_amount, moveId, journal.id, invoiceId]
-            );
-        } else {
-            // Fallback (if no cash account exists, just update state to confirmed)
-            await query(
-                `UPDATE accounting_invoices SET
-                    state = 'confirmed',
-                    accounting_move_id = ?,
-                    journal_id = ?,
-                    updated_at = NOW()
-                 WHERE id = ?`,
-                [moveId, journal.id, invoiceId]
-            );
-        }
+            // --- AUTOMATIC PAYMENT REGISTRATION ---
+            // Since confirmed = paid in this business flow, we automatically register a full payment.
+            const paymentId = uuidv4();
 
-        // Fetch updated invoice
-        const updated = await query<InvoiceRow & { partner_name: string }>(
-            `SELECT i.*, p.name as partner_name
-             FROM accounting_invoices i
-             LEFT JOIN accounting_partners p ON i.partner_id = p.id
-             WHERE i.id = ?`,
-            [invoiceId]
-        );
+            // 1. Generate payment number
+            const [countRes] = await conn.execute("SELECT COUNT(*) as count FROM accounting_payments") as any[];
+            const nextCount = (countRes[0]?.count || 0) + 1;
+            const paymentNumber = `PAY-${new Date().getFullYear()}-${String(nextCount).padStart(4, "0")}`;
+
+            // 2. Get default cash/bank journal
+            const [cashJournals] = await conn.execute(
+                "SELECT * FROM accounting_journals WHERE (type = 'cash' OR type = 'bank') AND deleted_at IS NULL LIMIT 1"
+            ) as any[];
+            const paymentJournalId = cashJournals[0]?.id || journal.id;
+
+            // 3. Get default cash/bank account
+            const [cashAccounts] = await conn.execute(
+                "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL LIMIT 1"
+            ) as any[];
+
+            if (cashAccounts && cashAccounts.length > 0) {
+                const cashAccount = cashAccounts[0];
+                const paymentType = invoice.invoice_type === "customer_invoice" ? "inbound" : "outbound";
+
+                // Create Payment
+                await conn.execute(
+                    `INSERT INTO accounting_payments (
+                        id, payment_number, payment_type, partner_id, payment_date,
+                        amount, currency, payment_method, journal_id, state,
+                        notes, created_by
+                    ) VALUES (?, ?, ?, ?, ?, ?, 'SAR', 'cash', ?, 'posted', ?, ?)`,
+                    [
+                        paymentId,
+                        paymentNumber,
+                        paymentType,
+                        invoice.partner_id,
+                        invoice.invoice_date,
+                        invoice.total_amount,
+                        paymentJournalId,
+                        `سداد تلقائي للفاتورة رقم ${invoice.invoice_number}`,
+                        user.id
+                    ]
+                );
+
+                // Create Payment Allocation
+                await conn.execute(
+                    `INSERT INTO accounting_payment_allocations (
+                        id, payment_id, invoice_id, amount
+                    ) VALUES (UUID(), ?, ?, ?)`,
+                    [paymentId, invoiceId, invoice.total_amount]
+                );
+
+                // Create Payment Move (Journal Entry)
+                const paymentMoveId = uuidv4();
+                await conn.execute(
+                    `INSERT INTO accounting_moves (
+                        id, journal_id, date, ref, narration, state,
+                        partner_id, amount_total, created_by
+                    ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
+                    [
+                        paymentMoveId,
+                        paymentJournalId,
+                        invoice.invoice_date,
+                        `Payment: ${paymentNumber}`,
+                        `سداد الفاتورة رقم ${invoice.invoice_number}`,
+                        invoice.partner_id,
+                        invoice.total_amount,
+                        user.id
+                    ]
+                );
+
+                // Create Payment Move Lines (Double Entry)
+                if (paymentType === "inbound") {
+                    // Debit: Cash/Bank Account (Full Amount)
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (
+                            id, move_id, account_id, partner_id, name,
+                            debit, credit
+                        ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
+                        [
+                            paymentMoveId,
+                            cashAccount.id,
+                            invoice.partner_id,
+                            `سداد الفاتورة رقم ${invoice.invoice_number}`,
+                            invoice.total_amount
+                        ]
+                    );
+
+                    // Credit: Accounts Receivable (Full Amount)
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (
+                            id, move_id, account_id, partner_id, name,
+                            debit, credit
+                        ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
+                        [
+                            paymentMoveId,
+                            receivableAccounts[0].id,
+                            invoice.partner_id,
+                            `تسوية الفاتورة رقم ${invoice.invoice_number}`,
+                            invoice.total_amount
+                        ]
+                    );
+                } else {
+                    // Debit: Accounts Payable (Full Amount)
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (
+                            id, move_id, account_id, partner_id, name,
+                            debit, credit
+                        ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
+                        [
+                            paymentMoveId,
+                            payableAccounts[0].id,
+                            invoice.partner_id,
+                            `سداد الفاتورة رقم ${invoice.invoice_number}`,
+                            invoice.total_amount
+                        ]
+                    );
+
+                    // Credit: Cash/Bank Account (Full Amount)
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (
+                            id, move_id, account_id, partner_id, name,
+                            debit, credit
+                        ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
+                        [
+                            paymentMoveId,
+                            cashAccount.id,
+                            invoice.partner_id,
+                            `تسوية الفاتورة رقم ${invoice.invoice_number}`,
+                            invoice.total_amount
+                        ]
+                    );
+                }
+
+                // Update Invoice to confirmed with full payment details
+                await conn.execute(
+                    `UPDATE accounting_invoices SET
+                        state = 'confirmed',
+                        amount_paid = ?,
+                        amount_due = 0,
+                        accounting_move_id = ?,
+                        journal_id = ?,
+                        updated_at = NOW()
+                     WHERE id = ?`,
+                    [invoice.total_amount, moveId, journal.id, invoiceId]
+                );
+            } else {
+                // Fallback (if no cash account exists, just update state to confirmed)
+                await conn.execute(
+                    `UPDATE accounting_invoices SET
+                        state = 'confirmed',
+                        accounting_move_id = ?,
+                        journal_id = ?,
+                        updated_at = NOW()
+                     WHERE id = ?`,
+                    [moveId, journal.id, invoiceId]
+                );
+            }
+
+            // Fetch updated invoice within transaction
+            const [updatedRows] = await conn.execute(
+                `SELECT i.*, p.name as partner_name
+                 FROM accounting_invoices i
+                 LEFT JOIN accounting_partners p ON i.partner_id = p.id
+                 WHERE i.id = ?`,
+                [invoiceId]
+            ) as any[];
+            updatedInvoice = updatedRows[0];
+        });
 
         return NextResponse.json({
             message: "Invoice confirmed successfully",
-            invoice: updated[0],
+            invoice: updatedInvoice!,
             accounting_move_id: moveId,
         });
     } catch (error: unknown) {
