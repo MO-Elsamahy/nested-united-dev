@@ -185,7 +185,7 @@ export async function GET(request: Request) {
                 department: emp.department,
                 job_title: emp.job_title,
                 working_days: workingDays,
-                off_days: offDaysInFullMonth,  // أيام الراحة طول الشهر كله (للعرض)
+                off_days: offDaysInCheckedPeriod,  // أيام الراحة فعلاً في الفترة المحسوبة (1..endCheckDay)
                 present_days: presentDays,
                 absent_days: absentDays,
                 leave_days: leaveDays,
