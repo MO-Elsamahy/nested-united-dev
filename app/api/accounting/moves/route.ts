@@ -17,9 +17,11 @@ export async function GET(request: Request) {
     const from = searchParams.get("from");
     const to = searchParams.get("to");
     const partnerId = searchParams.get("partner_id");
+    // journal_types: قائمة أنواع المجلات مفصولة بفاصلة (مثال: cash,bank)
+    const journalTypes = searchParams.get("journal_types");
 
     let sql = `
-    SELECT m.*, j.name as journal_name, p.name as partner_name, u.name as created_by_name
+    SELECT m.*, j.name as journal_name, j.type as journal_type, p.name as partner_name, u.name as created_by_name
     FROM accounting_moves m
     LEFT JOIN accounting_journals j ON m.journal_id = j.id
     LEFT JOIN accounting_partners p ON m.partner_id = p.id
@@ -31,6 +33,14 @@ export async function GET(request: Request) {
     if (journalId) {
         sql += " AND m.journal_id = ?";
         params.push(journalId);
+    }
+    if (journalTypes) {
+        // فلترة بأنواع المجلات: cash و/أو bank
+        const types = journalTypes.split(",").map(t => t.trim()).filter(Boolean);
+        if (types.length > 0) {
+            sql += ` AND j.type IN (${types.map(() => "?").join(",")})`;
+            params.push(...types);
+        }
     }
     if (state) {
         sql += " AND m.state = ?";
@@ -49,7 +59,7 @@ export async function GET(request: Request) {
         params.push(to);
     }
 
-    sql += " ORDER BY m.date DESC, m.created_at DESC LIMIT 100";
+    sql += " ORDER BY m.date DESC, m.created_at DESC LIMIT 200";
 
     try {
         const moves = await query<AccountingMove>(sql, params);
