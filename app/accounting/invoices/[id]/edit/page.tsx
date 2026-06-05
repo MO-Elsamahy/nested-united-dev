@@ -35,10 +35,10 @@ export default function EditInvoicePage() {
         return <div className="p-8 text-center text-red-600">الفاتورة غير موجودة</div>;
     }
 
-    if (invoice.state !== "draft") {
+    if (invoice.state !== "draft" && invoice.state !== "cancelled") {
         return (
             <div className="p-8 text-center text-red-600">
-                لا يمكن تعديل الفاتورة. يمكن تعديل المسودات فقط.
+                لا يمكن تعديل الفاتورة. يمكن تعديل المسودات أو الفواتير الملغاة فقط.
             </div>
         );
     }

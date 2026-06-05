@@ -45,10 +45,10 @@ export async function GET(
         try {
             payments = await query<AccountingPaymentAllocation>(
                 `SELECT pa.*, p.payment_number, p.payment_date, p.payment_method
-             FROM accounting_payment_allocations pa
-             LEFT JOIN accounting_payments p ON pa.payment_id = p.id
-             WHERE pa.invoice_id = ?
-             ORDER BY p.payment_date DESC`,
+              FROM accounting_payment_allocations pa
+              JOIN accounting_payments p ON pa.payment_id = p.id
+              WHERE pa.invoice_id = ? AND p.deleted_at IS NULL
+              ORDER BY p.payment_date DESC`,
                 [invoiceId]
             );
         } catch (_error) {
@@ -171,10 +171,10 @@ export async function PUT(
             return NextResponse.json({ message: "Invoice cancelled and reversed successfully" });
         }
 
-        // Only allow editing draft invoices
-        if (invoice.state !== "draft") {
+        // Only allow editing draft or cancelled invoices
+        if (invoice.state !== "draft" && invoice.state !== "cancelled") {
             return NextResponse.json(
-                { error: "Only draft invoices can be edited" },
+                { error: "Only draft or cancelled invoices can be edited" },
                 { status: 400 }
             );
         }
@@ -237,6 +237,17 @@ export async function PUT(
 
         const totalAmount = subtotal - discountAmount + taxAmount;
 
+        // If the invoice was cancelled, reset it to draft and soft-delete the original and reversing moves
+        let resetStateSql = "";
+        if (invoice.state === "cancelled") {
+            if (invoice.accounting_move_id) {
+                await query("UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?", [invoice.accounting_move_id]);
+            }
+            await query("UPDATE accounting_moves SET deleted_at = NOW() WHERE ref = ?", [`REV-${invoice.invoice_number}`]);
+
+            resetStateSql = ", state = 'draft', accounting_move_id = NULL, amount_paid = 0.00";
+        }
+
         // Update invoice
         await query(
             `UPDATE accounting_invoices SET
@@ -251,7 +262,7 @@ export async function PUT(
                 reference = ?,
                 notes = ?,
                 payment_terms = ?,
-                attachment_url = ?,
+                attachment_url = ?${resetStateSql},
                 updated_at = NOW()
              WHERE id = ?`,
             [
@@ -367,13 +378,21 @@ export async function DELETE(
                     );
                 }
             }
-
-            // 4. Clean up allocations
-            await query(
-                "DELETE FROM accounting_payment_allocations WHERE invoice_id = ?",
-                [invoiceId]
-            );
         }
+
+        // 4. Write Audit Log
+        await query(
+            `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+             VALUES (UUID(), ?, 'delete', 'invoice', ?, ?)`,
+            [
+                user.id,
+                invoiceId,
+                JSON.stringify({
+                    invoice_number: invoice.invoice_number,
+                    total_amount: invoice.total_amount,
+                })
+            ]
+        );
 
         return NextResponse.json({ message: "Invoice deleted successfully" });
     } catch (error) {

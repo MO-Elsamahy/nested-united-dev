@@ -126,6 +126,7 @@ export default function InvoiceDetailPage() {
     const getStateBadge = (state: string) => {
         const badges: Record<string, { color: string; text: string }> = {
             draft: { color: "bg-gray-100 text-gray-700", text: "مسودة (غير مدفوعة)" },
+            posted: { color: "bg-blue-100 text-blue-700", text: "مؤكدة (غير مدفوعة)" },
             confirmed: { color: "bg-green-100 text-green-700", text: "مدفوعة" },
             partial: { color: "bg-yellow-100 text-yellow-700", text: "دفع جزئي" },
             paid: { color: "bg-green-100 text-green-700", text: "مدفوعة" },
@@ -147,51 +148,64 @@ export default function InvoiceDetailPage() {
                     <p className="text-gray-600 mt-1">تفاصيل الفاتورة</p>
                 </div>
                 <div className="flex gap-2">
-                    {invoice.state === "draft" && (
-                        <>
-                            <button
-                                onClick={handleConfirm}
-                                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                            >
-                                <Check className="w-4 h-4" />
-                                تأكيد الفاتورة
-                            </button>
-                            <Link
-                                href={`/accounting/invoices/${params.id}/edit`}
-                                className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50"
-                            >
-                                <Edit className="w-4 h-4" />
-                                تعديل
-                            </Link>
-                            <button
-                                onClick={handleDelete}
-                                className="flex items-center gap-2 border border-red-500 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                                حذف
-                            </button>
-                        </>
+                    {/* Edit for draft or cancelled */}
+                    {(invoice.state === "draft" || invoice.state === "cancelled") && (
+                        <Link
+                            href={`/accounting/invoices/${params.id}/edit`}
+                            className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50 bg-white"
+                        >
+                            <Edit className="w-4 h-4" />
+                            تعديل
+                        </Link>
                     )}
+
+                    {/* Confirm only for draft */}
+                    {invoice.state === "draft" && (
+                        <button
+                            onClick={handleConfirm}
+                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                        >
+                            <Check className="w-4 h-4" />
+                            تأكيد الفاتورة
+                        </button>
+                    )}
+
+                    {/* Cancel for non-draft and non-cancelled */}
+                    {isSuperAdmin && invoice.state !== "draft" && invoice.state !== "cancelled" && (
+                        <button
+                            onClick={handleCancel}
+                            className="flex items-center gap-2 border border-orange-500 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50"
+                        >
+                            <X className="w-4 h-4" />
+                            إلغاء الفاتورة
+                        </button>
+                    )}
+
+                    {/* Delete for draft */}
+                    {invoice.state === "draft" && (
+                        <button
+                            onClick={handleDelete}
+                            className="flex items-center gap-2 border border-red-500 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            حذف
+                        </button>
+                    )}
+
+                    {/* Permanent Delete for non-draft */}
+                    {invoice.state !== "draft" && isSuperAdmin && (
+                        <button
+                            onClick={handleDelete}
+                            className="flex items-center gap-2 border border-red-500 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            حذف نهائي
+                        </button>
+                    )}
+
+                    {/* PDF and Email options for confirmed/paid/etc */}
                     {invoice.state !== "draft" && (
                         <>
-                            {isSuperAdmin && invoice.state !== "cancelled" && (
-                                <button
-                                    onClick={handleCancel}
-                                    className="flex items-center gap-2 border border-orange-500 text-orange-600 px-4 py-2 rounded-lg hover:bg-orange-50"
-                                >
-                                    <X className="w-4 h-4" />
-                                    إلغاء الفاتورة
-                                </button>
-                            )}
-                            {isSuperAdmin && (
-                                <button
-                                    onClick={handleDelete}
-                                    className="flex items-center gap-2 border border-red-500 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                    حذف نهائي
-                                </button>
-                            )}
                             <div className="relative">
                                 <button 
                                     onClick={() => setShowPdfDropdown(!showPdfDropdown)}
@@ -236,7 +250,7 @@ export default function InvoiceDetailPage() {
                                     </div>
                                 )}
                             </div>
-                            <button className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50">
+                            <button className="flex items-center gap-2 border px-4 py-2 rounded-lg hover:bg-gray-50 bg-white">
                                 <Mail className="w-4 h-4" />
                                 إرسال
                             </button>

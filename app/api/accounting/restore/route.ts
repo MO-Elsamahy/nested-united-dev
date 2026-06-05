@@ -116,7 +116,7 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
                         `UPDATE accounting_invoices 
                          SET amount_paid = amount_paid - ?,
                              amount_due = amount_due + ?,
-                             state = CASE WHEN (amount_paid - ?) <= 0 THEN 'draft' ELSE 'partial' END,
+                             state = CASE WHEN (amount_paid - ?) <= 0 THEN 'posted' ELSE 'partial' END,
                              updated_at = NOW()
                          WHERE id = ?`,
                         [alloc.amount, alloc.amount, alloc.amount, alloc.invoice_id]
@@ -158,6 +158,46 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
                 await conn.execute(
                     "UPDATE accounting_moves SET deleted_at = NOW() WHERE ref = ?",
                     [`REV-${invoice.invoice_number}`]
+                );
+            }
+        }
+    } else if (L.action === "confirm") {
+        if (L.entity_type === "invoice") {
+            const details = JSON.parse(L.details || "{}");
+            
+            // 1. Reset invoice state to draft and clear payment/move references
+            await conn.execute(
+                `UPDATE accounting_invoices 
+                 SET state = 'draft',
+                     amount_paid = 0.00,
+                     amount_due = total_amount,
+                     accounting_move_id = NULL,
+                     updated_at = NOW()
+                 WHERE id = ?`,
+                [L.entity_id]
+            );
+
+            // 2. Soft-delete the invoice's journal entry move if it exists
+            if (details.invoice_move_id) {
+                await conn.execute(
+                    "UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?",
+                    [details.invoice_move_id]
+                );
+            }
+
+            // 3. Soft-delete the payment if it exists
+            if (details.payment_id) {
+                await conn.execute(
+                    "UPDATE accounting_payments SET deleted_at = NOW() WHERE id = ?",
+                    [details.payment_id]
+                );
+            }
+
+            // 4. Soft-delete the payment's journal entry move if it exists
+            if (details.payment_move_id) {
+                await conn.execute(
+                    "UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?",
+                    [details.payment_move_id]
                 );
             }
         }

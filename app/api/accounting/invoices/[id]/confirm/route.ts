@@ -285,6 +285,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             // --- AUTOMATIC PAYMENT REGISTRATION ---
             // Since confirmed = paid in this business flow, we automatically register a full payment.
             const paymentId = uuidv4();
+            let paymentMoveId: string | null = null;
 
             // 1. Generate payment number
             const [countRes] = await conn.execute("SELECT COUNT(*) as count FROM accounting_payments") as any[];
@@ -335,7 +336,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                 );
 
                 // Create Payment Move (Journal Entry)
-                const paymentMoveId = uuidv4();
+                paymentMoveId = uuidv4();
                 await conn.execute(
                     `INSERT INTO accounting_moves (
                         id, journal_id, date, ref, narration, state,
@@ -440,6 +441,23 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                     [moveId, journal.id, invoiceId]
                 );
             }
+
+            // Write Audit Log
+            await conn.execute(
+                `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+                 VALUES (UUID(), ?, 'confirm', 'invoice', ?, ?)`,
+                [
+                    user.id,
+                    invoiceId,
+                    JSON.stringify({
+                        invoice_number: invoice.invoice_number,
+                        total_amount: invoice.total_amount,
+                        invoice_move_id: moveId,
+                        payment_id: cashAccounts && cashAccounts.length > 0 ? paymentId : null,
+                        payment_move_id: cashAccounts && cashAccounts.length > 0 ? paymentMoveId : null,
+                    })
+                ]
+            );
 
             // Fetch updated invoice within transaction
             const [updatedRows] = await conn.execute(

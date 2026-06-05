@@ -59,15 +59,16 @@ export async function DELETE(
                 // Update invoice: decrease amount_paid, increase amount_due
                 await conn.execute(
                     `UPDATE accounting_invoices 
-                     SET amount_paid = amount_paid - ?,
-                         amount_due = amount_due + ?,
-                         state = CASE 
-                            WHEN (amount_paid - ?) <= 0 THEN 'draft'
-                            ELSE 'partial'
-                         END,
-                         updated_at = NOW()
-                     WHERE id = ?`,
-                    [allocatedAmount, allocatedAmount, allocatedAmount, invoice_id]
+                      SET amount_paid = amount_paid - ?,
+                          amount_due = amount_due + ?,
+                          state = CASE 
+                             WHEN (amount_paid - ?) <= 0 THEN 'posted'
+                             WHEN (amount_due + ?) <= 0 THEN 'paid'
+                             ELSE 'partial'
+                          END,
+                          updated_at = NOW()
+                      WHERE id = ?`,
+                    [allocatedAmount, allocatedAmount, allocatedAmount, allocatedAmount, invoice_id]
                 );
             }
 
