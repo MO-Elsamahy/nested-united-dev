@@ -3,10 +3,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import Link from "next/link";
 import { ArrowRight, Send, Loader2 } from "lucide-react";
 
 export default function NewRequestPage() {
+    const { alert } = useDialog();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -32,10 +34,10 @@ export default function NewRequestPage() {
                 router.refresh();
             } else {
                 const data = await res.json();
-                alert(data.error || "حدث خطأ");
+                await alert(data.error || "حدث خطأ");
             }
         } catch (_error) {
-            alert("حدث خطأ في الاتصال");
+            await alert("حدث خطأ في الاتصال");
         } finally {
             setLoading(false);
         }

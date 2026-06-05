@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Receipt, Download, Loader2, CheckCircle, Handshake } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Payslip {
     id: string;
@@ -14,6 +15,7 @@ interface Payslip {
 }
 
 export default function EmployeePayslipsPage() {
+    const { alert, confirm } = useDialog();
     const [payslips, setPayslips] = useState<Payslip[]>([]);
     const [loading, setLoading] = useState(true);
     const [confirmingId, setConfirmingId] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function EmployeePayslipsPage() {
     }, []);
 
     const handleConfirm = async (payrollRunId: string) => {
-        if (!confirm("هل تؤكد استلامك لراتب هذا الشهر؟")) return;
+        if (!await confirm("هل تؤكد استلامك لراتب هذا الشهر؟")) return;
 
         setConfirmingId(payrollRunId);
         try {
@@ -45,14 +47,14 @@ export default function EmployeePayslipsPage() {
                 method: "POST"
             });
             if (res.ok) {
-                alert("تم تأكيد الاستلام بنجاح");
+                await alert("تم تأكيد الاستلام بنجاح");
                 void fetchPayslips();
             } else {
                 const err = await res.json();
-                alert(err.error || "حدث خطأ أثناء التأكيد");
+                await alert(err.error || "حدث خطأ أثناء التأكيد");
             }
         } catch (_error) {
-            alert("فشل الاتصال بالخادم");
+            await alert("فشل الاتصال بالخادم");
         } finally {
             setConfirmingId(null);
         }
@@ -121,7 +123,7 @@ export default function EmployeePayslipsPage() {
                                 )}
                                 
                                 <button
-                                    onClick={() => alert("سيتم تفعيل طباعة كشف الراتب الفردي قريباً")}
+                                    onClick={async () => await alert("سيتم تفعيل طباعة كشف الراتب الفردي قريباً")}
                                     className="p-2 text-gray-500 hover:bg-gray-100 rounded-xl transition"
                                     title="تحميل كشف الراتب"
                                 >

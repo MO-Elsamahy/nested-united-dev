@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import { Clock, LogIn, LogOut, CheckCircle } from "lucide-react";
 
 interface AttendanceButtonProps {
@@ -14,6 +15,7 @@ interface AttendanceButtonProps {
 }
 
 export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButtonProps) {
+    const { alert } = useDialog();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -51,10 +53,10 @@ export function AttendanceButton({ employeeId, todayAttendance }: AttendanceButt
                 );
                 setTimeout(() => router.refresh(), 1500);
             } else {
-                alert(data.error || "حدث خطأ");
+                await alert(data.error || "حدث خطأ");
             }
         } catch (_error) {
-            alert("حدث خطأ في الاتصال");
+            await alert("حدث خطأ في الاتصال");
         } finally {
             setLoading(false);
         }
