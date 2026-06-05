@@ -56,12 +56,28 @@ async function getEmployeeData(userId: string) {
 
     if (!employee) return null;
 
-    const today = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const localNow = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+    const today = localNow.toISOString().split("T")[0];
 
-    const todayAttendance = await queryOne<Attendance>(
+    let todayAttendance = await queryOne<Attendance>(
         `SELECT * FROM hr_attendance WHERE employee_id = ? AND date = ?`,
         [employee.id, today]
     );
+
+    // Support overnight shifts: if no record for today, check yesterday for an open check-in
+    if (!todayAttendance) {
+        const yesterdayDate = new Date(localNow);
+        yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+        const yesterday = yesterdayDate.toISOString().split("T")[0];
+        const openYesterday = await queryOne<Attendance>(
+            `SELECT * FROM hr_attendance WHERE employee_id = ? AND date = ? AND check_out IS NULL`,
+            [employee.id, yesterday]
+        );
+        if (openYesterday) {
+            todayAttendance = openYesterday;
+        }
+    }
 
     const _pendingRequests = await queryOne<{ count: number }>(
         `SELECT COUNT(*) as count FROM hr_requests WHERE employee_id = ? AND status = 'pending'`,
