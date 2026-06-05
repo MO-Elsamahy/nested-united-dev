@@ -41,4 +41,13 @@ INSERT INTO users (id, email, password_hash, role, name, is_active)
 VALUES ('df706cfb-534a-4afe-b76a-c68e096cf446', 'admin@admin.com', '$2b$10$G8CWRdNXDOwfd60mko5A4OGgEvYfw1fJ3cKMi3RT7hYY7Vf2WhKdi', 'super_admin', 'Admin User', 1)
 ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), role = VALUES(role), name = VALUES(name), is_active = VALUES(is_active);
 
--- Note: All other improvements were strictly backend SQL query logic and frontend UI enhancements.
+-- 7. Clean up and correct employee job title typos (NEW - 2026-06-05)
+--    Aligns spelling mistakes to prevent duplication in HR analytics charts.
+UPDATE hr_employees 
+SET job_title = 'موظف خدمة عملاء' 
+WHERE job_title IN ('موظف حدمو عملاء', 'موظف خدمو عملاء');
+
+UPDATE hr_employees 
+SET job_title = 'مسؤول تسويق' 
+WHERE job_title = 'مسوؤل تسويق';
+

@@ -48,6 +48,32 @@ interface Account {
   account_name: string;
   ids?: string;
 }
+const JOB_TRANSLATIONS: Record<string, string> = {
+  "admin": "مسؤول إداري",
+  "ceo": "الرئيس التنفيذي",
+  "hr_manager": "مدير الموارد البشرية",
+  "super_admin": "مدير النظام العام",
+  "accountant": "محاسب",
+  "developer": "مطور برمجيات",
+  "designer": "مصمم",
+  "marketer": "مسؤول تسويق",
+  "sales": "مسؤول مبيعات",
+  "customer_service": "خدمة العملاء",
+  "operations": "مدير العمليات",
+  "cleaner": "مسؤول نظافة",
+  "receptionist": "موظف استقبال",
+  "security": "حارس أمن",
+  "driver": "سائق",
+  "technician": "فني صيانة",
+  "manager": "مدير قسم",
+  "agent": "وكيل خدمة",
+};
+
+function translateJobTitle(title: string): string {
+  if (!title) return "";
+  const normalized = title.trim().toLowerCase();
+  return JOB_TRANSLATIONS[normalized] || title;
+}
 
 const NoDataState = () => (
   <div className="flex flex-col items-center justify-center w-full h-full min-h-[180px] bg-slate-50/30 border border-dashed border-slate-100 rounded-xl p-4 text-center">
@@ -2409,59 +2435,96 @@ export function AnalyticsDashboardClient({
 
                   {/* Graphs & Charts Row */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Job Title distribution */}
-                    <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm space-y-4">
-                      <h3 className="text-sm font-bold text-gray-900">توزيع الموظفين حسب المسمى الوظيفي</h3>
-                      <div className="w-full h-[220px] relative" style={{ direction: "ltr" }}>
-                        {isMounted && (data?.jobTitleStats || []).length > 0 ? (
-                          <>
-                            <ResponsiveContainer width="100%" height="100%">
-                              <PieChart>
-                                <RechartsTooltip
-                                  wrapperStyle={{ zIndex: 100 }}
-                                  content={({ active, payload }) => {
-                                    if (active && payload && payload.length) {
-                                      return (
-                                        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl">
-                                          <p className="text-gray-400">{payload[0].name}</p>
-                                          <p className="text-indigo-400">{payload[0].value} موظفين ({Math.round(Number(payload[0].value)/totalEmployees * 100)}%)</p>
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  }}
-                                />
-                                <Pie
-                                  data={data.jobTitleStats}
-                                  cx="50%"
-                                  cy="50%"
-                                  innerRadius={60}
-                                  outerRadius={80}
-                                  paddingAngle={3}
-                                  dataKey="value"
-                                >
-                                  {data.jobTitleStats.map((entry: any, index: number) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS_PIE[index % COLORS_PIE.length]} />
-                                  ))}
-                                </Pie>
-                              </PieChart>
-                            </ResponsiveContainer>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
-                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">التخصصات</span>
-                              <span className="text-lg font-black text-gray-700">{data.jobTitleStats.length}</span>
+                    {/* Job Title distribution (Vertical Bar Chart, col-span-2) */}
+                    <div className="lg:col-span-2 border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between min-h-[380px]">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                        <div>
+                          <h3 className="text-sm font-bold text-gray-900">توزيع الموظفين حسب المسمى الوظيفي</h3>
+                          <p className="text-[10px] text-gray-400 font-medium">نظرة عامة على الهيكل الوظيفي وتوزيع القوى العاملة بالشركة</p>
+                        </div>
+                        {isMounted && (data?.jobTitleStats || []).length > 0 && (() => {
+                          const stats = data.jobTitleStats || [];
+                          let maxJob = { name: "", value: 0 };
+                          stats.forEach((s: any) => {
+                            if (s.value > maxJob.value) {
+                              maxJob = s;
+                            }
+                          });
+                          const totalRoles = stats.length;
+                          return (
+                            <div className="text-right sm:text-left bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 flex gap-4 text-[10px] font-bold text-gray-500">
+                              <div>
+                                <span className="text-gray-400">التخصصات: </span>
+                                <span className="text-indigo-600 font-extrabold">{totalRoles}</span>
+                              </div>
+                              <span className="text-gray-300">|</span>
+                              <div>
+                                <span className="text-gray-400">الأكثر شيوعاً: </span>
+                                <span className="text-emerald-600 font-extrabold">{translateJobTitle(maxJob.name)} ({maxJob.value} موظفين)</span>
+                              </div>
                             </div>
-                          </>
+                          );
+                        })()}
+                      </div>
+                      <div className="w-full h-[280px] relative" style={{ direction: "ltr" }}>
+                        {isMounted && (data?.jobTitleStats || []).length > 0 ? (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart 
+                              data={(data.jobTitleStats || []).map((item: any) => ({
+                                ...item,
+                                name: translateJobTitle(item.name)
+                              }))} 
+                              margin={{ top: 10, right: 10, left: -20, bottom: 60 }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                              <XAxis 
+                                dataKey="name"
+                                tick={{ fill: '#475569', fontSize: 9, fontWeight: 'bold' }} 
+                                axisLine={false} 
+                                tickLine={false}
+                                interval={0}
+                                angle={-35}
+                                textAnchor="end"
+                              />
+                              <YAxis 
+                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
+                                axisLine={false} 
+                                tickLine={false}
+                                allowDecimals={false}
+                                domain={[0, 'dataMax + 1']}
+                              />
+                              <RechartsTooltip
+                                wrapperStyle={{ zIndex: 100 }}
+                                content={({ active, payload }) => {
+                                  if (active && payload && payload.length) {
+                                    return (
+                                      <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl">
+                                        <p className="text-gray-400">{payload[0].payload.name}</p>
+                                        <p className="text-indigo-400">{payload[0].value} موظفين ({Math.round(Number(payload[0].value)/totalEmployees * 100)}%)</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={30}>
+                                {(data.jobTitleStats || []).map((entry: any, index: number) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS_PIE[index % COLORS_PIE.length]} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
                         ) : (
                           <NoDataState />
                         )}
                       </div>
                     </div>
 
-                    {/* Attendance Status distribution */}
-                    <div className="lg:col-span-2 border border-gray-150 rounded-2xl p-5 bg-white shadow-sm space-y-4">
-                      <h3 className="text-sm font-bold text-gray-900">توزيع حالات الحضور المسجلة</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                        <div className="w-full h-[220px] relative" style={{ direction: "ltr" }}>
+                    {/* Attendance Status distribution (Donut Chart, col-span-1) */}
+                    <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col min-h-[380px]">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900 mb-2">توزيع حالات الحضور المسجلة</h3>
+                        <div className="w-full h-[150px] relative" style={{ direction: "ltr" }}>
                           {isMounted && (data?.attendanceStats || []).length > 0 ? (
                             <>
                               <ResponsiveContainer width="100%" height="100%">
@@ -2484,8 +2547,8 @@ export function AnalyticsDashboardClient({
                                     data={(data.attendanceStats || []).map((r:any) => ({ name: r.status, value: r.count }))}
                                     cx="50%"
                                     cy="50%"
-                                    innerRadius={65}
-                                    outerRadius={85}
+                                    innerRadius={45}
+                                    outerRadius={60}
                                     paddingAngle={4}
                                     dataKey="value"
                                   >
@@ -2496,33 +2559,82 @@ export function AnalyticsDashboardClient({
                                 </PieChart>
                               </ResponsiveContainer>
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
-                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">سجل الحضور</span>
-                                <span className="text-lg font-black text-gray-700">{(data.attendanceStats || []).reduce((a:number,c:any)=>a+c.count,0)}</span>
+                                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider">سجل الحضور</span>
+                                <span className="text-sm font-black text-gray-700">{(data.attendanceStats || []).reduce((a:number,c:any)=>a+c.count,0)}</span>
                               </div>
                             </>
                           ) : (
                             <NoDataState />
                           )}
                         </div>
-                        {/* Attendance Legends */}
-                        <div className="space-y-3 pr-4">
-                          <h4 className="text-xs font-bold text-gray-500 mb-1">تفاصيل الحالات التراكمية:</h4>
-                          {isMounted && (data?.attendanceStats || []).map((item: any, idx: number) => {
-                            const color = ATT_COLORS[item.status] || COLORS_PIE[idx % COLORS_PIE.length];
-                            return (
-                              <div key={idx} className="flex justify-between items-center text-xs font-bold">
-                                <div className="flex items-center gap-2">
-                                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                      </div>
+
+                      {/* Dynamic Analytical Summary Widget */}
+                      {isMounted && (data?.attendanceStats || []).length > 0 && (() => {
+                        const stats = data.attendanceStats || [];
+                        const total = stats.reduce((a:number,c:any)=>a+c.count,0) || 0;
+                        const present = stats.find((s:any)=>s.status === 'حاضر' || s.status === 'Present')?.count || 0;
+                        const late = stats.find((s:any)=>s.status === 'متأخر' || s.status === 'Late')?.count || 0;
+                        const absent = stats.find((s:any)=>s.status === 'غائب' || s.status === 'Absent')?.count || 0;
+                        
+                        const attendanceRate = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
+                        const punctualityRate = (present + late) > 0 ? Math.round((present / (present + late)) * 100) : 100;
+
+                        let recommendation = "";
+                        let recommendationColor = "text-slate-500";
+                        if (attendanceRate < 80) {
+                          recommendation = "تنبيه: هناك انخفاض ملحوظ في نسبة الحضور العام (غيابات متكررة)، يتطلب مراجعة من إدارة الموارد البشرية.";
+                          recommendationColor = "text-rose-500 font-extrabold";
+                        } else if (punctualityRate < 80) {
+                          recommendation = "معدل الحضور العام ممتاز، ولكن يوصى بتنبيه الموظفين المتأخرين للالتزام بمواعيد العمل الرسمية.";
+                          recommendationColor = "text-amber-600";
+                        } else {
+                          recommendation = "مؤشرات الحضور والانضباط ممتازة جداً وتعكس بيئة عمل ملتزمة.";
+                          recommendationColor = "text-emerald-600";
+                        }
+
+                        return (
+                          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 my-2 text-right">
+                            <h4 className="text-[10px] font-extrabold text-slate-800 mb-1 flex items-center gap-1 justify-end">
+                              <span>تحليل الانضباط العام</span>
+                              <span>💡</span>
+                            </h4>
+                            <p className="text-[9.5px] text-gray-500 font-bold leading-relaxed">
+                              نسبة الحضور العام للموظفين بلغت <span className="text-teal-600 font-extrabold">{attendanceRate}%</span>.
+                              {late > 0 && <> بلغت نسبة الالتزام بالمواعيد (دون تأخير) <span className="text-amber-500 font-extrabold">{punctualityRate}%</span> (تم تسجيل {late} تأخير).</>}
+                              {absent > 0 && <> وهناك <span className="text-rose-500 font-extrabold">{absent}</span> غياب عن العمل.</>}
+                            </p>
+                            <p className={`text-[9px] mt-1 font-bold ${recommendationColor}`}>
+                              {recommendation}
+                            </p>
+                          </div>
+                        );
+                      })()}
+                      
+                      {/* Attendance Legends with Progress Bars */}
+                      <div className="space-y-2 border-t border-gray-100 pt-3 mt-1.5">
+                        {isMounted && (data?.attendanceStats || []).map((item: any, idx: number) => {
+                          const color = ATT_COLORS[item.status] || COLORS_PIE[idx % COLORS_PIE.length];
+                          const totalCount = (data.attendanceStats || []).reduce((a:number,c:any)=>a+c.count,0) || 1;
+                          const percent = Math.round(item.count/totalCount * 100);
+                          return (
+                            <div key={idx} className="space-y-1">
+                              <div className="flex justify-between items-center text-[10px] font-bold">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                                   <span className="text-gray-600">{item.status}</span>
                                 </div>
-                                <span className="text-gray-800">{item.count} أيام</span>
+                                <span className="text-gray-500">{item.count} ({percent}%)</span>
                               </div>
-                            );
-                          })}
-                          {(data?.attendanceStats || []).length === 0 && (
-                            <p className="text-xs text-gray-400">لا توجد سجلات حضور مسجلة للفترة المحددة</p>
-                          )}
-                        </div>
+                              <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full" style={{ backgroundColor: color, width: `${percent}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {(data?.attendanceStats || []).length === 0 && (
+                          <p className="text-xs text-gray-400 text-center">لا توجد سجلات حضور مسجلة للفترة المحددة</p>
+                        )}
                       </div>
                     </div>
                   </div>
