@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { execute, generateUUID } from "@/lib/db";
+import { execute, executeTransaction, generateUUID } from "@/lib/db";
 
 export async function POST(request: Request) {
     const user = await getCurrentUser();
@@ -18,15 +18,71 @@ export async function POST(request: Request) {
         if (type === "move") table = "accounting_moves";
         else if (type === "account") table = "accounting_accounts";
         else if (type === "journal") table = "accounting_journals";
-        else return NextResponse.json({ error: "Invalid entity type" }, { status: 400 });
+        else if (type === "partner") table = "accounting_partners";
+        else if (type === "payment") {
+            // Handled separately below
+        } else {
+            return NextResponse.json({ error: "Invalid entity type" }, { status: 400 });
+        }
 
-        // Restore Logic
-        await execute(`UPDATE ${table} SET deleted_at = NULL WHERE id = ?`, [id]);
+        if (type === "payment") {
+            // Restore Payment and Invoice balances inside transaction
+            await executeTransaction(async (conn) => {
+                // Get allocations
+                const [allocations] = await conn.execute(
+                    "SELECT * FROM accounting_payment_allocations WHERE payment_id = ?",
+                    [id]
+                ) as any[];
+
+                // Set payment deleted_at = NULL
+                await conn.execute(
+                    "UPDATE accounting_payments SET deleted_at = NULL WHERE id = ?",
+                    [id]
+                );
+
+                // Get payment info to restore moves
+                const [payments] = await conn.execute(
+                    "SELECT payment_number FROM accounting_payments WHERE id = ?",
+                    [id]
+                ) as any[];
+                const payment = payments?.[0];
+
+                if (payment) {
+                    // Restore corresponding moves if soft-deleted
+                    await conn.execute(
+                        "UPDATE accounting_moves SET deleted_at = NULL WHERE ref = ? AND deleted_at IS NOT NULL",
+                        [`Payment: ${payment.payment_number}`]
+                    );
+                }
+
+                // Update invoices
+                if (allocations && allocations.length > 0) {
+                    for (const alloc of allocations) {
+                        const { invoice_id, amount: allocatedAmount } = alloc;
+                        await conn.execute(
+                            `UPDATE accounting_invoices 
+                             SET amount_paid = amount_paid + ?,
+                                 amount_due = amount_due - ?,
+                                 state = CASE 
+                                     WHEN (amount_due - ?) <= 0 THEN 'paid'
+                                     ELSE 'partial'
+                                 END,
+                                 updated_at = NOW()
+                             WHERE id = ?`,
+                            [allocatedAmount, allocatedAmount, allocatedAmount, invoice_id]
+                        );
+                    }
+                }
+            });
+        } else {
+            // Restore Logic for other entities
+            await execute(`UPDATE ${table} SET deleted_at = NULL WHERE id = ?`, [id]);
+        }
 
         // Log the restore action
         await execute(
             `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
-         VALUES (?, ?, 'restore', ?, ?, ?)`,
+          VALUES (?, ?, 'restore', ?, ?, ?)`,
             [generateUUID(), user.id, type, id, JSON.stringify({ restored_at: new Date() })]
         );
 
@@ -35,3 +91,4 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
+
