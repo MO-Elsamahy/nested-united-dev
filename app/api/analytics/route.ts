@@ -999,12 +999,18 @@ export async function GET(req: NextRequest) {
     });
 
     // 13. HR & Payroll Overview (Detailed currency breakdown and advanced metrics)
+    const hrActiveEmployees = await query<any>(
+      `SELECT basic_salary, housing_allowance, transport_allowance, other_allowances, hire_date, salary_currency 
+       FROM hr_employees 
+       WHERE status = 'active'`
+    );
+
     let sarBasic = 0;
     let sarAllowances = 0;
     let egpBasic = 0;
     let egpAllowances = 0;
 
-    for (const emp of employees) {
+    for (const emp of hrActiveEmployees) {
       const b = Number(emp.basic_salary || 0);
       const a = Number(emp.housing_allowance || 0) + 
                 Number(emp.transport_allowance || 0) + 
@@ -1051,9 +1057,9 @@ export async function GET(req: NextRequest) {
         net: `${egpNet.toLocaleString("en-US")} ج.م`,
         rawNet: egpNet,
       },
-      activeEmployeesSAR: employees.filter(e => e.salary_currency?.toUpperCase() !== 'EGP').length,
-      activeEmployeesEGP: employees.filter(e => e.salary_currency?.toUpperCase() === 'EGP').length,
-      totalActiveEmployees: employees.length,
+      activeEmployeesSAR: hrActiveEmployees.filter((e: any) => e.salary_currency?.toUpperCase() !== 'EGP').length,
+      activeEmployeesEGP: hrActiveEmployees.filter((e: any) => e.salary_currency?.toUpperCase() === 'EGP').length,
+      totalActiveEmployees: hrActiveEmployees.length,
     };
 
     // Employee attendance for all employees
