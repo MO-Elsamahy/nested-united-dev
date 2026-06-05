@@ -220,6 +220,13 @@ export async function POST(req: NextRequest) {
             [invoiceId]
         );
 
+        // Write Audit Log
+        await query(
+            `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+             VALUES (?, ?, 'create', 'invoice', ?, ?)`,
+            [uuidv4(), user.id, invoiceId, JSON.stringify({ invoice_number: invoiceNumber, total_amount: totalAmount })]
+        );
+
         return NextResponse.json(createdInvoice[0], { status: 201 });
     } catch (error: unknown) {
         console.error("Error creating invoice:", error);

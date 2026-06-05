@@ -53,6 +53,43 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
                     [`Payment: ${payment.payment_number}`]
                 );
             }
+        } else if (L.entity_type === "invoice") {
+            // Restore invoice
+            await conn.execute("UPDATE accounting_invoices SET deleted_at = NULL WHERE id = ?", [L.entity_id]);
+
+            // Restore the invoice's journal entry if it exists
+            const [invoices] = await conn.execute(
+                "SELECT accounting_move_id FROM accounting_invoices WHERE id = ?",
+                [L.entity_id]
+            ) as any[];
+            const invoice = invoices?.[0];
+            if (invoice?.accounting_move_id) {
+                await conn.execute("UPDATE accounting_moves SET deleted_at = NULL WHERE id = ?", [invoice.accounting_move_id]);
+            }
+
+            // Restore associated payments and payment moves
+            const [allocations] = await conn.execute(
+                "SELECT DISTINCT payment_id FROM accounting_payment_allocations WHERE invoice_id = ?",
+                [L.entity_id]
+            ) as any[];
+            
+            if (allocations && allocations.length > 0) {
+                for (const alloc of allocations) {
+                    await conn.execute("UPDATE accounting_payments SET deleted_at = NULL WHERE id = ?", [alloc.payment_id]);
+                    
+                    const [payments] = await conn.execute(
+                        "SELECT payment_number FROM accounting_payments WHERE id = ?",
+                        [alloc.payment_id]
+                    ) as any[];
+                    const payment = payments?.[0];
+                    if (payment) {
+                        await conn.execute(
+                            "UPDATE accounting_moves SET deleted_at = NULL WHERE ref = ? AND deleted_at IS NOT NULL",
+                            [`Payment: ${payment.payment_number}`]
+                        );
+                    }
+                }
+            }
         }
     } else if (L.action === "create" || L.action === "restore") {
         // Undo creation/restoration -> DELETE (soft-delete) the entity
@@ -99,6 +136,9 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
                     [`Payment: ${payment.payment_number}`]
                 );
             }
+        } else if (L.entity_type === "invoice") {
+            // Undo invoice creation -> Soft-delete the invoice
+            await conn.execute("UPDATE accounting_invoices SET deleted_at = NOW() WHERE id = ?", [L.entity_id]);
         }
     } else if (L.action === "cancel") {
         // Undo cancellation -> Restore invoice state, delete reverse moves
