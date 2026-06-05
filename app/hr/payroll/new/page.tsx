@@ -5,8 +5,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Loader2, Play } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function NewPayrollPage() {
+    const { alert } = useDialog();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -28,10 +30,10 @@ export default function NewPayrollPage() {
             if (res.ok) {
                 router.push(`/hr/payroll/${data.id}`);
             } else {
-                alert(data.error || "حدث خطأ");
+                await alert(data.error || "حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setLoading(false);
         }

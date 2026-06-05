@@ -6,6 +6,7 @@ import { ArrowRight, Calendar, User, FileText, Download, Loader2, Pencil, Trash2
 import { useParams, useRouter } from "next/navigation";
 import { Evaluation, EvaluationScore } from "@/lib/types/hr";
 import { useSession } from "next-auth/react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface EvaluationDetail extends Evaluation {
     employee_name: string;
@@ -17,6 +18,7 @@ interface EvaluationDetail extends Evaluation {
 }
 
 export default function ViewEvaluationPage() {
+    const { alert, confirm } = useDialog();
     const params = useParams();
     const router = useRouter();
     const { data: session } = useSession();
@@ -28,7 +30,7 @@ export default function ViewEvaluationPage() {
     const canEditOrDelete = ["super_admin", "admin", "hr_manager"].includes(userRole || "");
 
     const handleDelete = async () => {
-        if (!confirm("هل أنت متأكد من رغبتك في حذف هذا التقييم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+        if (!await confirm("هل أنت متأكد من رغبتك في حذف هذا التقييم نهائياً؟ لا يمكن التراجع عن هذا الإجراء.")) return;
         setDeleting(true);
         try {
             const res = await fetch(`/api/hr/evaluations/${params.id}`, { method: "DELETE" });
@@ -37,11 +39,11 @@ export default function ViewEvaluationPage() {
                 router.refresh();
             } else {
                 const data = await res.json();
-                alert(data.error || "حدث خطأ أثناء حذف التقييم");
+                await alert(data.error || "حدث خطأ أثناء حذف التقييم");
                 setDeleting(false);
             }
         } catch (error) {
-            alert("حدث خطأ في الاتصال");
+            await alert("حدث خطأ في الاتصال");
             setDeleting(false);
         }
     };

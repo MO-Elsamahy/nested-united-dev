@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Save, Clock, Loader2, ArrowRight, Pencil, X } from "lucide-react";
 import Link from "next/link";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Shift {
     id: string;
@@ -14,6 +15,7 @@ interface Shift {
 }
 
 export default function ShiftsPage() {
+    const { alert, confirm } = useDialog();
     const [shifts, setShifts] = useState<Shift[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -42,13 +44,13 @@ export default function ShiftsPage() {
     }, [fetchShifts]);
 
     const handleDeleteShift = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذه الوردية؟")) return;
+        if (!await confirm("هل أنت متأكد من حذف هذه الوردية؟")) return;
         try {
             const res = await fetch(`/api/hr/shifts/${id}`, { method: "DELETE" });
             if (res.ok) fetchShifts();
-            else alert("فشل الحذف");
+            else await alert("فشل الحذف");
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "Error deleting shift");
+            await alert(error instanceof Error ? error.message : "Error deleting shift");
         }
     };
 
@@ -86,10 +88,10 @@ export default function ShiftsPage() {
                 resetForm();
                 fetchShifts();
             } else {
-                alert("حدث خطأ أثناء الحفظ");
+                await alert("حدث خطأ أثناء الحفظ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "Error saving shift");
+            await alert(error instanceof Error ? error.message : "Error saving shift");
         } finally {
             setIsSubmitting(false);
         }

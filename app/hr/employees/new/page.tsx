@@ -12,6 +12,7 @@ import {
     DollarSign,
     CreditCard,
 } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface AuthUser {
     id: string;
@@ -27,6 +28,7 @@ interface Shift {
 }
 
 export default function NewEmployeePage() {
+    const { alert } = useDialog();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [users, setUsers] = useState<AuthUser[]>([]);
@@ -85,10 +87,10 @@ export default function NewEmployeePage() {
             if (response.ok) {
                 router.push("/hr/employees");
             } else {
-                alert(data.error || "حدث خطأ");
+                await alert(data.error || "حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setLoading(false);
         }

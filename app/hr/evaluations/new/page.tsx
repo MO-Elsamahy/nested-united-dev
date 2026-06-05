@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Save, Loader2, Trophy, Search, User, SlidersHorizontal, AlertCircle, Calendar } from "lucide-react";
 import { Employee, EvaluationTemplate, EvaluationCriterion } from "@/lib/types/hr";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function NewEvaluationPage() {
+    const { alert } = useDialog();
     const router = useRouter();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loadingInit, setLoadingInit] = useState(true);
@@ -113,7 +115,7 @@ export default function NewEvaluationPage() {
                 setScores(initialScores);
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل تعيين القالب");
+            await alert(error instanceof Error ? error.message : "فشل تعيين القالب");
         } finally {
             setLoadingTemplate(false);
         }
@@ -133,7 +135,7 @@ export default function NewEvaluationPage() {
         e.preventDefault();
         
         if (!selectedEmployee || !templateConfig) {
-            alert("يرجى اختيار موظف وتعيين قالب تقييم له");
+            await alert("يرجى اختيار موظف وتعيين قالب تقييم له");
             return;
         }
 
@@ -167,11 +169,11 @@ export default function NewEvaluationPage() {
                 router.push("/hr/evaluations");
                 router.refresh();
             } else {
-                alert(data.error || "حدث خطأ أثناء حفظ التقييم");
+                await alert(data.error || "حدث خطأ أثناء حفظ التقييم");
                 setSubmitting(false);
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
             setSubmitting(false);
         }
     };

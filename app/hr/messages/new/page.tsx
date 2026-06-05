@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Send, ArrowRight, Loader2, MessageSquare, AlertTriangle, FileWarning, Search } from "lucide-react";
 import { Employee } from "@/lib/types/hr";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function ComposeMessagePage() {
+    const { alert } = useDialog();
     const router = useRouter();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [loadingEmployees, setLoadingEmployees] = useState(true);
@@ -39,7 +41,7 @@ export default function ComposeMessagePage() {
         e.preventDefault();
         
         if (!formData.employee_id) {
-            alert("يرجى اختيار الموظف المستلم");
+            await alert("يرجى اختيار الموظف المستلم");
             return;
         }
 
@@ -56,11 +58,11 @@ export default function ComposeMessagePage() {
                 router.refresh();
             } else {
                 const data = await res.json();
-                alert(data.error || "حدث خطأ أثناء الإرسال");
+                await alert(data.error || "حدث خطأ أثناء الإرسال");
                 setSubmitting(false);
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل في الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل في الاتصال");
             setSubmitting(false);
         }
     };

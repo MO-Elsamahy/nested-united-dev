@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Calendar, CheckCircle, Clock, Pencil, Trash2, Loader2 } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface PayrollRun {
     id: string;
@@ -18,6 +19,7 @@ interface PayrollRun {
 }
 
 export default function PayrollListPage() {
+    const { alert, confirm } = useDialog();
     const [runs, setRuns] = useState<PayrollRun[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -40,7 +42,7 @@ export default function PayrollListPage() {
     }, [loadRuns]);
 
     async function handleDeleteDraft(id: string) {
-        if (!confirm("حذف مسودة المسير نهائياً؟ لا يمكن التراجع.")) return;
+        if (!await confirm("حذف مسودة المسير نهائياً؟ لا يمكن التراجع.")) return;
         setDeletingId(id);
         try {
             const res = await fetch(`/api/hr/payroll/${id}`, {
@@ -50,12 +52,12 @@ export default function PayrollListPage() {
             });
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
-                alert(typeof (body as { error?: string }).error === "string" ? (body as { error: string }).error : "تعذّر الحذف");
+                await alert(typeof (body as { error?: string }).error === "string" ? (body as { error: string }).error : "تعذّر الحذف");
                 return;
             }
             await loadRuns();
         } catch {
-            alert("فشل الاتصال");
+            await alert("فشل الاتصال");
         } finally {
             setDeletingId(null);
         }

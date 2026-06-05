@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Save, Loader2, Trophy, SlidersHorizontal, Calendar, FileText } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface EvaluationScoreDetail {
     id: string;
@@ -30,6 +31,7 @@ interface EvaluationDetail {
 }
 
 export default function EditEvaluationPage() {
+    const { alert } = useDialog();
     const router = useRouter();
     const params = useParams();
     const { data: session } = useSession();
@@ -64,18 +66,18 @@ export default function EditEvaluationPage() {
                     });
                     setScores(initialScores);
                 } else {
-                    alert("التقييم غير موجود");
+                    await alert("التقييم غير موجود");
                     router.push("/hr/evaluations");
                 }
             } catch (error) {
                 console.error(error);
-                alert("حدث خطأ أثناء تحميل البيانات");
+                await alert("حدث خطأ أثناء تحميل البيانات");
             } finally {
                 setLoading(false);
             }
         };
         fetchEval();
-    }, [params.id, router]);
+    }, [params.id, router, alert]);
 
     const handleScoreChange = (criterionId: string, value: number, max: number) => {
         const bounded = Math.max(0, Math.min(value, max));
@@ -118,11 +120,11 @@ export default function EditEvaluationPage() {
                 router.push(`/hr/evaluations/${params.id}`);
                 router.refresh();
             } else {
-                alert(data.error || "حدث خطأ أثناء تعديل التقييم");
+                await alert(data.error || "حدث خطأ أثناء تعديل التقييم");
                 setSubmitting(false);
             }
         } catch (error) {
-            alert("فشل الاتصال بالخادم");
+            await alert("فشل الاتصال بالخادم");
             setSubmitting(false);
         }
     };

@@ -4,8 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { ArrowRight, Plus, Settings, Loader2, Trash2, Save, X, Pencil } from "lucide-react";
 import { EvaluationTemplate } from "@/lib/types/hr";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function ManageTemplatesPage() {
+    const { alert, confirm } = useDialog();
     const [templates, setTemplates] = useState<EvaluationTemplate[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
@@ -60,10 +62,10 @@ export default function ManageTemplatesPage() {
                 setEditingId(id);
                 setIsCreating(true); // Reuse the same form container
             } else {
-                alert("فشل تحميل بيانات القالب");
+                await alert("فشل تحميل بيانات القالب");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setLoading(false);
         }
@@ -81,7 +83,7 @@ export default function ManageTemplatesPage() {
         e.preventDefault();
         
         if (!name.trim() || criteria.length === 0 || criteria.some(c => !c.criterion_name.trim())) {
-            alert("يرجى إدخال اسم القالب والتأكد من عدم ترك أي معيار فارغ");
+            await alert("يرجى إدخال اسم القالب والتأكد من عدم ترك أي معيار فارغ");
             return;
         }
 
@@ -101,27 +103,27 @@ export default function ManageTemplatesPage() {
                 resetForm();
                 fetchTemplates();
             } else {
-                alert("حدث خطأ أثناء الحفظ");
+                await alert("حدث خطأ أثناء الحفظ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الإتصال");
+            await alert(error instanceof Error ? error.message : "فشل الإتصال");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     const handleDeleteTemplate = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذا القالب؟ (سيتم حذف المعايير المتعلقة به)")) return;
+        if (!await confirm("هل أنت متأكد من حذف هذا القالب؟ (سيتم حذف المعايير المتعلقة به)")) return;
 
         try {
             const res = await fetch(`/api/hr/evaluations/templates/${id}`, { method: "DELETE" });
             if (res.ok) {
                 setTemplates(prev => prev.filter(t => t.id !== id));
             } else {
-                alert("قد يكون هناك موظفين أو تقييمات مرتبطة بهذا القالب");
+                await alert("قد يكون هناك موظفين أو تقييمات مرتبطة بهذا القالب");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         }
     };
 

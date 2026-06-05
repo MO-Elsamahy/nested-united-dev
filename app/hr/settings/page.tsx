@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Save, Loader2, DollarSign, Clock, FileText } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function HRSettingsPage() {
+    const { alert } = useDialog();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -60,12 +62,12 @@ export default function HRSettingsPage() {
             });
             const data = await res.json().catch(() => ({}));
             if (res.ok) {
-                alert("تم حفظ الإعدادات بنجاح");
+                await alert("تم حفظ الإعدادات بنجاح");
             } else {
-                alert(data?.error || "حدث خطأ أثناء الحفظ");
+                await alert(data?.error || "حدث خطأ أثناء الحفظ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "خطأ في الاتصال");
+            await alert(error instanceof Error ? error.message : "خطأ في الاتصال");
         } finally {
             setSaving(false);
         }

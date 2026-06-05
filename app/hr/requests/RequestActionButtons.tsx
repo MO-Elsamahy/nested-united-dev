@@ -8,7 +8,10 @@ interface RequestActionButtonsProps {
     requestId: string;
 }
 
+import { useDialog } from "@/components/accounting/DialogProvider";
+
 export function RequestActionButtons({ requestId }: RequestActionButtonsProps) {
+    const { alert } = useDialog();
     const router = useRouter();
     const [loading, setLoading] = useState<"approve" | "reject" | null>(null);
     const [showNotes, setShowNotes] = useState(false);
@@ -29,10 +32,10 @@ export function RequestActionButtons({ requestId }: RequestActionButtonsProps) {
             if (response.ok) {
                 router.refresh();
             } else {
-                alert(data.error || "حدث خطأ");
+                await alert(data.error || "حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "حدث خطأ في الاتصال");
+            await alert(error instanceof Error ? error.message : "حدث خطأ في الاتصال");
         } finally {
             setLoading(null);
             setShowNotes(false);

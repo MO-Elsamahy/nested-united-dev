@@ -26,7 +26,10 @@ interface HRRequest {
     created_at: string;
 }
 
+import { useDialog } from "@/components/accounting/DialogProvider";
+
 export default function HRRequestsPage() {
+    const { alert, confirm, prompt } = useDialog();
     const [requests, setRequests] = useState<HRRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("pending");
@@ -50,10 +53,10 @@ export default function HRRequestsPage() {
     }, [fetchRequests]);
 
     const handleAction = async (id: string, action: "approved" | "rejected") => {
-        if (!confirm(action === "approved" ? "هل أنت متأكد من قبول الطلب؟" : "هل أنت متأكد من رفض الطلب؟")) return;
+        if (!await confirm(action === "approved" ? "هل أنت متأكد من قبول الطلب؟" : "هل أنت متأكد من رفض الطلب؟")) return;
 
         setProcessingId(id);
-        const notes = prompt("ملاحظات (اختياري):");
+        const notes = await prompt("ملاحظات (اختياري):");
 
         try {
             const res = await fetch(`/api/hr/requests/${id}`, {
@@ -66,17 +69,17 @@ export default function HRRequestsPage() {
                 // Refresh list
                 fetchRequests();
             } else {
-                alert("حدث خطأ");
+                await alert("حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessingId(null);
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذا الطلب نهائياً من قاعدة البيانات؟")) return;
+        if (!await confirm("هل أنت متأكد من حذف هذا الطلب نهائياً من قاعدة البيانات؟")) return;
         
         setProcessingId(id);
         try {
@@ -87,10 +90,10 @@ export default function HRRequestsPage() {
             if (res.ok) {
                 fetchRequests();
             } else {
-                alert("حدث خطأ أثناء الحذف");
+                await alert("حدث خطأ أثناء الحذف");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessingId(null);
         }

@@ -54,7 +54,10 @@ interface PayrollData {
     logs?: PayrollLog[];
 }
 
+import { useDialog } from "@/components/accounting/DialogProvider";
+
 export default function PayrollDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+    const { alert, confirm, prompt } = useDialog();
     const router = useRouter();
     const { id } = use(params);
 
@@ -120,10 +123,10 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                 setTimeout(() => setSuccessMsg(null), 3000);
             } else {
                 const err = await res.json();
-                alert(err.error || "حدث خطأ");
+                await alert(err.error || "حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessing(false);
         }
@@ -148,7 +151,7 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
     };
 
     const handleAction = async (action: "approve" | "delete") => {
-        if (!confirm(action === "approve"
+        if (!await confirm(action === "approve"
             ? "هل أنت متأكد من اعتماد هذا المسير؟ سيتم إنشاء قيد محاسبي. يمكن لاحقاً إلغاء الاعتماد من صفحة المسير إن لزم."
             : "هل أنت متأكد من حذف هذه المسودة؟")) return;
 
@@ -169,10 +172,10 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                 }
             } else {
                 const err = await res.json();
-                alert(err.error || "حدث خطأ");
+                await alert(err.error || "حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessing(false);
         }
@@ -180,12 +183,12 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
 
     const handleRevertApproval = async () => {
         if (
-            !confirm(
+            !await confirm(
                 "إلغاء اعتماد المسير؟ سيعود للمسودة، يُلغى تأكيد استلام الرواتب للموظفين، ويُخفى القيد المحاسبي من التقارير (دون حذفه من الأرشيف الداخلي). يمكنك التعديل ثم إعادة الاعتماد."
             )
         )
             return;
-        const note = window.prompt("ملاحظة تُسجّل في سجل المسير (اختياري):", "");
+        const note = await prompt("ملاحظة تُسجّل في سجل المسير (اختياري):");
         if (note === null) return;
 
         setProcessing(true);
@@ -203,10 +206,10 @@ export default function PayrollDetailsPage({ params }: { params: Promise<{ id: s
                 setSuccessMsg("تم إلغاء الاعتماد وتسجيل الإجراء في سجل المسير.");
                 setTimeout(() => window.location.reload(), 1500);
             } else {
-                alert(json.error || "تعذر إلغاء الاعتماد");
+                await alert(json.error || "تعذر إلغاء الاعتماد");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setProcessing(false);
         }

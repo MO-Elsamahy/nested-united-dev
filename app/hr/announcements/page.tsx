@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Megaphone, Plus, Pin, Trash2, Calendar, Edit2, X } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Announcement {
     id: string;
@@ -15,6 +16,7 @@ interface Announcement {
 }
 
 export default function AnnouncementsPage() {
+    const { alert, confirm } = useDialog();
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
@@ -65,10 +67,10 @@ export default function AnnouncementsPage() {
                 setFormData({ title: "", content: "", priority: "normal", is_pinned: false, expires_at: "" });
                 fetchAnnouncements();
             } else {
-                alert("حدث خطأ");
+                await alert("حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setSubmitting(false);
         }
@@ -88,7 +90,7 @@ export default function AnnouncementsPage() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذا الإعلان؟")) return;
+        if (!await confirm("هل أنت متأكد من حذف هذا الإعلان؟")) return;
         setSubmitting(true);
         try {
             const res = await fetch(`/api/hr/announcements/${id}`, {
@@ -97,10 +99,10 @@ export default function AnnouncementsPage() {
             if (res.ok) {
                 fetchAnnouncements();
             } else {
-                alert("حدث خطأ");
+                await alert("حدث خطأ");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         } finally {
             setSubmitting(false);
         }

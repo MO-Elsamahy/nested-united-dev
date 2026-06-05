@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Plus, Search, MessageSquare, AlertTriangle, FileWarning, Eye, Trash2, EyeOff, Loader2 } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface HRMessage {
     id: string;
@@ -17,6 +18,7 @@ interface HRMessage {
 }
 
 export default function HRMessagesPage() {
+    const { alert, confirm } = useDialog();
     const [messages, setMessages] = useState<HRMessage[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterType, setFilterType] = useState("");
@@ -40,17 +42,17 @@ export default function HRMessagesPage() {
     }, [fetchMessages]);
 
     const handleDelete = async (id: string) => {
-        if (!confirm("هل أنت متأكد من حذف هذه الرسالة نهائياً؟")) return;
+        if (!await confirm("هل أنت متأكد من حذف هذه الرسالة نهائياً؟")) return;
 
         try {
             const res = await fetch(`/api/hr/messages/${id}`, { method: "DELETE" });
             if (res.ok) {
                 setMessages(prev => prev.filter(m => m.id !== id));
             } else {
-                alert("حدث خطأ أثناء الحذف");
+                await alert("حدث خطأ أثناء الحذف");
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "فشل الاتصال");
+            await alert(error instanceof Error ? error.message : "فشل الاتصال");
         }
     };
 

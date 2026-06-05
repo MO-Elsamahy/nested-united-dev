@@ -14,6 +14,7 @@ import {
     CreditCard,
     Trash2,
 } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface AuthUser {
     id: string;
@@ -29,6 +30,7 @@ interface Shift {
 }
 
 export default function EditEmployeePage({ params }: { params: Promise<{ id: string }> }) {
+    const { alert, confirm } = useDialog();
     const { data: session } = useSession();
     const router = useRouter();
     const userRole = session?.user ? (session.user as { role?: string }).role : "";
@@ -77,7 +79,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                 if (emp.hire_date) emp.hire_date = emp.hire_date.split("T")[0];
                 setFormData(emp);
             } else {
-                alert("الموظف غير موجود");
+                await alert("الموظف غير موجود");
                 router.push("/hr/employees");
             }
 
@@ -95,7 +97,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
         } finally {
             setLoading(false);
         }
-    }, [router]);
+    }, [router, alert]);
 
     useEffect(() => {
         const init = async () => {
@@ -118,14 +120,14 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
             });
 
             if (response.ok) {
-                alert("تم تحديث بيانات الموظف بنجاح");
+                await alert("تم تحديث بيانات الموظف بنجاح");
                 router.refresh();
             } else {
                 const data = await response.json();
-                alert(data.error || "حدث خطأ");
+                await alert(data.error || "حدث خطأ");
             }
         } catch (_error) {
-            alert(_error instanceof Error ? _error.message : "حدث خطأ في الاتصال");
+            await alert(_error instanceof Error ? _error.message : "حدث خطأ في الاتصال");
         } finally {
             setSaving(false);
         }
@@ -133,7 +135,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
     const handleTerminate = async () => {
         if (
-            !confirm(
+            !await confirm(
                 "إنهاء خدمات هذا الموظف؟ سيُسجَّل كـ «منتهي» ويبقى في السجل (للرواتب والتقارير السابقة) ولن يُدرج في المسيرات الجديدة إن استُبعد."
             )
         )
@@ -145,21 +147,21 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
             if (response.ok) {
                 router.push("/hr/employees");
             } else {
-                alert(data.error || "تعذر تنفيذ الطلب");
+                await alert(data.error || "تعذر تنفيذ الطلب");
             }
         } catch (_error) {
-            alert(_error instanceof Error ? _error.message : "خطأ في الاتصال");
+            await alert(_error instanceof Error ? _error.message : "خطأ في الاتصال");
         }
     };
 
     const handlePermanentDelete = async () => {
         if (
-            !confirm(
+            !await confirm(
                 "حذف نهائي من قاعدة البيانات؟ لا يمكن التراجع. يُسمح فقط إذا لم يكن للموظف مسير رواتب أو حضور أو طلبات مرتبطة."
             )
         )
             return;
-        if (!confirm("تأكيد نهائي: حذف السجل بالكامل؟")) return;
+        if (!await confirm("تأكيد نهائي: حذف السجل بالكامل؟")) return;
 
         try {
             const response = await fetch(`/api/hr/employees/${id}?permanent=1`, { method: "DELETE" });
@@ -168,12 +170,12 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
                 router.push("/hr/employees");
             } else if (response.status === 409 && Array.isArray(data.blocks)) {
                 const lines = data.blocks.map((b: { label: string; count: number }) => `${b.label}: ${b.count}`).join("\n");
-                alert(`${data.error || "مرفوض"}\n\n${lines}`);
+                await alert(`${data.error || "مرفوض"}\n\n${lines}`);
             } else {
-                alert(data.error || "تعذر الحذف النهائي");
+                await alert(data.error || "تعذر الحذف النهائي");
             }
         } catch (_error) {
-            alert(_error instanceof Error ? _error.message : "خطأ في الاتصال");
+            await alert(_error instanceof Error ? _error.message : "خطأ في الاتصال");
         }
     };
 
