@@ -324,11 +324,56 @@ export async function DELETE(
             );
         }
 
-        // Soft delete
+        // 1. Soft-delete the invoice itself
         await query(
             "UPDATE accounting_invoices SET deleted_at = NOW() WHERE id = ?",
             [invoiceId]
         );
+
+        // 2. Soft-delete the invoice's journal entry if it exists
+        if (invoice.accounting_move_id) {
+            await query(
+                "UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?",
+                [invoice.accounting_move_id]
+            );
+        }
+
+        // 3. Find and clean up payments associated with this invoice
+        const allocations = await query<{ payment_id: string }>(
+            "SELECT payment_id FROM accounting_payment_allocations WHERE invoice_id = ?",
+            [invoiceId]
+        );
+
+        if (allocations && allocations.length > 0) {
+            const paymentIds = allocations.map(a => a.payment_id);
+            for (const pid of paymentIds) {
+                // Fetch payment info (specifically the payment number to delete its moves)
+                const paymentInfo = await query<{ payment_number: string }>(
+                    "SELECT payment_number FROM accounting_payments WHERE id = ? AND deleted_at IS NULL",
+                    [pid]
+                );
+                
+                if (paymentInfo && paymentInfo.length > 0) {
+                    const payNum = paymentInfo[0].payment_number;
+                    // Soft delete the payment
+                    await query(
+                        "UPDATE accounting_payments SET deleted_at = NOW() WHERE id = ?",
+                        [pid]
+                    );
+                    // Soft delete the payment's move (Payment: PAY-xxxx)
+                    await query(
+                        "UPDATE accounting_moves SET deleted_at = NOW() WHERE ref = ?",
+                        [`Payment: ${payNum}`]
+                    );
+                }
+            }
+
+            // 4. Clean up allocations
+            await query(
+                "DELETE FROM accounting_payment_allocations WHERE invoice_id = ?",
+                [invoiceId]
+            );
+        }
 
         return NextResponse.json({ message: "Invoice deleted successfully" });
     } catch (error) {

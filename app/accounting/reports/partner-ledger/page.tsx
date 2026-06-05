@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ArrowRight, Printer, Search } from "lucide-react";
+import { ArrowRight, Printer, Search, ChevronDown, X } from "lucide-react";
 import Link from "next/link";
 
 interface Partner {
@@ -56,10 +56,13 @@ export default function PartnerLedgerPage() {
         return () => document.removeEventListener("mousedown", handler);
     }, []);
 
-    const suggestions = allPartners.filter(p =>
-        p.name.toLowerCase().includes(partnerQuery.toLowerCase()) ||
-        (p.phone && p.phone.includes(partnerQuery))
-    ).slice(0, 8);
+    const suggestions = allPartners.filter(p => {
+        if (!partnerQuery || (selectedPartner && partnerQuery === selectedPartner.name)) {
+            return true;
+        }
+        return p.name.toLowerCase().includes(partnerQuery.toLowerCase()) ||
+               (p.phone && p.phone.includes(partnerQuery));
+    });
 
     const fetchReport = useCallback(async () => {
         if (!selectedPartner) return;
@@ -123,7 +126,7 @@ export default function PartnerLedgerPage() {
                             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                             <input
                                 type="text"
-                                value={selectedPartner ? selectedPartner.name : partnerQuery}
+                                value={partnerQuery}
                                 onChange={(e) => {
                                     setPartnerQuery(e.target.value);
                                     setSelectedPartner(null);
@@ -132,16 +135,36 @@ export default function PartnerLedgerPage() {
                                 }}
                                 onFocus={() => setShowSuggestions(true)}
                                 placeholder="ابحث باسم العميل أو المورد..."
-                                className={`w-full pr-9 pl-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${selectedPartner ? "border-green-400 bg-green-50" : ""}`}
+                                className={`w-full pr-9 pl-16 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${selectedPartner ? "border-green-400 bg-green-50" : ""}`}
                             />
-                            {selectedPartner && (
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-green-600 font-medium">✓</span>
-                            )}
+                            <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                                {partnerQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPartnerQuery("");
+                                            setSelectedPartner(null);
+                                            setData(null);
+                                            setShowSuggestions(true);
+                                        }}
+                                        className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600 animate-in fade-in duration-200"
+                                    >
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setShowSuggestions(!showSuggestions)}
+                                    className="p-1 hover:bg-gray-100 rounded text-gray-400 hover:text-gray-600"
+                                >
+                                    <ChevronDown className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Suggestions dropdown */}
-                        {showSuggestions && partnerQuery.length > 0 && !selectedPartner && (
-                            <div className="absolute z-50 mt-1 w-full bg-white border rounded-xl shadow-xl overflow-hidden">
+                        {showSuggestions && (
+                            <div className="absolute z-50 mt-1 w-full bg-white border rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
                                 {suggestions.length > 0 ? (
                                     suggestions.map((p) => (
                                         <button
