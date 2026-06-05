@@ -226,7 +226,12 @@ export const PATH_NAME_MAP: Record<string, string> = {
     customers: "العملاء",
     deals: "الصفقات",
     roles: "صلاحيات الأدوار",
-    "page-permissions": "صلاحيات الصفحات"
+    "page-permissions": "صلاحيات الصفحات",
+    "partner-ledger": "كشف حساب الشركاء",
+    "trial-balance": "ميزان المراجعة",
+    "general-ledger": "دفتر الأستاذ العام",
+    "balance-sheet": "الميزانية العمومية",
+    "income-statement": "قائمة الدخل"
 };
 
 export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
@@ -253,6 +258,11 @@ export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
         { path: "/accounting/cost-centers", label: "مراكز التكلفة" },
         { path: "/accounting/backlog", label: "سجل الأحداث" },
         { path: "/accounting/reports", label: "مركز التقارير" },
+        { path: "/accounting/reports/partner-ledger", label: "كشف حساب الشركاء" },
+        { path: "/accounting/reports/trial-balance", label: "ميزان المراجعة" },
+        { path: "/accounting/reports/general-ledger", label: "دفتر الأستاذ العام" },
+        { path: "/accounting/reports/balance-sheet", label: "الميزانية العمومية" },
+        { path: "/accounting/reports/income-statement", label: "قائمة الدخل" },
     ],
     hr: [
         { path: "/hr", label: "لوحة التحكم" },
