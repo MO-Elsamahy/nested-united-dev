@@ -86,7 +86,7 @@ export async function GET(request: Request) {
                 WHERE employee_id = ? AND MONTH(date) = ? AND YEAR(date) = ?
             `, [emp.id, month, year]);
 
-            // ─── أيام الراحة الأسبوعية من الوردية ───
+            // ─── أيام الراحة الأسبوعية من الوردية أو الإعدادات الافتراضية ───
             let offDaysIndices: number[] = [];
             if (emp.shift_id) {
                 const shift = await queryOne<{ days_off: string }>(
@@ -98,6 +98,20 @@ export async function GET(request: Request) {
                         .split(",")
                         .filter(Boolean)
                         .map(Number);
+                }
+            } else {
+                // Fallback: استخدم الإعداد الافتراضي من hr_settings
+                const defaultOff = await queryOne<{ setting_value: string }>(
+                    "SELECT setting_value FROM hr_settings WHERE setting_key = 'default_days_off'"
+                );
+                if (defaultOff?.setting_value) {
+                    offDaysIndices = defaultOff.setting_value
+                        .split(",")
+                        .filter(Boolean)
+                        .map(Number);
+                } else {
+                    // إذا لم يُضبط إعداد، نفترض جمعة + سبت (5, 6) — الإجازة الأسبوعية الافتراضية
+                    offDaysIndices = [5, 6];
                 }
             }
 
