@@ -2344,9 +2344,10 @@ export function AnalyticsDashboardClient({
                 .reduce((acc: number, cur: any) => acc + Number(cur.net || 0), 0);
               const egpNetFormatted = `${Math.round(egpNetSum).toLocaleString("en-US")} ج.م`;
 
-              const avgAttendance = filteredEmployees.length > 0 
-                ? Math.round(filteredEmployees.reduce((acc: number, cur: any) => acc + cur.attendanceRate, 0) / filteredEmployees.length)
-                : 100;
+              const trackedEmployees = filteredEmployees.filter((e: any) => e.attendanceRate !== -1);
+              const avgAttendance = trackedEmployees.length > 0 
+                ? Math.round(trackedEmployees.reduce((acc: number, cur: any) => acc + cur.attendanceRate, 0) / trackedEmployees.length)
+                : -1;
 
               const filteredEmpNames = new Set(filteredEmployees.map((e: any) => e.name));
               const pendingRequestsCount = (data?.leaveRequests || []).filter((r: any) => 
@@ -2448,7 +2449,7 @@ export function AnalyticsDashboardClient({
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <span className="text-xs font-bold text-gray-400">معدل الحضور والانضباط</span>
-                          <h3 className="text-2xl font-black text-teal-600">{avgAttendance}%</h3>
+                           <h3 className="text-2xl font-black text-teal-600">{avgAttendance === -1 ? "—" : `${avgAttendance}%`}</h3>
                         </div>
                         <div className="p-2.5 bg-teal-50 text-teal-500 rounded-xl">
                           <Clock className="w-5 h-5" />
@@ -2602,7 +2603,7 @@ export function AnalyticsDashboardClient({
                                 </PieChart>
                               </ResponsiveContainer>
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
-                                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider">سجل الحضور</span>
+                                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider">إجمالي الحالات</span>
                                 <span className="text-sm font-black text-gray-700">{(dynamicAttendanceStats || []).reduce((a:number,c:any)=>a+c.count,0)}</span>
                               </div>
                             </>
@@ -2808,20 +2809,24 @@ export function AnalyticsDashboardClient({
                                 <td className="px-4 py-3.5">
                                   <div className="flex items-center gap-2 justify-end">
                                     <span className={`w-12 text-left font-bold ${
-                                      emp.attendanceRate >= 90 ? "text-emerald-600" : emp.attendanceRate >= 75 ? "text-blue-600" : "text-rose-500"
+                                      emp.attendanceRate === -1 ? "text-gray-400" :
+                                      emp.attendanceRate >= 90 ? "text-emerald-600" :
+                                      emp.attendanceRate >= 75 ? "text-blue-600" : "text-rose-500"
                                     }`}>
-                                      {emp.attendanceRate}%
+                                      {emp.attendanceRate === -1 ? "—" : `${emp.attendanceRate}%`}
                                     </span>
-                                    <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                      <div className={`h-full rounded-full ${
-                                        emp.attendanceRate >= 90 ? "bg-emerald-500" : emp.attendanceRate >= 75 ? "bg-blue-500" : "bg-rose-500"
-                                      }`} style={{ width: `${emp.attendanceRate}%` }} />
-                                    </div>
+                                    {emp.attendanceRate !== -1 && (
+                                      <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${
+                                          emp.attendanceRate >= 90 ? "bg-emerald-500" : emp.attendanceRate >= 75 ? "bg-blue-500" : "bg-rose-500"
+                                        }`} style={{ width: `${emp.attendanceRate}%` }} />
+                                      </div>
+                                    )}
                                   </div>
                                 </td>
                                 <td className="px-4 py-3.5 text-center">
-                                  <span className="text-[10px] text-gray-500 font-medium">
-                                    حضر {emp.presentDays} | تأخر {emp.lateDays} | غاب {emp.absentDays}
+                                  <span className={`text-[10px] font-medium ${emp.attendanceRate === -1 ? "text-gray-400" : "text-gray-500"}`}>
+                                    {emp.attendanceRate === -1 ? "غير مشمول بالفترة" : `حضر ${emp.presentDays} | تأخر ${emp.lateDays} | غاب ${emp.absentDays}`}
                                   </span>
                                 </td>
                               </tr>

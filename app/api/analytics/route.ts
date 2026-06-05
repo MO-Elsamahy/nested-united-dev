@@ -1140,13 +1140,18 @@ export async function GET(req: NextRequest) {
     let globalAbsent = 0;
     let globalLeave = 0;
 
+    const SYSTEM_START_DATE = "2026-06-01";
+
     const employeeAttendance = employeeList.map((emp: any) => {
       let empStart = startDateStr;
+      if (empStart < SYSTEM_START_DATE) {
+        empStart = SYSTEM_START_DATE;
+      }
       if (emp.hire_date) {
         const hireStr = emp.hire_date instanceof Date 
           ? emp.hire_date.toISOString().split("T")[0] 
           : String(emp.hire_date).split(" ")[0];
-        if (hireStr > startDateStr) {
+        if (hireStr > empStart) {
           empStart = hireStr;
         }
       }
@@ -1220,7 +1225,7 @@ export async function GET(req: NextRequest) {
       globalAbsent += absent;
       globalLeave += leave;
 
-      const attendanceRate = expected > 0 ? Math.round((present / expected) * 100) : 100;
+      const attendanceRate = expected > 0 ? Math.round((present / expected) * 100) : -1;
 
       return {
         id: emp.id,
