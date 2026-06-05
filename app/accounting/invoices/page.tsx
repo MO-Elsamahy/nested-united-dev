@@ -19,7 +19,10 @@ interface Invoice {
     state: "draft" | "confirmed" | "paid" | "partial" | "cancelled";
 }
 
+type InvoiceTab = "customer_invoice" | "vendor_bill";
+
 export default function InvoicesPage() {
+    const [activeTab, setActiveTab] = useState<InvoiceTab>("customer_invoice");
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -31,6 +34,7 @@ export default function InvoicesPage() {
         try {
             setLoading(true);
             const params = new URLSearchParams();
+            params.append("type", activeTab);
             if (stateFilter) params.append("state", stateFilter);
 
             const res = await fetch(`/api/accounting/invoices?${params}`);
@@ -40,17 +44,17 @@ export default function InvoicesPage() {
         } finally {
             setLoading(false);
         }
-    }, [stateFilter]);
+    }, [stateFilter, activeTab]);
 
     useEffect(() => {
         fetchInvoices();
     }, [fetchInvoices]);
 
     const handleDelete = async (id: string, isDraft: boolean) => {
-        const confirmMsg = isDraft 
-            ? "هل أنت متأكد من حذف هذه الفاتورة؟" 
+        const confirmMsg = isDraft
+            ? "هل أنت متأكد من حذف هذه الفاتورة؟"
             : "تحذير: هذه فاتورة مؤكدة. حذفها سيؤدي لحذف القيود المحاسبية المرتبطة بها نهائياً. هل أنت متأكد؟";
-            
+
         if (!confirm(confirmMsg)) return;
 
         const res = await fetch(`/api/accounting/invoices/${id}`, { method: "DELETE" });
@@ -81,15 +85,14 @@ export default function InvoicesPage() {
         }
     };
 
-    // Arabic character normalization for better search results
     const normalizeText = (text: string) => {
         if (!text) return "";
         return text
-            .normalize("NFKC") // Normalize unicode characters
-            .replace(/[أإآ]/g, 'ا') // Normalize Alef
-            .replace(/[ة]/g, 'ه')   // Normalize Ta Marbuta
-            .replace(/[ى]/g, 'ي')   // Normalize Ya
-            .replace(/[\u064B-\u065F]/g, '') // Remove Tashkeel (diacritics)
+            .normalize("NFKC")
+            .replace(/[أإآ]/g, 'ا')
+            .replace(/[ة]/g, 'ه')
+            .replace(/[ى]/g, 'ي')
+            .replace(/[\u064B-\u065F]/g, '')
             .trim()
             .toLowerCase();
     };
@@ -121,21 +124,48 @@ export default function InvoicesPage() {
         );
     };
 
+    const isVendor = activeTab === "vendor_bill";
+    const newHref = isVendor ? "/accounting/invoices/new?type=vendor_bill" : "/accounting/invoices/new";
+
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="flex justify-between items-center">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">فواتير المبيعات</h1>
-                    <p className="text-gray-600 mt-1">إدارة الفواتير والمبيعات</p>
+                    <h1 className="text-2xl font-bold text-gray-900">الفواتير</h1>
+                    <p className="text-gray-600 mt-1">إدارة فواتير المبيعات والمشتريات</p>
                 </div>
                 <Link
-                    href="/accounting/invoices/new"
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                    href={newHref}
+                    className={`flex items-center gap-2 text-white px-4 py-2 rounded-lg transition ${isVendor ? "bg-orange-600 hover:bg-orange-700" : "bg-blue-600 hover:bg-blue-700"}`}
                 >
                     <Plus className="w-4 h-4" />
-                    <span>فاتورة جديدة</span>
+                    <span>{isVendor ? "فاتورة مورد جديدة" : "فاتورة مبيعات جديدة"}</span>
                 </Link>
+            </div>
+
+            {/* Tabs: فواتير المبيعات / فواتير المشتريات */}
+            <div className="border-b border-gray-200">
+                <nav className="flex gap-0" aria-label="Tabs">
+                    <button
+                        onClick={() => { setActiveTab("customer_invoice"); setSearchTerm(""); setStateFilter(""); }}
+                        className={`px-6 py-3 text-sm font-medium border-b-2 transition -mb-px ${activeTab === "customer_invoice"
+                            ? "border-blue-600 text-blue-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                    >
+                        📄 فواتير المبيعات
+                    </button>
+                    <button
+                        onClick={() => { setActiveTab("vendor_bill"); setSearchTerm(""); setStateFilter(""); }}
+                        className={`px-6 py-3 text-sm font-medium border-b-2 transition -mb-px ${activeTab === "vendor_bill"
+                            ? "border-orange-600 text-orange-600"
+                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            }`}
+                    >
+                        🧾 فواتير الموردين
+                    </button>
+                </nav>
             </div>
 
             {/* Filters */}
@@ -144,7 +174,7 @@ export default function InvoicesPage() {
                     <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="بحث برقم الفاتورة أو اسم العميل..."
+                        placeholder={isVendor ? "بحث برقم الفاتورة أو اسم المورد..." : "بحث برقم الفاتورة أو اسم العميل..."}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pr-10 pl-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -170,7 +200,7 @@ export default function InvoicesPage() {
                     <thead className="bg-gray-50 border-b font-medium text-gray-600">
                         <tr>
                             <th className="px-6 py-3">رقم الفاتورة</th>
-                            <th className="px-6 py-3">العميل</th>
+                            <th className="px-6 py-3">{isVendor ? "المورد" : "العميل"}</th>
                             <th className="px-6 py-3">التاريخ</th>
                             <th className="px-6 py-3">تاريخ الاستحقاق</th>
                             <th className="px-6 py-3">المبلغ الإجمالي</th>
@@ -186,12 +216,14 @@ export default function InvoicesPage() {
                             </tr>
                         ) : filtered.length === 0 ? (
                             <tr>
-                                <td colSpan={8} className="p-8 text-center text-gray-400">لا توجد فواتير</td>
+                                <td colSpan={8} className="p-8 text-center text-gray-400">
+                                    {isVendor ? "لا توجد فواتير موردين" : "لا توجد فواتير مبيعات"}
+                                </td>
                             </tr>
                         ) : (
                             filtered.map((invoice) => (
                                 <tr key={invoice.id} className="hover:bg-gray-50">
-                                    <td className="px-6 py-4 font-medium text-blue-600">
+                                    <td className={`px-6 py-4 font-medium ${isVendor ? "text-orange-600" : "text-blue-600"}`}>
                                         <Link href={`/accounting/invoices/${invoice.id}`} className="hover:underline">
                                             {invoice.invoice_number}
                                         </Link>

@@ -53,10 +53,13 @@ interface InvoiceData {
 interface InvoiceFormProps {
     initialData?: InvoiceData;
     invoiceId?: string;
+    /** customer_invoice (default) | vendor_bill */
+    invoiceType?: "customer_invoice" | "vendor_bill";
 }
 
-export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
+export function InvoiceForm({ initialData, invoiceId, invoiceType = "customer_invoice" }: InvoiceFormProps) {
     const router = useRouter();
+    const isVendorBill = invoiceType === "vendor_bill";
     const [loading, setLoading] = useState(false);
     const [allPartners, setAllPartners] = useState<Partner[]>([]);
 
@@ -73,10 +76,15 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
     });
     const autocompleteRef = useRef<HTMLDivElement>(null);
 
-    const suggestions = allPartners.filter((p) =>
-        p.name.toLowerCase().includes(partnerQuery.toLowerCase()) ||
-        (p.email && p.email.toLowerCase().includes(partnerQuery.toLowerCase()))
-    ).slice(0, 6);
+    // فلترة الشركاء: عملاء لفواتير المبيعات، موردون لفواتير الشراء
+    const suggestions = allPartners.filter((p) => {
+        const nameMatch =
+            p.name.toLowerCase().includes(partnerQuery.toLowerCase()) ||
+            (p.email && p.email.toLowerCase().includes(partnerQuery.toLowerCase()));
+        if (!nameMatch) return false;
+        if (isVendorBill) return p.type === "supplier" || p.type === "vendor" || p.type === "both";
+        return p.type === "customer" || p.type === "both";
+    }).slice(0, 6);
 
     const [formData, setFormData] = useState({
         invoice_date: initialData?.invoice_date || new Date().toISOString().split("T")[0],
@@ -245,7 +253,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
         e.preventDefault();
 
         if (!partnerQuery.trim()) {
-            alert("الرجاء إدخال اسم العميل");
+            alert(isVendorBill ? "الرجاء إدخال اسم المورد" : "الرجاء إدخال اسم العميل");
             return;
         }
 
@@ -265,12 +273,12 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                         phone: partnerDetails.phone || null,
                         address: partnerDetails.address || null,
                         tax_id: partnerDetails.tax_id || null,
-                        type: "customer",
+                        type: isVendorBill ? "supplier" : "customer",
                     }),
                 });
                 if (!createRes.ok) {
                     const err = await createRes.json();
-                    alert(`فشل إضافة العميل: ${err.error}`);
+                    alert(`فشل إضافة ${isVendorBill ? "المورد" : "العميل"}: ${err.error}`);
                     setLoading(false);
                     return;
                 }
@@ -280,6 +288,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
 
             const body = {
                 ...formData,
+                invoice_type: invoiceType,
                 partner_id: resolvedPartnerId,
                 notes,
                 payment_terms: paymentTerms,
@@ -339,7 +348,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
 
                     {/* Smart Partner Autocomplete */}
                     <div className="md:col-span-2" ref={autocompleteRef}>
-                        <label className="block text-sm font-medium mb-1">العميل *</label>
+                        <label className="block text-sm font-medium mb-1">{isVendorBill ? "المورد *" : "العميل *"}</label>
                         <div className="relative">
                             <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                             <input
@@ -348,7 +357,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                                 onChange={(e) => handlePartnerQueryChange(e.target.value)}
                                 onFocus={() => setShowSuggestions(true)}
                                 className={`w-full pr-9 pl-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${selectedPartnerId ? "border-green-400 bg-green-50" : ""}`}
-                                placeholder="ابحث باسم العميل أو البريد الإلكتروني..."
+                                placeholder={isVendorBill ? "ابحث باسم المورد أو البريد الإلكتروني..." : "ابحث باسم العميل أو البريد الإلكتروني..."}
                                 required
                             />
                             {selectedPartnerId && (
@@ -391,7 +400,7 @@ export function InvoiceForm({ initialData, invoiceId }: InvoiceFormProps) {
                                     className="w-full text-right px-4 py-3 hover:bg-blue-50 flex items-center gap-3 text-blue-600 font-medium bg-blue-50/50"
                                 >
                                     <UserPlus className="w-4 h-4" />
-                                    <span>إضافة &quot;{partnerQuery}&quot; كعميل جديد</span>
+                                    <span>إضافة &quot;{partnerQuery}&quot; {isVendorBill ? "كمورد جديد" : "كعميل جديد"}</span>
                                 </button>
                             </div>
                         )}
