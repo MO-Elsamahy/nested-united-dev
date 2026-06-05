@@ -522,7 +522,6 @@ export default function InvoiceDetailPage() {
                     </table>
                 </div>
             )}
-        </div>
 
             {/* Payment Registration Modal */}
             {showPaymentModal && invoice && (
