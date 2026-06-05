@@ -105,7 +105,8 @@ export async function GET(request: Request) {
             let presentDays = 0;
             let absentDays = 0;
             let leaveDays = 0;
-            let offDaysCount = 0;
+            let offDaysInCheckedPeriod = 0;  // أيام الراحة ضمن الفترة المحسوبة فقط
+            let offDaysInFullMonth = 0;      // أيام الراحة في الشهر كله (للعرض)
             let totalLateMinutes = 0;
             let totalOvertimeMinutes = 0;
 
@@ -116,7 +117,9 @@ export async function GET(request: Request) {
 
                 // 1. يوم راحة أسبوعي؟
                 if (offDaysIndices.includes(dayOfWeek)) {
-                    offDaysCount++;
+                    offDaysInFullMonth++;
+                    // لو في الفترة المحسوبة نحسبه كراحة هناك أيضاً
+                    if (d <= endCheckDay) offDaysInCheckedPeriod++;
                     continue;
                 }
 
@@ -152,11 +155,11 @@ export async function GET(request: Request) {
                 }
             }
 
-            // ─── أيام العمل المفترضة ───
-            // إجمالي الأيام التي لم تكن راحة ولم تكن مستقبلية
-            const workingDays = Math.max(0, endCheckDay - offDaysCount);
+            // ─── أيام العمل المفترضة (ضمن الفترة المحسوبة فقط) ───
+            // = أيام من 1 إلى endCheckDay ناقص أيام الراحة في نفس الفترة
+            const workingDays = Math.max(0, endCheckDay - offDaysInCheckedPeriod);
 
-            // ─── نسبة الحضور ───
+            // ─── نسبة الحضور (حضور / أيام عمل فعلية) ───
             const attendanceRate =
                 workingDays > 0
                     ? Math.round((presentDays / workingDays) * 100)
@@ -168,7 +171,7 @@ export async function GET(request: Request) {
                 department: emp.department,
                 job_title: emp.job_title,
                 working_days: workingDays,
-                off_days: offDaysCount,
+                off_days: offDaysInFullMonth,  // أيام الراحة طول الشهر كله (للعرض)
                 present_days: presentDays,
                 absent_days: absentDays,
                 leave_days: leaveDays,
