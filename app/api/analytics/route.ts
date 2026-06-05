@@ -1108,7 +1108,6 @@ export async function GET(req: NextRequest) {
       [startDateStr, endDateStr]
     );
 
-    const todayStr = format(now);
     const getDatesInRange = (startStr: string, endStr: string) => {
       const dates: string[] = [];
       const current = new Date(startStr);
