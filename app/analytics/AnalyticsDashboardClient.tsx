@@ -2330,15 +2330,58 @@ export function AnalyticsDashboardClient({
                 return 0;
               });
 
-              const totalEmployees = data?.hrPayrollDetails?.totalActiveEmployees || 0;
-              const sarEmployees = data?.hrPayrollDetails?.activeEmployeesSAR || 0;
-              const egpEmployees = data?.hrPayrollDetails?.activeEmployeesEGP || 0;
+              const totalEmployees = filteredEmployees.length;
+              const sarEmployees = filteredEmployees.filter((e: any) => e.currency?.toUpperCase() !== "EGP").length;
+              const egpEmployees = filteredEmployees.filter((e: any) => e.currency?.toUpperCase() === "EGP").length;
 
-              const avgAttendance = data?.employeeAttendance?.length > 0 
-                ? Math.round(data.employeeAttendance.reduce((acc: number, cur: any) => acc + cur.attendanceRate, 0) / data.employeeAttendance.length)
+              const sarNetSum = filteredEmployees
+                .filter((e: any) => e.currency?.toUpperCase() !== "EGP")
+                .reduce((acc: number, cur: any) => acc + Number(cur.net || 0), 0);
+              const sarNetFormatted = `${Math.round(sarNetSum).toLocaleString("en-US")} ر.س`;
+
+              const egpNetSum = filteredEmployees
+                .filter((e: any) => e.currency?.toUpperCase() === "EGP")
+                .reduce((acc: number, cur: any) => acc + Number(cur.net || 0), 0);
+              const egpNetFormatted = `${Math.round(egpNetSum).toLocaleString("en-US")} ج.م`;
+
+              const avgAttendance = filteredEmployees.length > 0 
+                ? Math.round(filteredEmployees.reduce((acc: number, cur: any) => acc + cur.attendanceRate, 0) / filteredEmployees.length)
                 : 100;
 
-              const pendingRequestsCount = (data?.leaveRequests || []).filter((r: any) => r.status === "pending").length;
+              const filteredEmpNames = new Set(filteredEmployees.map((e: any) => e.name));
+              const pendingRequestsCount = (data?.leaveRequests || []).filter((r: any) => 
+                r.status === "pending" && filteredEmpNames.has(r.employeeName)
+              ).length;
+
+              const dynamicJobTitleStats = (() => {
+                const counts: Record<string, number> = {};
+                filteredEmployees.forEach((emp: any) => {
+                  const title = emp.jobTitle || "غير محدد";
+                  counts[title] = (counts[title] || 0) + 1;
+                });
+                return Object.entries(counts)
+                  .map(([name, value]) => ({ name, value }))
+                  .sort((a, b) => b.value - a.value);
+              })();
+
+              const dynamicAttendanceStats = (() => {
+                let present = 0;
+                let late = 0;
+                let absent = 0;
+                let leave = 0;
+                filteredEmployees.forEach((emp: any) => {
+                  present += Number(emp.presentDays || 0);
+                  late += Number(emp.lateDays || 0);
+                  absent += Number(emp.absentDays || 0);
+                  leave += Number(emp.leaveDays || 0);
+                });
+                return [
+                  { status: "حاضر", count: present },
+                  { status: "متأخر", count: late },
+                  { status: "غائب", count: absent },
+                  { status: "إجازة", count: leave }
+                ].filter(item => item.count > 0);
+              })();
 
               const COLORS_PIE = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#06b6d4", "#ec4899", "#8b5cf6", "#14b8a6"];
               const ATT_COLORS: Record<string, string> = {
@@ -2384,10 +2427,10 @@ export function AnalyticsDashboardClient({
                           <span className="text-xs font-bold text-gray-400">مسيرة الرواتب النشطة</span>
                           <div className="space-y-0.5">
                             <div className="text-sm font-black text-slate-800">
-                              السعودية: <span className="text-indigo-600">{data?.hrPayrollDetails?.sar?.net}</span>
+                              السعودية: <span className="text-indigo-600">{sarNetFormatted}</span>
                             </div>
                             <div className="text-sm font-black text-slate-800">
-                              مصر: <span className="text-emerald-600">{data?.hrPayrollDetails?.egp?.net}</span>
+                              مصر: <span className="text-emerald-600">{egpNetFormatted}</span>
                             </div>
                           </div>
                         </div>
@@ -2442,8 +2485,8 @@ export function AnalyticsDashboardClient({
                           <h3 className="text-sm font-bold text-gray-900">توزيع الموظفين حسب المسمى الوظيفي</h3>
                           <p className="text-[10px] text-gray-400 font-medium">نظرة عامة على الهيكل الوظيفي وتوزيع القوى العاملة بالشركة</p>
                         </div>
-                        {isMounted && (data?.jobTitleStats || []).length > 0 && (() => {
-                          const stats = data.jobTitleStats || [];
+                        {isMounted && (dynamicJobTitleStats || []).length > 0 && (() => {
+                          const stats = dynamicJobTitleStats || [];
                           let maxJob = { name: "", value: 0 };
                           stats.forEach((s: any) => {
                             if (s.value > maxJob.value) {
@@ -2467,10 +2510,10 @@ export function AnalyticsDashboardClient({
                         })()}
                       </div>
                       <div className="w-full h-[280px] relative" style={{ direction: "ltr" }}>
-                        {isMounted && (data?.jobTitleStats || []).length > 0 ? (
+                        {isMounted && (dynamicJobTitleStats || []).length > 0 ? (
                           <ResponsiveContainer width="100%" height="100%">
                             <BarChart 
-                              data={(data.jobTitleStats || []).map((item: any) => ({
+                              data={(dynamicJobTitleStats || []).map((item: any) => ({
                                 ...item,
                                 name: translateJobTitle(item.name)
                               }))} 
@@ -2508,7 +2551,7 @@ export function AnalyticsDashboardClient({
                                 }}
                               />
                               <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={30}>
-                                {(data.jobTitleStats || []).map((entry: any, index: number) => (
+                                {(dynamicJobTitleStats || []).map((entry: any, index: number) => (
                                   <Cell key={`cell-${index}`} fill={COLORS_PIE[index % COLORS_PIE.length]} />
                                 ))}
                               </Bar>
@@ -2525,7 +2568,7 @@ export function AnalyticsDashboardClient({
                       <div>
                         <h3 className="text-sm font-bold text-gray-900 mb-2">توزيع حالات الحضور المسجلة</h3>
                         <div className="w-full h-[150px] relative" style={{ direction: "ltr" }}>
-                          {isMounted && (data?.attendanceStats || []).length > 0 ? (
+                          {isMounted && (dynamicAttendanceStats || []).length > 0 ? (
                             <>
                               <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
@@ -2544,7 +2587,7 @@ export function AnalyticsDashboardClient({
                                     }}
                                   />
                                   <Pie
-                                    data={(data.attendanceStats || []).map((r:any) => ({ name: r.status, value: r.count }))}
+                                    data={(dynamicAttendanceStats || []).map((r:any) => ({ name: r.status, value: r.count }))}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={45}
@@ -2552,7 +2595,7 @@ export function AnalyticsDashboardClient({
                                     paddingAngle={4}
                                     dataKey="value"
                                   >
-                                    {(data.attendanceStats || []).map((entry: any, index: number) => (
+                                    {(dynamicAttendanceStats || []).map((entry: any, index: number) => (
                                       <Cell key={`cell-${index}`} fill={ATT_COLORS[entry.status] || COLORS_PIE[index % COLORS_PIE.length]} />
                                     ))}
                                   </Pie>
@@ -2560,7 +2603,7 @@ export function AnalyticsDashboardClient({
                               </ResponsiveContainer>
                               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
                                 <span className="text-[8px] font-bold text-gray-400 uppercase tracking-wider">سجل الحضور</span>
-                                <span className="text-sm font-black text-gray-700">{(data.attendanceStats || []).reduce((a:number,c:any)=>a+c.count,0)}</span>
+                                <span className="text-sm font-black text-gray-700">{(dynamicAttendanceStats || []).reduce((a:number,c:any)=>a+c.count,0)}</span>
                               </div>
                             </>
                           ) : (
@@ -2570,8 +2613,8 @@ export function AnalyticsDashboardClient({
                       </div>
 
                       {/* Dynamic Analytical Summary Widget */}
-                      {isMounted && (data?.attendanceStats || []).length > 0 && (() => {
-                        const stats = data.attendanceStats || [];
+                      {isMounted && (dynamicAttendanceStats || []).length > 0 && (() => {
+                        const stats = dynamicAttendanceStats || [];
                         const total = stats.reduce((a:number,c:any)=>a+c.count,0) || 0;
                         const present = stats.find((s:any)=>s.status === 'حاضر' || s.status === 'Present')?.count || 0;
                         const late = stats.find((s:any)=>s.status === 'متأخر' || s.status === 'Late')?.count || 0;
@@ -2613,9 +2656,9 @@ export function AnalyticsDashboardClient({
                       
                       {/* Attendance Legends with Progress Bars */}
                       <div className="space-y-2 border-t border-gray-100 pt-3 mt-1.5">
-                        {isMounted && (data?.attendanceStats || []).map((item: any, idx: number) => {
+                        {isMounted && (dynamicAttendanceStats || []).map((item: any, idx: number) => {
                           const color = ATT_COLORS[item.status] || COLORS_PIE[idx % COLORS_PIE.length];
-                          const totalCount = (data.attendanceStats || []).reduce((a:number,c:any)=>a+c.count,0) || 1;
+                          const totalCount = (dynamicAttendanceStats || []).reduce((a:number,c:any)=>a+c.count,0) || 1;
                           const percent = Math.round(item.count/totalCount * 100);
                           return (
                             <div key={idx} className="space-y-1">
@@ -2632,7 +2675,7 @@ export function AnalyticsDashboardClient({
                             </div>
                           );
                         })}
-                        {(data?.attendanceStats || []).length === 0 && (
+                        {(dynamicAttendanceStats || []).length === 0 && (
                           <p className="text-xs text-gray-400 text-center">لا توجد سجلات حضور مسجلة للفترة المحددة</p>
                         )}
                       </div>
