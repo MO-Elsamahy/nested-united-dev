@@ -1081,38 +1081,147 @@ export async function GET(req: NextRequest) {
       totalActiveEmployees: hrActiveEmployees.length,
     };
 
-    // Employee attendance for all employees (filtered by date range)
-    const employeeAttendanceList = await query<any>(
+    // Employee list with shift information (filtered by date range)
+    const employeeList = await query<any>(
       `SELECT e.id, e.full_name, e.job_title, e.salary_currency, e.basic_salary,
-              e.housing_allowance, e.transport_allowance, e.other_allowances,
-              COUNT(a.id) as total_days,
-              SUM(CASE WHEN a.status = 'present' THEN 1 ELSE 0 END) as present_days,
-              SUM(CASE WHEN a.status = 'late' THEN 1 ELSE 0 END) as present_days_late,
-              SUM(CASE WHEN a.status = 'absent' THEN 1 ELSE 0 END) as absent_days,
-              SUM(CASE WHEN a.status = 'leave' THEN 1 ELSE 0 END) as leave_days
+              e.housing_allowance, e.transport_allowance, e.other_allowances, e.hire_date,
+              s.days_off
        FROM hr_employees e
-       LEFT JOIN hr_attendance a ON e.id = a.employee_id AND a.date >= ? AND a.date <= ?
-       WHERE e.status = 'active' AND (e.hire_date IS NULL OR e.hire_date <= ?)
-       GROUP BY e.id, e.full_name, e.job_title, e.salary_currency, e.basic_salary,
-                e.housing_allowance, e.transport_allowance, e.other_allowances`,
-      [startDateStr, endDateStr, endDateStr]
+       LEFT JOIN hr_shifts s ON e.shift_id = s.id
+       WHERE e.status = 'active' AND (e.hire_date IS NULL OR e.hire_date <= ?)`,
+      [endDateStr]
     );
 
-    const employeeAttendance = employeeAttendanceList.map((emp: any) => {
-      const total = Number(emp.total_days || 0);
-      const present = Number(emp.present_days || 0);
-      const late = Number(emp.present_days_late || 0);
-      const absent = Number(emp.absent_days || 0);
-      const leave = Number(emp.leave_days || 0);
-      
-      const attendanceRate = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
-      
+    // Active approved leave requests overlapping with selected range
+    const activeLeaves = await query<any>(
+      `SELECT employee_id, start_date, end_date
+       FROM hr_requests
+       WHERE status = 'approved' AND start_date <= ? AND end_date >= ?`,
+      [endDateStr, startDateStr]
+    );
+
+    // Attendance logs inside selected range
+    const attendanceRecords = await query<any>(
+      `SELECT employee_id, date, status
+       FROM hr_attendance
+       WHERE date >= ? AND date <= ?`,
+      [startDateStr, endDateStr]
+    );
+
+    const todayStr = format(now);
+    const getDatesInRange = (startStr: string, endStr: string) => {
+      const dates: string[] = [];
+      const current = new Date(startStr);
+      const last = new Date(endStr);
+      while (current <= last) {
+        const year = current.getFullYear();
+        const month = String(current.getMonth() + 1).padStart(2, "0");
+        const day = String(current.getDate()).padStart(2, "0");
+        dates.push(`${year}-${month}-${day}`);
+        current.setDate(current.getDate() + 1);
+      }
+      return dates;
+    };
+
+    // Map attendance records for rapid lookup
+    const attendanceMap: Record<string, Record<string, string>> = {};
+    for (const att of attendanceRecords) {
+      const empId = att.employee_id;
+      const dateStr = att.date instanceof Date 
+        ? att.date.toISOString().split("T")[0] 
+        : String(att.date).split(" ")[0];
+      if (!attendanceMap[empId]) {
+        attendanceMap[empId] = {};
+      }
+      attendanceMap[empId][dateStr] = att.status;
+    }
+
+    let globalPresent = 0;
+    let globalLate = 0;
+    let globalAbsent = 0;
+    let globalLeave = 0;
+
+    const employeeAttendance = employeeList.map((emp: any) => {
+      let empStart = startDateStr;
+      if (emp.hire_date) {
+        const hireStr = emp.hire_date instanceof Date 
+          ? emp.hire_date.toISOString().split("T")[0] 
+          : String(emp.hire_date).split(" ")[0];
+        if (hireStr > startDateStr) {
+          empStart = hireStr;
+        }
+      }
+
+      let empEnd = endDateStr < todayStr ? endDateStr : todayStr;
+
+      let expected = 0;
+      let present = 0;
+      let late = 0;
+      let absent = 0;
+      let leave = 0;
+
       const basic = Number(emp.basic_salary || 0);
       const allowances = Number(emp.housing_allowance || 0) + 
                          Number(emp.transport_allowance || 0) + 
                          Number(emp.other_allowances || 0);
       const deductions = Math.round(basic * 0.02);
       const net = basic + allowances - deductions;
+
+      if (empStart <= empEnd) {
+        const dates = getDatesInRange(empStart, empEnd);
+        const daysOff = emp.days_off ? emp.days_off.split(",").map(Number) : [5]; // Default Friday (5)
+        const empLeaves = activeLeaves.filter((l: any) => l.employee_id === emp.id);
+
+        for (const dStr of dates) {
+          const dateObj = new Date(dStr);
+          const dayOfWeek = dateObj.getDay();
+
+          // 1. Check weekly day off
+          if (daysOff.includes(dayOfWeek)) {
+            continue;
+          }
+
+          // 2. Check approved leaves
+          const onLeave = empLeaves.some((l: any) => {
+            const lStart = l.start_date instanceof Date ? l.start_date.toISOString().split("T")[0] : String(l.start_date).split(" ")[0];
+            const lEnd = l.end_date instanceof Date ? l.end_date.toISOString().split("T")[0] : String(l.end_date).split(" ")[0];
+            return dStr >= lStart && dStr <= lEnd;
+          });
+
+          if (onLeave) {
+            leave++;
+            continue;
+          }
+
+          // 3. Expected working day
+          expected++;
+
+          const attStatus = attendanceMap[emp.id]?.[dStr];
+          if (attStatus) {
+            if (attStatus === 'present') {
+              present++;
+            } else if (attStatus === 'late') {
+              present++;
+              late++;
+            } else if (attStatus === 'absent') {
+              absent++;
+            } else if (attStatus === 'leave' || attStatus === 'holiday') {
+              expected--;
+              leave++;
+            }
+          } else {
+            // Missing check-in -> Absent
+            absent++;
+          }
+        }
+      }
+
+      globalPresent += present;
+      globalLate += late;
+      globalAbsent += absent;
+      globalLeave += leave;
+
+      const attendanceRate = expected > 0 ? Math.round((present / expected) * 100) : 100;
 
       return {
         id: emp.id,
@@ -1123,7 +1232,7 @@ export async function GET(req: NextRequest) {
         allowances,
         deductions,
         net,
-        totalDays: total,
+        totalDays: expected,
         presentDays: present,
         lateDays: late,
         absentDays: absent,
@@ -1134,28 +1243,12 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Attendance stats status distribution (filtered by date range)
-    const attendanceStatsList = await query<any>(
-      `SELECT a.status, COUNT(*) as count 
-       FROM hr_attendance a
-       INNER JOIN hr_employees e ON a.employee_id = e.id
-       WHERE e.status = 'active' AND a.date >= ? AND a.date <= ?
-       GROUP BY a.status`,
-      [startDateStr, endDateStr]
-    );
-
-    const arabicAttStatuses: Record<string, string> = {
-      present: "حاضر",
-      late: "متأخر",
-      absent: "غائب",
-      leave: "إجازة",
-      holiday: "عطلة رسمي",
-    };
-
-    const attendanceStats = attendanceStatsList.map((r: any) => ({
-      status: arabicAttStatuses[r.status] || r.status,
-      count: Number(r.count || 0),
-    }));
+    const attendanceStats = [
+      { status: "حاضر", count: globalPresent },
+      { status: "متأخر", count: globalLate },
+      { status: "غائب", count: globalAbsent },
+      { status: "إجازة", count: globalLeave }
+    ].filter(item => item.count > 0);
 
     // Job Title distribution count (filtered by date range)
     const jobTitleStatsList = await query<any>(
