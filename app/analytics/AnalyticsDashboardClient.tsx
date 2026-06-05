@@ -81,6 +81,12 @@ export function AnalyticsDashboardClient({
   const [profitabilitySortField, setProfitabilitySortField] = useState<"name" | "revenue" | "cost" | "profit" | "margin" | "occupancy" | "adr" | "revpar">("revenue");
   const [profitabilitySortAsc, setProfitabilitySortAsc] = useState(false);
 
+  // HR Tab interactive states
+  const [hrSearch, setHrSearch] = useState("");
+  const [hrSortField, setHrSortField] = useState<"name" | "jobTitle" | "net" | "attendanceRate">("name");
+  const [hrSortAsc, setHrSortAsc] = useState(true);
+  const [hrCurrencyFilter, setHrCurrencyFilter] = useState<"all" | "SAR" | "EGP">("all");
+
   // Date selection states
   const now = new Date();
   const getLocalDateString = (d: Date) => {
@@ -2264,100 +2270,455 @@ export function AnalyticsDashboardClient({
               </div>
             )}
 
-            {activeTab === "hr" && (
-              <div className="space-y-8 animate-fadeIn">
-                {/* Tab Header */}
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">ملخص الموارد البشرية ومسيرة الرواتب</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">إحصاءات الحضور والانصراف، نسب الالتزام، وتفاصيل الأجور المستحقة للشهر الجاري</p>
-                </div>
+            {activeTab === "hr" && (() => {
+              // Interactive state operations
+              const filteredEmployees = (data?.employeeAttendance || []).filter((emp: any) => {
+                const matchesSearch = emp.name.toLowerCase().includes(hrSearch.toLowerCase()) ||
+                                      emp.jobTitle.toLowerCase().includes(hrSearch.toLowerCase());
+                const matchesCurrency = hrCurrencyFilter === "all" || emp.currency === hrCurrencyFilter;
+                return matchesSearch && matchesCurrency;
+              }).sort((a: any, b: any) => {
+                let fieldA: any = a[hrSortField];
+                let fieldB: any = b[hrSortField];
+                if (typeof fieldA === "string") {
+                  fieldA = fieldA.toLowerCase();
+                  fieldB = fieldB.toLowerCase();
+                }
+                if (fieldA < fieldB) return hrSortAsc ? -1 : 1;
+                if (fieldA > fieldB) return hrSortAsc ? 1 : -1;
+                return 0;
+              });
 
-                {/* HR Data */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Payroll Totals */}
-                  <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900">مسيرة رواتب الموظفين النشطين</h3>
+              const totalEmployees = data?.hrPayrollDetails?.totalActiveEmployees || 0;
+              const sarEmployees = data?.hrPayrollDetails?.activeEmployeesSAR || 0;
+              const egpEmployees = data?.hrPayrollDetails?.activeEmployeesEGP || 0;
 
-                    <div className="space-y-3 font-semibold text-xs text-gray-700">
-                      <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span>إجمالي الرواتب الأساسية</span>
-                        <span>{data.hrPayroll.basic}</span>
+              const avgAttendance = data?.employeeAttendance?.length > 0 
+                ? Math.round(data.employeeAttendance.reduce((acc: number, cur: any) => acc + cur.attendanceRate, 0) / data.employeeAttendance.length)
+                : 100;
+
+              const pendingRequestsCount = (data?.leaveRequests || []).filter((r: any) => r.status === "pending").length;
+
+              const COLORS_PIE = ["#6366f1", "#10b981", "#3b82f6", "#f59e0b", "#06b6d4", "#ec4899", "#8b5cf6", "#14b8a6"];
+              const ATT_COLORS: Record<string, string> = {
+                "حاضر": "#10b981",
+                "متأخر": "#f59e0b",
+                "غائب": "#ef4444",
+                "إجازة": "#3b82f6",
+                "عطلة رسمي": "#64748b",
+              };
+
+              return (
+                <div className="space-y-8 animate-fadeIn">
+                  {/* Tab Header */}
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">ملخص الموارد البشرية ومسيرة الرواتب</h2>
+                    <p className="text-xs text-gray-500 mt-0.5">إحصاءات الحضور والانصراف، نسب الالتزام، وتفاصيل الأجور المستحقة للشهر الجاري</p>
+                  </div>
+
+                  {/* 4 KPI Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {/* Active Staff */}
+                    <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between min-h-[125px] relative overflow-hidden group hover:border-gray-300 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <span className="text-xs font-bold text-gray-400">إجمالي الموظفين النشطين</span>
+                          <h3 className="text-2xl font-black text-slate-800">{totalEmployees} موظفاً</h3>
+                        </div>
+                        <div className="p-2.5 bg-indigo-50 text-indigo-500 rounded-xl">
+                          <Users className="w-5 h-5" />
+                        </div>
                       </div>
-                      <div className="flex justify-between py-2 border-b border-gray-50">
-                        <span>البدلات والمكافآت المعتمدة</span>
-                        <span>{data.hrPayroll.allowances}</span>
+                      <div className="text-[10px] font-bold text-gray-500 mt-2 flex gap-2">
+                        <span>{sarEmployees} بالسعودية</span>
+                        <span className="text-gray-300">|</span>
+                        <span>{egpEmployees} بمصر</span>
                       </div>
-                      <div className="flex justify-between py-2 border-b border-gray-50 text-rose-600">
-                        <span>الاستقطاعات والتأمينات التقديرية</span>
-                        <span>-{data.hrPayroll.deductions}</span>
+                    </div>
+
+                    {/* Concurrency Payrolls */}
+                    <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between min-h-[125px] relative overflow-hidden group hover:border-gray-300 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <span className="text-xs font-bold text-gray-400">مسيرة الرواتب النشطة</span>
+                          <div className="space-y-0.5">
+                            <div className="text-sm font-black text-slate-800">
+                              السعودية: <span className="text-indigo-600">{data?.hrPayrollDetails?.sar?.net}</span>
+                            </div>
+                            <div className="text-sm font-black text-slate-800">
+                              مصر: <span className="text-emerald-600">{data?.hrPayrollDetails?.egp?.net}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="p-2.5 bg-emerald-50 text-emerald-500 rounded-xl">
+                          <Briefcase className="w-5 h-5" />
+                        </div>
                       </div>
-                      <div className="flex justify-between py-2 text-sm font-black text-emerald-600">
-                        <span>صافي الأجور المستحقة للتحويل</span>
-                        <span>{data.hrPayroll.net}</span>
+                      <div className="text-[9px] font-bold text-gray-400 mt-1">
+                        تتضمن الراتب الأساسي والبدلات بعد الاستقطاعات
+                      </div>
+                    </div>
+
+                    {/* Attendance Rate */}
+                    <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between min-h-[125px] relative overflow-hidden group hover:border-gray-300 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <span className="text-xs font-bold text-gray-400">معدل الحضور والانضباط</span>
+                          <h3 className="text-2xl font-black text-teal-600">{avgAttendance}%</h3>
+                        </div>
+                        <div className="p-2.5 bg-teal-50 text-teal-500 rounded-xl">
+                          <Clock className="w-5 h-5" />
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-bold text-gray-500 mt-2 flex gap-2">
+                        <span>إجمالي {data?.employeeAttendance?.reduce((a:number,c:any)=>a+c.totalDays,0) || 0} تسجيلات حضور نشطة</span>
+                      </div>
+                    </div>
+
+                    {/* Requests Status */}
+                    <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm flex flex-col justify-between min-h-[125px] relative overflow-hidden group hover:border-gray-300 transition-all">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <span className="text-xs font-bold text-gray-400">طلبات الإجازات النشطة</span>
+                          <h3 className="text-2xl font-black text-amber-600">{pendingRequestsCount} طلبات معلقة</h3>
+                        </div>
+                        <div className="p-2.5 bg-amber-50 text-amber-500 rounded-xl">
+                          <ClipboardList className="w-5 h-5" />
+                        </div>
+                      </div>
+                      <div className="text-[10px] font-bold text-gray-500 mt-2">
+                        إجمالي الطلبات المقدمة: {(data?.leaveRequests || []).length}
                       </div>
                     </div>
                   </div>
 
-                  {/* Attendance Tracker */}
-                  <div className="lg:col-span-2 border border-gray-150 rounded-2xl p-5 bg-white shadow-sm space-y-4">
-                    <h3 className="text-sm font-bold text-gray-900">معدلات التزام وحضور الموظفين</h3>
+                  {/* Graphs & Charts Row */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Job Title distribution */}
+                    <div className="border border-gray-150 rounded-2xl p-5 bg-white shadow-sm space-y-4">
+                      <h3 className="text-sm font-bold text-gray-900">توزيع الموظفين حسب المسمى الوظيفي</h3>
+                      <div className="w-full h-[220px] relative" style={{ direction: "ltr" }}>
+                        {isMounted && (data?.jobTitleStats || []).length > 0 ? (
+                          <>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                <RechartsTooltip
+                                  wrapperStyle={{ zIndex: 100 }}
+                                  content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl">
+                                          <p className="text-gray-400">{payload[0].name}</p>
+                                          <p className="text-indigo-400">{payload[0].value} موظفين ({Math.round(Number(payload[0].value)/totalEmployees * 100)}%)</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Pie
+                                  data={data.jobTitleStats}
+                                  cx="50%"
+                                  cy="50%"
+                                  innerRadius={60}
+                                  outerRadius={80}
+                                  paddingAngle={3}
+                                  dataKey="value"
+                                >
+                                  {data.jobTitleStats.map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={COLORS_PIE[index % COLORS_PIE.length]} />
+                                  ))}
+                                </Pie>
+                              </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">التخصصات</span>
+                              <span className="text-lg font-black text-gray-700">{data.jobTitleStats.length}</span>
+                            </div>
+                          </>
+                        ) : (
+                          <NoDataState />
+                        )}
+                      </div>
+                    </div>
 
-                    {/* Recharts HR Attendance BarChart */}
-                    <div className="w-full h-[220px] pt-2" style={{ direction: "ltr" }}>
-                      {isMounted ? (
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                          <BarChart
-                            data={(data.employeeAttendance || []).map((emp: any) => ({
-                              name: emp.name.split(" (")[0],
-                              rate: parseFloat(emp.attend.replace("% حضور", "")),
-                              delay: emp.delay,
-                            }))}
-                            layout="vertical"
-                            margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+                    {/* Attendance Status distribution */}
+                    <div className="lg:col-span-2 border border-gray-150 rounded-2xl p-5 bg-white shadow-sm space-y-4">
+                      <h3 className="text-sm font-bold text-gray-900">توزيع حالات الحضور المسجلة</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div className="w-full h-[220px] relative" style={{ direction: "ltr" }}>
+                          {isMounted && (data?.attendanceStats || []).length > 0 ? (
+                            <>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                  <RechartsTooltip
+                                    wrapperStyle={{ zIndex: 100 }}
+                                    content={({ active, payload }) => {
+                                      if (active && payload && payload.length) {
+                                        return (
+                                          <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl">
+                                            <p className="text-gray-400">{payload[0].name}</p>
+                                            <p className="text-indigo-400">{payload[0].value} تسجيلات</p>
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    }}
+                                  />
+                                  <Pie
+                                    data={(data.attendanceStats || []).map((r:any) => ({ name: r.status, value: r.count }))}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={65}
+                                    outerRadius={85}
+                                    paddingAngle={4}
+                                    dataKey="value"
+                                  >
+                                    {(data.attendanceStats || []).map((entry: any, index: number) => (
+                                      <Cell key={`cell-${index}`} fill={ATT_COLORS[entry.status] || COLORS_PIE[index % COLORS_PIE.length]} />
+                                    ))}
+                                  </Pie>
+                                </PieChart>
+                              </ResponsiveContainer>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-0">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">سجل الحضور</span>
+                                <span className="text-lg font-black text-gray-700">{(data.attendanceStats || []).reduce((a:number,c:any)=>a+c.count,0)}</span>
+                              </div>
+                            </>
+                          ) : (
+                            <NoDataState />
+                          )}
+                        </div>
+                        {/* Attendance Legends */}
+                        <div className="space-y-3 pr-4">
+                          <h4 className="text-xs font-bold text-gray-500 mb-1">تفاصيل الحالات التراكمية:</h4>
+                          {isMounted && (data?.attendanceStats || []).map((item: any, idx: number) => {
+                            const color = ATT_COLORS[item.status] || COLORS_PIE[idx % COLORS_PIE.length];
+                            return (
+                              <div key={idx} className="flex justify-between items-center text-xs font-bold">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
+                                  <span className="text-gray-600">{item.status}</span>
+                                </div>
+                                <span className="text-gray-800">{item.count} أيام</span>
+                              </div>
+                            );
+                          })}
+                          {(data?.attendanceStats || []).length === 0 && (
+                            <p className="text-xs text-gray-400">لا توجد سجلات حضور مسجلة للفترة المحددة</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Employees Directory Table */}
+                  <div className="border border-gray-150 rounded-2xl bg-white shadow-sm overflow-hidden space-y-4 p-5">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-sm font-bold text-gray-900">سجل رواتب وانضباط الموظفين التفصيلي</h3>
+                        <p className="text-[11px] text-gray-400 mt-0.5">تفاصيل الأجور المستحقة ونسب الحضور لكافة الكادر الوظيفي بالشركة</p>
+                      </div>
+
+                      {/* Controls (Search, Currency, etc.) */}
+                      <div className="flex flex-wrap items-center gap-3">
+                        {/* Search */}
+                        <div className="relative">
+                          <Search className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="بحث باسم الموظف أو الوظيفة..."
+                            value={hrSearch}
+                            onChange={(e) => setHrSearch(e.target.value)}
+                            className="w-full md:w-56 text-xs font-bold pr-8 pl-3 py-2 bg-slate-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:bg-white transition-all text-right"
+                          />
+                        </div>
+
+                        {/* Currency Filter Tabs */}
+                        <div className="flex bg-slate-50 p-1 rounded-xl border border-gray-150">
+                          <button
+                            onClick={() => setHrCurrencyFilter("all")}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                              hrCurrencyFilter === "all" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                            }`}
                           >
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                            <XAxis type="number" domain={[0, 100]} hide />
-                            <YAxis
-                              dataKey="name"
-                              type="category"
-                              axisLine={false}
-                              tickLine={false}
-                              tick={{ fill: "#334155", fontSize: 10, fontWeight: "bold" }}
-                              width={120}
-                            />
-                            <RechartsTooltip
-                              cursor={false}
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const item = payload[0].payload;
-                                  return (
-                                    <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold space-y-1 text-right dir-rtl">
-                                      <p className="text-gray-400">{item.name}</p>
-                                      <p className="text-emerald-400">نسبة الالتزام: {item.rate}%</p>
-                                      <p className="text-amber-400">الحالة: {item.delay}</p>
+                            الكل
+                          </button>
+                          <button
+                            onClick={() => setHrCurrencyFilter("SAR")}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                              hrCurrencyFilter === "SAR" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                            }`}
+                          >
+                            ريال سعودي
+                          </button>
+                          <button
+                            onClick={() => setHrCurrencyFilter("EGP")}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
+                              hrCurrencyFilter === "EGP" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-500 hover:text-gray-800"
+                            }`}
+                          >
+                            جنيه مصري
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Table */}
+                    <div className="overflow-x-auto w-full border border-gray-50 rounded-xl">
+                      <table className="w-full text-right border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/75 border-b border-gray-100 text-[11px] font-bold text-gray-500">
+                            <th className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100/70" onClick={() => {
+                              setHrSortAsc(hrSortField === "name" ? !hrSortAsc : true);
+                              setHrSortField("name");
+                            }}>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span>اسم الموظف</span>
+                                <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                              </div>
+                            </th>
+                            <th className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100/70" onClick={() => {
+                              setHrSortAsc(hrSortField === "jobTitle" ? !hrSortAsc : true);
+                              setHrSortField("jobTitle");
+                            }}>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span>المسمى الوظيفي</span>
+                                <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                              </div>
+                            </th>
+                            <th className="px-4 py-3 text-center">العملة</th>
+                            <th className="px-4 py-3">الراتب الأساسي</th>
+                            <th className="px-4 py-3">البدلات</th>
+                            <th className="px-4 py-3">الاستقطاعات</th>
+                            <th className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100/70" onClick={() => {
+                              setHrSortAsc(hrSortField === "net" ? !hrSortAsc : false);
+                              setHrSortField("net");
+                            }}>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span>صافي الراتب</span>
+                                <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                              </div>
+                            </th>
+                            <th className="px-4 py-3 cursor-pointer select-none hover:bg-slate-100/70" onClick={() => {
+                              setHrSortAsc(hrSortField === "attendanceRate" ? !hrSortAsc : false);
+                              setHrSortField("attendanceRate");
+                            }}>
+                              <div className="flex items-center gap-1.5 justify-end">
+                                <span>نسبة الحضور</span>
+                                <ArrowUpDown className="w-3 h-3 text-gray-400" />
+                              </div>
+                            </th>
+                            <th className="px-4 py-3 text-center">سجل الانضباط</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 text-[11px] font-bold text-gray-700">
+                          {filteredEmployees.length === 0 ? (
+                            <tr>
+                              <td colSpan={9} className="py-8 text-center text-gray-400">
+                                لا يوجد موظفين يطابقون خيارات البحث الحالية
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredEmployees.map((emp: any) => (
+                              <tr key={emp.id} className="hover:bg-slate-50/50 transition-all">
+                                <td className="px-4 py-3.5 text-gray-900">{emp.name}</td>
+                                <td className="px-4 py-3.5 text-gray-500">{emp.jobTitle}</td>
+                                <td className="px-4 py-3.5 text-center">
+                                  <span className={`px-2 py-0.5 rounded-md text-[9px] font-black ${
+                                    emp.currency === 'EGP' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-indigo-50 text-indigo-600 border border-indigo-100'
+                                  }`}>
+                                    {emp.currency}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3.5 font-semibold">{emp.basic.toLocaleString("en-US")} {emp.currency}</td>
+                                <td className="px-4 py-3.5 font-semibold text-emerald-600">+{emp.allowances.toLocaleString("en-US")}</td>
+                                <td className="px-4 py-3.5 font-semibold text-rose-500">-{emp.deductions.toLocaleString("en-US")}</td>
+                                <td className="px-4 py-3.5 text-slate-800 font-extrabold">{emp.net.toLocaleString("en-US")} {emp.currency}</td>
+                                <td className="px-4 py-3.5">
+                                  <div className="flex items-center gap-2 justify-end">
+                                    <span className={`w-12 text-left font-bold ${
+                                      emp.attendanceRate >= 90 ? "text-emerald-600" : emp.attendanceRate >= 75 ? "text-blue-600" : "text-rose-500"
+                                    }`}>
+                                      {emp.attendanceRate}%
+                                    </span>
+                                    <div className="w-16 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                      <div className={`h-full rounded-full ${
+                                        emp.attendanceRate >= 90 ? "bg-emerald-500" : emp.attendanceRate >= 75 ? "bg-blue-500" : "bg-rose-500"
+                                      }`} style={{ width: `${emp.attendanceRate}%` }} />
                                     </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
-                            <Bar dataKey="rate" radius={[0, 8, 8, 0]} barSize={16}>
-                              {((data.employeeAttendance || [])).map((entry: any, index: number) => {
-                                const rateVal = parseFloat(entry.attend.replace("% حضور", ""));
-                                const color = rateVal > 90 ? "#10b981" : "#3b82f6";
-                                return <Cell key={`cell-${index}`} fill={color} />;
-                              })}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : (
-                        <div className="w-full h-full bg-gray-50/50 animate-pulse rounded-xl" />
-                      )}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3.5 text-center">
+                                  <span className="text-[10px] text-gray-500 font-medium">
+                                    حضر {emp.presentDays} | تأخر {emp.lateDays} | غاب {emp.absentDays}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  {/* Leave Requests Overview */}
+                  <div className="border border-gray-150 rounded-2xl bg-white shadow-sm p-5 space-y-4">
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">سجل طلبات الإجازات والغياب الإداري</h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">الطلبات الحالية والسابقة المقدمة من الكادر الوظيفي وحالتها الإدارية</p>
+                    </div>
+
+                    <div className="overflow-x-auto w-full border border-gray-50 rounded-xl">
+                      <table className="w-full text-right border-collapse">
+                        <thead>
+                          <tr className="bg-slate-50/75 border-b border-gray-100 text-[11px] font-bold text-gray-500">
+                            <th className="px-4 py-3">اسم الموظف</th>
+                            <th className="px-4 py-3">نوع الطلب</th>
+                            <th className="px-4 py-3 text-center">تاريخ البدء</th>
+                            <th className="px-4 py-3 text-center">تاريخ الانتهاء</th>
+                            <th className="px-4 py-3 text-center">المدة</th>
+                            <th className="px-4 py-3">سبب الإجازة</th>
+                            <th className="px-4 py-3 text-center">حالة الطلب</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50 text-[11px] font-bold text-gray-700">
+                          {(data?.leaveRequests || []).length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="py-8 text-center text-gray-400">
+                                لا توجد طلبات إجازة نشطة أو معلّقة حالياً
+                              </td>
+                            </tr>
+                          ) : (
+                            (data.leaveRequests).map((req: any) => (
+                              <tr key={req.id} className="hover:bg-slate-50/50 transition-all">
+                                <td className="px-4 py-3.5 text-gray-900">{req.employeeName}</td>
+                                <td className="px-4 py-3.5 text-slate-800">{req.type}</td>
+                                <td className="px-4 py-3.5 text-center text-gray-500 font-semibold">{req.startDate}</td>
+                                <td className="px-4 py-3.5 text-center text-gray-500 font-semibold">{req.endDate}</td>
+                                <td className="px-4 py-3.5 text-center font-extrabold text-indigo-600">{req.daysCount} يوم</td>
+                                <td className="px-4 py-3.5 text-gray-500 max-w-[200px] truncate" title={req.reason}>
+                                  {req.reason}
+                                </td>
+                                <td className="px-4 py-3.5 text-center">
+                                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black ${
+                                    req.status === "approved" ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                                    req.status === "rejected" ? "bg-rose-50 text-rose-600 border border-rose-100" :
+                                    "bg-amber-50 text-amber-600 border border-amber-100 animate-pulse"
+                                  }`}>
+                                    {req.statusLabel}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </>
         )}
 
