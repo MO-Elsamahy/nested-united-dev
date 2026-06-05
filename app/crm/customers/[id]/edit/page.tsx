@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Save, Loader2 } from "lucide-react";
 import type { CustomerDetailResponse } from "@/lib/types/crm";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function EditCustomerPage({ params }: { params: Promise<{ id: string }> }) {
+    const { alert } = useDialog();
     const { id } = use(params);
     const router = useRouter();
     const [loadingPage, setLoadingPage] = useState(true);
@@ -72,11 +74,11 @@ export default function EditCustomerPage({ params }: { params: Promise<{ id: str
                 router.push(`/crm/customers/${id}`);
                 router.refresh();
             } else {
-                alert((data as { error?: string }).error || "تعذّر حفظ التعديلات");
+                await alert((data as { error?: string }).error || "تعذّر حفظ التعديلات");
                 setLoading(false);
             }
         } catch {
-            alert("خطأ في الاتصال");
+            await alert("خطأ في الاتصال");
             setLoading(false);
         }
     };

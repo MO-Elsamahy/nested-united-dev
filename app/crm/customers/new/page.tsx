@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Save, Loader2 } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function NewCustomerPage() {
+    const { alert } = useDialog();
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -40,14 +42,14 @@ export default function NewCustomerPage() {
                 router.refresh();
             } else {
                 if (res.status === 409) {
-                    alert(`عميل مكرر: ${data.details?.full_name}\nرقم الهاتف: ${data.details?.phone}\n\nهذا العميل مسجل مسبقاً في النظام.`);
+                    await alert(`عميل مكرر: ${data.details?.full_name}\nرقم الهاتف: ${data.details?.phone}\n\nهذا العميل مسجل مسبقاً في النظام.`);
                 } else {
-                    alert(data.error || "حدث خطأ أثناء حفظ البيانات");
+                    await alert(data.error || "حدث خطأ أثناء حفظ البيانات");
                 }
                 setLoading(false);
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "خطأ في الاتصال");
+            await alert(error instanceof Error ? error.message : "خطأ في الاتصال");
             setLoading(false);
         }
     };

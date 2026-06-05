@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Loader2, Plus, Trash2, Tag } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface CrmTag {
     id: string;
@@ -11,6 +12,7 @@ interface CrmTag {
 }
 
 export default function CRMSettingsPage() {
+    const { alert, confirm } = useDialog();
     const [loading, setLoading] = useState(true);
     const [tags, setTags] = useState<CrmTag[]>([]);
 
@@ -35,7 +37,7 @@ export default function CRMSettingsPage() {
 
     const handleAddTag = async () => {
         if (!newTag.name) {
-            alert("يرجى إدخال اسم التصنيف");
+            await alert("يرجى إدخال اسم التصنيف");
             return;
         }
 
@@ -50,21 +52,21 @@ export default function CRMSettingsPage() {
                 setNewTag({ name: '', color: 'bg-blue-100', text_color: 'text-blue-700' });
                 fetchData();
             } else {
-                alert('فشل إضافة التصنيف');
+                await alert('فشل إضافة التصنيف');
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : 'حدث خطأ');
+            await alert(error instanceof Error ? error.message : 'حدث خطأ');
         }
     };
 
     const handleDeleteTag = async (id: string) => {
-        if (!confirm('هل أنت متأكد من حذف هذا التصنيف؟')) return;
+        if (!await confirm('هل أنت متأكد من حذف هذا التصنيف؟')) return;
 
         try {
             await fetch(`/api/crm/tags?id=${id}`, { method: 'DELETE' });
             fetchData();
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : 'حدث خطأ');
+            await alert(error instanceof Error ? error.message : 'حدث خطأ');
         }
     };
 

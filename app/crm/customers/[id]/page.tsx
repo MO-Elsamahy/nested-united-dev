@@ -2,6 +2,7 @@
 
 import { useState, useEffect, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import Link from "next/link";
 import {
     Phone,
@@ -29,6 +30,7 @@ import type { CrmActivity, CrmDeal, CustomerDetailResponse } from "@/lib/types/c
 import { activityTitleForType } from "@/lib/types/crm";
 
 export default function CustomerProfilePage({ params }: { params: Promise<{ id: string }> }) {
+    const { alert, confirm } = useDialog();
     const { id } = use(params);
     const router = useRouter();
 
@@ -108,10 +110,10 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                 void fetchData({ silent: true });
             } else {
                 const err = await res.json().catch(() => ({}));
-                alert((err as { error?: string }).error || "تعذّر تسجيل النشاط");
+                await alert((err as { error?: string }).error || "تعذّر تسجيل النشاط");
             }
         } catch {
-            alert("حدث خطأ أثناء تسجيل النشاط");
+            await alert("حدث خطأ أثناء تسجيل النشاط");
         } finally {
             setSubmitting(false);
         }
@@ -136,7 +138,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
         });
         const errBody = await res.json().catch(() => ({}));
         if (!res.ok) {
-            alert((errBody as { error?: string }).error || "تعذّر تحديث حالة العميل");
+            await alert((errBody as { error?: string }).error || "تعذّر تحديث حالة العميل");
             return false;
         }
         await fetchData({ silent: true });
@@ -164,7 +166,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
             });
             const err = await res.json().catch(() => ({}));
             if (!res.ok) {
-                alert((err as { error?: string }).error || "تعذّر حفظ الملاحظات");
+                await alert((err as { error?: string }).error || "تعذّر حفظ الملاحظات");
                 return;
             }
             const saved = generalNotes.trim() === "" ? null : generalNotes.trim();
@@ -173,7 +175,7 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                 prev ? { ...prev, customer: { ...prev.customer, notes: saved } } : prev
             );
         } catch {
-            alert("حدث خطأ أثناء حفظ الملاحظات");
+            await alert("حدث خطأ أثناء حفظ الملاحظات");
         } finally {
             setNotesSaving(false);
         }
@@ -207,9 +209,9 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                 router.replace("/crm/customers");
                 return;
             }
-            alert((data as { error?: string }).error || "تعذّر حذف العميل");
+            await alert((data as { error?: string }).error || "تعذّر حذف العميل");
         } catch {
-            alert("حدث خطأ أثناء الحذف");
+            await alert("حدث خطأ أثناء الحذف");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);
@@ -415,8 +417,8 @@ export default function CustomerProfilePage({ params }: { params: Promise<{ id: 
                             <button
                                 type="button"
                                 disabled={archiving}
-                                onClick={() => {
-                                    if (!confirm("استعادة العميل وإظهاره في قائمة العملاء النشطة؟")) return;
+                                onClick={async () => {
+                                    if (!await confirm("استعادة العميل وإظهاره في قائمة العملاء النشطة؟")) return;
                                     void handleRestoreCustomer();
                                 }}
                                 className="bg-white border border-gray-300 text-gray-800 hover:bg-gray-50 px-4 py-2 rounded-lg flex items-center gap-2 transition disabled:opacity-50"

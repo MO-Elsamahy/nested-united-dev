@@ -3,8 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Tag, Plus, X } from "lucide-react";
 import type { CrmTag } from "@/lib/types/crm";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export default function CustomerTags({ customerId }: { customerId: string }) {
+    const { alert } = useDialog();
     const [tags, setTags] = useState<CrmTag[]>([]);
     const [allTags, setAllTags] = useState<CrmTag[]>([]);
     const [showAddMenu, setShowAddMenu] = useState(false);
@@ -63,13 +65,13 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
                 body: JSON.stringify({ customer_id: customerId, tag_id: tagId }),
             });
             if (!res.ok) {
-                alert("تعذّر إضافة التصنيف");
+                await alert("تعذّر إضافة التصنيف");
                 return;
             }
             void fetchTags();
             setShowAddMenu(false);
         } catch (_error) {
-            alert("تعذّر إضافة التصنيف");
+            await alert("تعذّر إضافة التصنيف");
         }
     };
 
@@ -79,12 +81,12 @@ export default function CustomerTags({ customerId }: { customerId: string }) {
                 method: "DELETE",
             });
             if (!res.ok) {
-                alert("تعذّر حذف التصنيف");
+                await alert("تعذّر حذف التصنيف");
                 return;
             }
             void fetchTags();
         } catch (_error) {
-            alert("تعذّر حذف التصنيف");
+            await alert("تعذّر حذف التصنيف");
         }
     };
 

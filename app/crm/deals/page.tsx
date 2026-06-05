@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import {
     Plus, Archive, RotateCcw, TrendingUp, DollarSign,
     Target, User,
@@ -27,6 +28,7 @@ function formatCurrency(v: number | string | null | undefined): string {
 }
 
 export default function DealsPage() {
+    const { alert, confirm } = useDialog();
     const [deals, setDeals] = useState<CrmDeal[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState<'open' | 'closed'>('open');
@@ -86,23 +88,23 @@ export default function DealsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, stage: newStage }),
             });
-            if (!res.ok) { alert("فشل تحديث المرحلة"); await fetchDeals(); }
-        } catch { alert("فشل تحديث المرحلة"); await fetchDeals(); }
+            if (!res.ok) { await alert("فشل تحديث المرحلة"); await fetchDeals(); }
+        } catch { await alert("فشل تحديث المرحلة"); await fetchDeals(); }
     };
 
     const handleArchive = async (id: string, currentStatus: string) => {
         const newStatus = currentStatus === 'open' ? 'closed' : 'open';
-        if (!confirm(newStatus === 'closed' ? "أرشفة هذه الصفقة؟" : "إعادة فتح الصفقة؟")) return;
+        if (!await confirm(newStatus === 'closed' ? "أرشفة هذه الصفقة؟" : "إعادة فتح الصفقة؟")) return;
         try {
             const res = await fetch("/api/crm/deals", {
                 method: "PUT", headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ id, status: newStatus }),
             });
-            if (!res.ok) { alert("فشل تحديث الصفقة"); return; }
+            if (!res.ok) { await alert("فشل تحديث الصفقة"); return; }
             // Remove from current list then switch tab — deal is safe in DB first
             setDeals(prev => prev.filter(d => d.id !== id));
             setStatusFilter(newStatus as 'open' | 'closed');
-        } catch { alert("خطأ في الاتصال"); }
+        } catch { await alert("خطأ في الاتصال"); }
     };
 
     return (

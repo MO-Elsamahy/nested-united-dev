@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import Link from "next/link";
 import {
     ArrowRight, User, DollarSign, Calendar, Flag,
@@ -90,6 +91,7 @@ function timeAgo(d: string): string {
 }
 
 export default function DealDetailPage() {
+    const { alert, confirm } = useDialog();
     const params = useParams();
     const router = useRouter();
     const id = params.id as string;
@@ -148,36 +150,38 @@ export default function DealDetailPage() {
             });
             if (res.ok) {
                 setNoteText("");
-                loadDeal({ silent: true });
+                void loadDeal({ silent: true });
             } else {
-                alert("فشل إضافة الملاحظة");
+                await alert("فشل إضافة الملاحظة");
             }
         } catch {
-            alert("خطأ في الاتصال");
+            await alert("خطأ في الاتصال");
         } finally {
             setAddingNote(false);
         }
     };
 
-    const handleArchiveOrReopen = async (nextStatus: "open" | "closed") => {
+    const handleArchiveOrReopen = async (status: "open" | "closed") => {
         setArchiving(true);
         try {
-            const res = await fetch("/api/crm/deals", {
+            const res = await fetch(`/api/crm/deals/${id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id, status: nextStatus }),
+                body: JSON.stringify({ status }),
             });
             const data = await res.json().catch(() => ({}));
-            if (res.ok) {
-                setArchiveDialogOpen(false);
-                loadDeal({ silent: true });
-            } else {
-                alert((data as { error?: string }).error || "تعذّر تحديث حالة الصفقة");
+            if (!res.ok) {
+                await alert((data as { error?: string }).error || "تعذّر تحديث حالة الصفقة");
+                return false;
             }
+            await loadDeal({ silent: true });
+            return true;
         } catch {
-            alert("حدث خطأ أثناء تحديث الصفقة");
+            await alert("حدث خطأ أثناء تحديث الصفقة");
+            return false;
         } finally {
             setArchiving(false);
+            setArchiveDialogOpen(false);
         }
     };
 
@@ -190,9 +194,9 @@ export default function DealDetailPage() {
                 router.replace("/crm/deals");
                 return;
             }
-            alert((data as { error?: string }).error || "تعذّر حذف الصفقة");
+            await alert((data as { error?: string }).error || "تعذّر حذف الصفقة");
         } catch {
-            alert("حدث خطأ أثناء الحذف");
+            await alert("حدث خطأ أثناء الحذف");
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);
@@ -335,8 +339,8 @@ export default function DealDetailPage() {
                                 <button
                                     type="button"
                                     disabled={archiving}
-                                    onClick={() => {
-                                        if (!confirm("إعادة فتح الصفقة وإرجاعها للمسار النشط؟")) return;
+                                    onClick={async () => {
+                                        if (!await confirm("إعادة فتح الصفقة وإرجاعها للمسار النشط؟")) return;
                                         void handleArchiveOrReopen("open");
                                     }}
                                     className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition disabled:opacity-50"

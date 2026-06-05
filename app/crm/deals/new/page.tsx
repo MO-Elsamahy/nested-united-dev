@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowRight, Save, Loader2, DollarSign, UserPlus, Search, Check, X, User, Building2 } from "lucide-react";
 import type { CRMCustomer } from "@/lib/types/crm";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 type Unit = { id: string; unit_name: string; unit_code: string | null };
 
@@ -297,6 +298,7 @@ function CustomerCombobox({
 
 /* ─────────────────── Main Deal Form ─────────────────── */
 function NewDealForm() {
+    const { alert } = useDialog();
     const router = useRouter();
     const searchParams = useSearchParams();
     const preSelectedCustomerId = searchParams.get("customer_id");
@@ -355,7 +357,7 @@ function NewDealForm() {
         e.preventDefault();
 
         if (!formData.customer_id) {
-            alert("يرجى اختيار عميل أو إنشاء عميل جديد");
+            await alert("يرجى اختيار عميل أو إنشاء عميل جديد");
             return;
         }
 
@@ -373,11 +375,11 @@ function NewDealForm() {
                 router.refresh();
             } else {
                 const err = await res.json().catch(() => ({}));
-                alert((err as { error?: string }).error || "تعذّر حفظ الصفقة");
+                await alert((err as { error?: string }).error || "تعذّر حفظ الصفقة");
                 setLoading(false);
             }
         } catch {
-            alert("خطأ في الاتصال");
+            await alert("خطأ في الاتصال");
             setLoading(false);
         }
     };
