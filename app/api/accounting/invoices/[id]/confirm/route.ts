@@ -31,13 +31,8 @@ interface JournalRow {
     type: string;
 }
 
-interface AccountRow {
-    id: string;
-    type: string;
-    code: string;
-}
-
-// POST /api/accounting/invoices/[id]/confirm - Confirm invoice and create journal entry
+// POST /api/accounting/invoices/[id]/confirm
+// تأكيد الفاتورة وإنشاء قيد المبيعات/المشتريات فقط — بدون سداد تلقائي
 export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
         const user = await getCurrentUser();
@@ -46,12 +41,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         }
 
         const { id: invoiceId } = await context.params;
-
         const moveId = uuidv4();
         let updatedInvoice: InvoiceRow & { partner_name: string };
 
         await executeTransaction(async (conn) => {
-            // 1. Get invoice and lock the row using FOR UPDATE
+            // 1. جلب الفاتورة وقفلها
             const [invoices] = await conn.execute(
                 "SELECT * FROM accounting_invoices WHERE id = ? AND deleted_at IS NULL FOR UPDATE",
                 [invoiceId]
@@ -63,12 +57,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
             const invoice = invoices[0] as InvoiceRow;
 
-            // 2. Check if already confirmed
+            // 2. التحقق من حالة الفاتورة
             if (invoice.state !== "draft") {
                 throw new Error("الفاتورة مؤكدة بالفعل أو ملغاة");
             }
 
-            // 3. Get invoice lines
+            // 3. بنود الفاتورة
             const [lines] = await conn.execute(
                 "SELECT * FROM accounting_invoice_lines WHERE invoice_id = ?",
                 [invoiceId]
@@ -78,7 +72,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                 throw new Error("الفاتورة لا تحتوي على أي بنود");
             }
 
-            // 4. Get appropriate journal (Sales or Purchase)
+            // 4. دفتر اليومية المناسب (مبيعات / مشتريات)
             const journalType = invoice.invoice_type === "customer_invoice" || invoice.invoice_type === "credit_note"
                 ? "sale"
                 : "purchase";
@@ -94,20 +88,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
             const journal = journals[0] as JournalRow;
 
-            // 5. Get default accounts based on invoice type
+            // 5. الحسابات المحاسبية الافتراضية
             const [receivableAccounts] = await conn.execute(
-                `SELECT * FROM accounting_accounts 
-                 WHERE (type = 'asset_receivable' 
+                `SELECT * FROM accounting_accounts
+                 WHERE (type = 'asset_receivable'
                     OR (type = 'asset_current' AND (name LIKE '%عميل%' OR name LIKE '%العملاء%' OR LOWER(name) LIKE '%customer%' OR LOWER(name) LIKE '%receivable%')))
-                   AND deleted_at IS NULL 
+                   AND deleted_at IS NULL
                  LIMIT 1`
             ) as any[];
 
             const [payableAccounts] = await conn.execute(
-                `SELECT * FROM accounting_accounts 
-                 WHERE (type = 'liability_payable' 
+                `SELECT * FROM accounting_accounts
+                 WHERE (type = 'liability_payable'
                     OR (type = 'liability_current' AND (name LIKE '%مورد%' OR name LIKE '%الموردين%' OR LOWER(name) LIKE '%supplier%' OR LOWER(name) LIKE '%payable%')))
-                   AND deleted_at IS NULL 
+                   AND deleted_at IS NULL
                  LIMIT 1`
             ) as any[];
 
@@ -141,6 +135,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                 }
             }
 
+            // 6. إنشاء القيد المحاسبي الرئيسي (فاتورة المبيعات / المشتريات)
             const moveRef = `Invoice: ${invoice.invoice_number}`;
 
             await conn.execute(
@@ -153,16 +148,16 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                     journal.id,
                     invoice.invoice_date,
                     moveRef,
-                    invoice.notes || `Confirmed invoice ${invoice.invoice_number}`,
+                    invoice.notes || `تأكيد الفاتورة ${invoice.invoice_number}`,
                     invoice.partner_id,
                     invoice.total_amount,
                     user.id,
                 ]
             );
 
-            // Create move lines (double entry)
+            // 7. أسطر القيد (قيد مزدوج)
             if (invoice.invoice_type === "customer_invoice") {
-                // Debit: Accounts Receivable (Full Amount)
+                // مدين: ذمم مدينة (العملاء) بالمبلغ الإجمالي
                 await conn.execute(
                     `INSERT INTO accounting_move_lines (
                         id, move_id, account_id, partner_id, name,
@@ -179,12 +174,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                     ]
                 );
 
-                // Credit: Revenue accounts (Net Amount) + Tax (Tax Amount)
+                // دائن: إيرادات (المبلغ الصافي) + ضريبة
                 for (const line of lines) {
                     const revenueAccountId = line.account_id || (incomeAccounts.length > 0 ? incomeAccounts[0].id : null);
 
                     if (revenueAccountId) {
-                        // 1. Credit Revenue (Net amount)
                         await conn.execute(
                             `INSERT INTO accounting_move_lines (
                                 id, move_id, account_id, partner_id, name,
@@ -196,11 +190,10 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                                 revenueAccountId,
                                 invoice.partner_id,
                                 line.description,
-                                line.line_total, // Net amount
+                                line.line_total,
                             ]
                         );
 
-                        // 2. Credit VAT (if applicable)
                         if (Number(line.tax_amount) > 0 && taxAccounts.length > 0) {
                             await conn.execute(
                                 `INSERT INTO accounting_move_lines (
@@ -220,14 +213,11 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                     }
                 }
             } else if (invoice.invoice_type === "supplier_bill" || invoice.invoice_type === "vendor_bill") {
-                // Debit: Expense accounts (Net Amount) + Tax Receivable? (For now simplify: Debit Expense with Total or Split)
-                // Simplified: Debit Expense (Net) + Debit VAT (Tax)
-
+                // مدين: مصروفات لكل بند
                 for (const line of lines) {
                     const expenseAccountId = line.account_id || (expenseAccounts.length > 0 ? expenseAccounts[0].id : null);
 
                     if (expenseAccountId) {
-                        // 1. Debit Expense (Net)
                         await conn.execute(
                             `INSERT INTO accounting_move_lines (
                                 id, move_id, account_id, partner_id, name,
@@ -243,8 +233,6 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                             ]
                         );
 
-                        // 2. Debit VAT (Input Tax) - allowing claim check
-                        // Ideally this goes to a Tax Receivable account, but using same Tax account as debit for now (claiming back)
                         if (Number(line.tax_amount) > 0 && taxAccounts.length > 0) {
                             await conn.execute(
                                 `INSERT INTO accounting_move_lines (
@@ -264,7 +252,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                     }
                 }
 
-                // Credit: Accounts Payable
+                // دائن: ذمم دائنة (الموردين) بالمبلغ الإجمالي
                 await conn.execute(
                     `INSERT INTO accounting_move_lines (
                         id, move_id, account_id, partner_id, name,
@@ -282,167 +270,20 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                 );
             }
 
-            // --- AUTOMATIC PAYMENT REGISTRATION ---
-            // Since confirmed = paid in this business flow, we automatically register a full payment.
-            const paymentId = uuidv4();
-            let paymentMoveId: string | null = null;
+            // 8. تحديث الفاتورة إلى حالة مؤكدة (بدون سداد — السداد يتم عبر سند قبض منفصل)
+            await conn.execute(
+                `UPDATE accounting_invoices SET
+                    state = 'posted',
+                    amount_paid = 0,
+                    amount_due = total_amount,
+                    accounting_move_id = ?,
+                    journal_id = ?,
+                    updated_at = NOW()
+                 WHERE id = ?`,
+                [moveId, journal.id, invoiceId]
+            );
 
-            // 1. Generate payment number
-            const [countRes] = await conn.execute("SELECT COUNT(*) as count FROM accounting_payments") as any[];
-            const nextCount = (countRes[0]?.count || 0) + 1;
-            const paymentNumber = `PAY-${new Date().getFullYear()}-${String(nextCount).padStart(4, "0")}`;
-
-            // 2. Get default cash/bank journal
-            const [cashJournals] = await conn.execute(
-                "SELECT * FROM accounting_journals WHERE (type = 'cash' OR type = 'bank') AND deleted_at IS NULL LIMIT 1"
-            ) as any[];
-            const paymentJournalId = cashJournals[0]?.id || journal.id;
-
-            // 3. Get default cash/bank account
-            const [cashAccounts] = await conn.execute(
-                "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL LIMIT 1"
-            ) as any[];
-
-            if (cashAccounts && cashAccounts.length > 0) {
-                const cashAccount = cashAccounts[0];
-                const paymentType = invoice.invoice_type === "customer_invoice" ? "inbound" : "outbound";
-
-                // Create Payment
-                await conn.execute(
-                    `INSERT INTO accounting_payments (
-                        id, payment_number, payment_type, partner_id, payment_date,
-                        amount, currency, payment_method, journal_id, state,
-                        notes, created_by
-                    ) VALUES (?, ?, ?, ?, ?, ?, 'SAR', 'cash', ?, 'posted', ?, ?)`,
-                    [
-                        paymentId,
-                        paymentNumber,
-                        paymentType,
-                        invoice.partner_id,
-                        invoice.invoice_date,
-                        invoice.total_amount,
-                        paymentJournalId,
-                        `سداد تلقائي للفاتورة رقم ${invoice.invoice_number}`,
-                        user.id
-                    ]
-                );
-
-                // Create Payment Allocation
-                await conn.execute(
-                    `INSERT INTO accounting_payment_allocations (
-                        id, payment_id, invoice_id, amount
-                    ) VALUES (UUID(), ?, ?, ?)`,
-                    [paymentId, invoiceId, invoice.total_amount]
-                );
-
-                // Create Payment Move (Journal Entry)
-                paymentMoveId = uuidv4();
-                await conn.execute(
-                    `INSERT INTO accounting_moves (
-                        id, journal_id, date, ref, narration, state,
-                        partner_id, amount_total, created_by
-                    ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
-                    [
-                        paymentMoveId,
-                        paymentJournalId,
-                        invoice.invoice_date,
-                        `Payment: ${paymentNumber}`,
-                        `سداد الفاتورة رقم ${invoice.invoice_number}`,
-                        invoice.partner_id,
-                        invoice.total_amount,
-                        user.id
-                    ]
-                );
-
-                // Create Payment Move Lines (Double Entry)
-                if (paymentType === "inbound") {
-                    // Debit: Cash/Bank Account (Full Amount)
-                    await conn.execute(
-                        `INSERT INTO accounting_move_lines (
-                            id, move_id, account_id, partner_id, name,
-                            debit, credit
-                        ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
-                        [
-                            paymentMoveId,
-                            cashAccount.id,
-                            invoice.partner_id,
-                            `سداد الفاتورة رقم ${invoice.invoice_number}`,
-                            invoice.total_amount
-                        ]
-                    );
-
-                    // Credit: Accounts Receivable (Full Amount)
-                    await conn.execute(
-                        `INSERT INTO accounting_move_lines (
-                            id, move_id, account_id, partner_id, name,
-                            debit, credit
-                        ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
-                        [
-                            paymentMoveId,
-                            receivableAccounts[0].id,
-                            invoice.partner_id,
-                            `تسوية الفاتورة رقم ${invoice.invoice_number}`,
-                            invoice.total_amount
-                        ]
-                    );
-                } else {
-                    // Debit: Accounts Payable (Full Amount)
-                    await conn.execute(
-                        `INSERT INTO accounting_move_lines (
-                            id, move_id, account_id, partner_id, name,
-                            debit, credit
-                        ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
-                        [
-                            paymentMoveId,
-                            payableAccounts[0].id,
-                            invoice.partner_id,
-                            `سداد الفاتورة رقم ${invoice.invoice_number}`,
-                            invoice.total_amount
-                        ]
-                    );
-
-                    // Credit: Cash/Bank Account (Full Amount)
-                    await conn.execute(
-                        `INSERT INTO accounting_move_lines (
-                            id, move_id, account_id, partner_id, name,
-                            debit, credit
-                        ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
-                        [
-                            paymentMoveId,
-                            cashAccount.id,
-                            invoice.partner_id,
-                            `تسوية الفاتورة رقم ${invoice.invoice_number}`,
-                            invoice.total_amount
-                        ]
-                    );
-                }
-
-                // Update Invoice to confirmed with full payment details
-                await conn.execute(
-                    `UPDATE accounting_invoices SET
-                        state = 'confirmed',
-                        amount_paid = ?,
-                        amount_due = 0,
-                        accounting_move_id = ?,
-                        journal_id = ?,
-                        updated_at = NOW()
-                     WHERE id = ?`,
-                    [invoice.total_amount, moveId, journal.id, invoiceId]
-                );
-            } else {
-                // Fallback (if no cash account exists, just update state to confirmed)
-                await conn.execute(
-                    `UPDATE accounting_invoices SET
-                        state = 'confirmed',
-                        accounting_move_id = ?,
-                        journal_id = ?,
-                        updated_at = NOW()
-                     WHERE id = ?`,
-                    [moveId, journal.id, invoiceId]
-                );
-            }
-
-            // Write Audit Log
+            // 9. سجل التدقيق
             await conn.execute(
                 `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
                  VALUES (UUID(), ?, 'confirm', 'invoice', ?, ?)`,
@@ -452,14 +293,13 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                     JSON.stringify({
                         invoice_number: invoice.invoice_number,
                         total_amount: invoice.total_amount,
-                        invoice_move_id: moveId,
-                        payment_id: cashAccounts && cashAccounts.length > 0 ? paymentId : null,
-                        payment_move_id: cashAccounts && cashAccounts.length > 0 ? paymentMoveId : null,
+                        accounting_move_id: moveId,
+                        journal_type: journalType,
                     })
                 ]
             );
 
-            // Fetch updated invoice within transaction
+            // جلب الفاتورة المحدّثة
             const [updatedRows] = await conn.execute(
                 `SELECT i.*, p.name as partner_name
                  FROM accounting_invoices i
@@ -471,7 +311,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
         });
 
         return NextResponse.json({
-            message: "Invoice confirmed successfully",
+            message: "تم تأكيد الفاتورة بنجاح",
             invoice: updatedInvoice!,
             accounting_move_id: moveId,
         });

@@ -18,6 +18,12 @@ export default function InvoiceDetailPage() {
     const [company, setCompany] = useState<CompanySettings | null>(null);
     const [loading, setLoading] = useState(true);
     const [showPdfDropdown, setShowPdfDropdown] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [paymentAmount, setPaymentAmount] = useState("");
+    const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
+    const [paymentMethod, setPaymentMethod] = useState("cash");
+    const [paymentNotes, setPaymentNotes] = useState("");
+    const [paymentSubmitting, setPaymentSubmitting] = useState(false);
     const { data: session } = useSession();
     const isSuperAdmin = (session?.user as { role?: string })?.role === "super_admin";
 
@@ -114,6 +120,50 @@ export default function InvoiceDetailPage() {
         }
     };
 
+    const handleRegisterPayment = async () => {
+        if (!invoice) return;
+        const amount = Number(paymentAmount);
+        if (!amount || amount <= 0) {
+            await alert("يرجى إدخال مبلغ صحيح");
+            return;
+        }
+        if (amount > Number(invoice.amount_due)) {
+            await alert(`المبلغ المدخل (${amount} ر.س) أكبر من المبلغ المتبقي (${invoice.amount_due} ر.س)`);
+            return;
+        }
+
+        setPaymentSubmitting(true);
+        try {
+            const paymentType = invoice.invoice_type === "customer_invoice" ? "inbound" : "outbound";
+            const res = await fetch("/api/accounting/payments", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    payment_type: paymentType,
+                    partner_id: invoice.partner_id,
+                    payment_date: paymentDate,
+                    amount,
+                    payment_method: paymentMethod,
+                    invoice_ids: [invoice.id],
+                    notes: paymentNotes || `${paymentType === "inbound" ? "سداد" : "دفع"} الفاتورة رقم ${invoice.invoice_number}`,
+                }),
+            });
+
+            if (res.ok) {
+                setShowPaymentModal(false);
+                setPaymentAmount("");
+                setPaymentNotes("");
+                fetchInvoice();
+                await alert("تم تسجيل الدفعة بنجاح وتحديث رصيد الفاتورة");
+            } else {
+                const error = await res.json();
+                await alert(`فشل تسجيل الدفعة: ${error.error}`);
+            }
+        } finally {
+            setPaymentSubmitting(false);
+        }
+    };
+
 
     if (loading) {
         return <div className="p-8 text-center">جاري التحميل...</div>;
@@ -167,6 +217,17 @@ export default function InvoiceDetailPage() {
                         >
                             <Check className="w-4 h-4" />
                             تأكيد الفاتورة
+                        </button>
+                    )}
+
+                    {/* Register Payment for posted/partial invoices with outstanding balance */}
+                    {["posted", "partial"].includes(invoice.state) && Number(invoice.amount_due) > 0 && (
+                        <button
+                            onClick={() => { setPaymentAmount(String(invoice.amount_due)); setShowPaymentModal(true); }}
+                            className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                        >
+                            <Check className="w-4 h-4" />
+                            تسجيل دفعة
                         </button>
                     )}
 
@@ -459,6 +520,81 @@ export default function InvoiceDetailPage() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+        </div>
+
+            {/* Payment Registration Modal */}
+            {showPaymentModal && invoice && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" dir="rtl">
+                        <div className="p-6 border-b">
+                            <h2 className="text-xl font-bold text-gray-900">تسجيل دفعة</h2>
+                            <p className="text-sm text-gray-500 mt-1">الفاتورة: {invoice.invoice_number} — المتبقي: {Number(invoice.amount_due).toLocaleString("ar-SA")} ر.س</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">المبلغ <span className="text-red-500">*</span></label>
+                                <input
+                                    type="number"
+                                    value={paymentAmount}
+                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    max={Number(invoice.amount_due)}
+                                    step="0.01"
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                    placeholder="0.00"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">تاريخ الدفع</label>
+                                <input
+                                    type="date"
+                                    value={paymentDate}
+                                    onChange={(e) => setPaymentDate(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">طريقة الدفع</label>
+                                <select
+                                    value={paymentMethod}
+                                    onChange={(e) => setPaymentMethod(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+                                >
+                                    <option value="cash">نقداً</option>
+                                    <option value="bank_transfer">تحويل بنكي</option>
+                                    <option value="check">شيك</option>
+                                    <option value="card">بطاقة</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">ملاحظات</label>
+                                <textarea
+                                    value={paymentNotes}
+                                    onChange={(e) => setPaymentNotes(e.target.value)}
+                                    rows={2}
+                                    className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                                    placeholder="ملاحظات اختيارية..."
+                                />
+                            </div>
+                        </div>
+                        <div className="p-6 border-t flex gap-3 justify-end">
+                            <button
+                                onClick={() => setShowPaymentModal(false)}
+                                className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                disabled={paymentSubmitting}
+                            >
+                                إلغاء
+                            </button>
+                            <button
+                                onClick={handleRegisterPayment}
+                                disabled={paymentSubmitting}
+                                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {paymentSubmitting ? "جاري الحفظ..." : "تسجيل الدفعة"}
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
