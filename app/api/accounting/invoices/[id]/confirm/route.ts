@@ -280,16 +280,164 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
             );
         }
 
-        // Update invoice to confirmed state and link to accounting move
-        await query(
-            `UPDATE accounting_invoices SET
-                state = 'confirmed',
-                accounting_move_id = ?,
-                journal_id = ?,
-                updated_at = NOW()
-             WHERE id = ?`,
-            [moveId, journal.id, invoiceId]
+        // --- AUTOMATIC PAYMENT REGISTRATION ---
+        // Since confirmed = paid in this business flow, we automatically register a full payment.
+        const paymentId = uuidv4();
+
+        // 1. Generate payment number
+        const countRes = await query<{ count: number }>("SELECT COUNT(*) as count FROM accounting_payments");
+        const nextCount = (countRes[0]?.count || 0) + 1;
+        const paymentNumber = `PAY-${new Date().getFullYear()}-${String(nextCount).padStart(4, "0")}`;
+
+        // 2. Get default cash/bank journal
+        const cashJournals = await query<JournalRow>(
+            "SELECT * FROM accounting_journals WHERE (type = 'cash' OR type = 'bank') AND deleted_at IS NULL LIMIT 1"
         );
+        const paymentJournalId = cashJournals[0]?.id || journal.id;
+
+        // 3. Get default cash/bank account
+        const cashAccounts = await query<AccountRow>(
+            "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL LIMIT 1"
+        );
+
+        if (cashAccounts && cashAccounts.length > 0) {
+            const cashAccount = cashAccounts[0];
+            const paymentType = invoice.invoice_type === "customer_invoice" ? "inbound" : "outbound";
+
+            // Create Payment
+            await query(
+                `INSERT INTO accounting_payments (
+                    id, payment_number, payment_type, partner_id, payment_date,
+                    amount, currency, payment_method, journal_id, state,
+                    notes, created_by
+                ) VALUES (?, ?, ?, ?, ?, ?, 'SAR', 'cash', ?, 'posted', ?, ?)`,
+                [
+                    paymentId,
+                    paymentNumber,
+                    paymentType,
+                    invoice.partner_id,
+                    invoice.invoice_date,
+                    invoice.total_amount,
+                    paymentJournalId,
+                    `سداد تلقائي للفاتورة رقم ${invoice.invoice_number}`,
+                    user.id
+                ]
+            );
+
+            // Create Payment Allocation
+            await query(
+                `INSERT INTO accounting_payment_allocations (
+                    id, payment_id, invoice_id, amount
+                ) VALUES (UUID(), ?, ?, ?)`,
+                [paymentId, invoiceId, invoice.total_amount]
+            );
+
+            // Create Payment Move (Journal Entry)
+            const paymentMoveId = uuidv4();
+            await query(
+                `INSERT INTO accounting_moves (
+                    id, journal_id, date, ref, narration, state,
+                    partner_id, amount_total, created_by
+                ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
+                [
+                    paymentMoveId,
+                    paymentJournalId,
+                    invoice.invoice_date,
+                    `Payment: ${paymentNumber}`,
+                    `سداد الفاتورة رقم ${invoice.invoice_number}`,
+                    invoice.partner_id,
+                    invoice.total_amount,
+                    user.id
+                ]
+            );
+
+            // Create Payment Move Lines (Double Entry)
+            if (paymentType === "inbound") {
+                // Debit: Cash/Bank Account (Full Amount)
+                await query(
+                    `INSERT INTO accounting_move_lines (
+                        id, move_id, account_id, partner_id, name,
+                        debit, credit
+                    ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
+                    [
+                        paymentMoveId,
+                        cashAccount.id,
+                        invoice.partner_id,
+                        `سداد الفاتورة رقم ${invoice.invoice_number}`,
+                        invoice.total_amount
+                    ]
+                );
+
+                // Credit: Accounts Receivable (Full Amount)
+                await query(
+                    `INSERT INTO accounting_move_lines (
+                        id, move_id, account_id, partner_id, name,
+                        debit, credit
+                    ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
+                    [
+                        paymentMoveId,
+                        receivableAccounts[0].id,
+                        invoice.partner_id,
+                        `تسوية الفاتورة رقم ${invoice.invoice_number}`,
+                        invoice.total_amount
+                    ]
+                );
+            } else {
+                // Debit: Accounts Payable (Full Amount)
+                await query(
+                    `INSERT INTO accounting_move_lines (
+                        id, move_id, account_id, partner_id, name,
+                        debit, credit
+                    ) VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
+                    [
+                        paymentMoveId,
+                        payableAccounts[0].id,
+                        invoice.partner_id,
+                        `سداد الفاتورة رقم ${invoice.invoice_number}`,
+                        invoice.total_amount
+                    ]
+                );
+
+                // Credit: Cash/Bank Account (Full Amount)
+                await query(
+                    `INSERT INTO accounting_move_lines (
+                        id, move_id, account_id, partner_id, name,
+                        debit, credit
+                    ) VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
+                    [
+                        paymentMoveId,
+                        cashAccount.id,
+                        invoice.partner_id,
+                        `تسوية الفاتورة رقم ${invoice.invoice_number}`,
+                        invoice.total_amount
+                    ]
+                );
+            }
+
+            // Update Invoice to confirmed with full payment details
+            await query(
+                `UPDATE accounting_invoices SET
+                    state = 'confirmed',
+                    amount_paid = ?,
+                    amount_due = 0,
+                    accounting_move_id = ?,
+                    journal_id = ?,
+                    updated_at = NOW()
+                 WHERE id = ?`,
+                [invoice.total_amount, moveId, journal.id, invoiceId]
+            );
+        } else {
+            // Fallback (if no cash account exists, just update state to confirmed)
+            await query(
+                `UPDATE accounting_invoices SET
+                    state = 'confirmed',
+                    accounting_move_id = ?,
+                    journal_id = ?,
+                    updated_at = NOW()
+                 WHERE id = ?`,
+                [moveId, journal.id, invoiceId]
+            );
+        }
 
         // Fetch updated invoice
         const updated = await query<InvoiceRow & { partner_name: string }>(

@@ -62,7 +62,7 @@ export async function DELETE(
                      SET amount_paid = amount_paid - ?,
                          amount_due = amount_due + ?,
                          state = CASE 
-                            WHEN (amount_paid - ?) <= 0 THEN 'confirmed'
+                            WHEN (amount_paid - ?) <= 0 THEN 'draft'
                             ELSE 'partial'
                          END,
                          updated_at = NOW()

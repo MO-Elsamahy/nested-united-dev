@@ -123,8 +123,8 @@ export default function InvoiceDetailPage() {
 
     const getStateBadge = (state: string) => {
         const badges: Record<string, { color: string; text: string }> = {
-            draft: { color: "bg-gray-100 text-gray-700", text: "مسودة" },
-            confirmed: { color: "bg-blue-100 text-blue-700", text: "مؤكدة" },
+            draft: { color: "bg-gray-100 text-gray-700", text: "مسودة (غير مدفوعة)" },
+            confirmed: { color: "bg-green-100 text-green-700", text: "مدفوعة" },
             partial: { color: "bg-yellow-100 text-yellow-700", text: "دفع جزئي" },
             paid: { color: "bg-green-100 text-green-700", text: "مدفوعة" },
             cancelled: { color: "bg-red-100 text-red-700", text: "ملغاة" },

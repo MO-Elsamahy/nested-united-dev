@@ -298,8 +298,8 @@ function generateInvoicePDF(invoice: AccountingInvoice, company: CompanySettings
 
     const getStatusText = (state: string) => {
         switch (state) {
-            case 'draft': return 'مسودة';
-            case 'confirmed': return 'مؤكدة';
+            case 'draft': return 'مسودة (غير مدفوعة)';
+            case 'confirmed': return 'مدفوعة';
             case 'paid': return 'مدفوعة';
             case 'partial': return 'جزئي';
             case 'cancelled': return 'ملغاة';

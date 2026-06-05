@@ -107,8 +107,8 @@ export default function InvoicesPage() {
 
     const getStateBadge = (state: string) => {
         const badges: Record<string, { color: string; text: string; icon: React.ElementType }> = {
-            draft: { color: "bg-gray-100 text-gray-700", text: "مسودة", icon: FileText },
-            confirmed: { color: "bg-blue-100 text-blue-700", text: "مؤكدة", icon: Check },
+            draft: { color: "bg-gray-100 text-gray-700", text: "مسودة (غير مدفوعة)", icon: FileText },
+            confirmed: { color: "bg-green-100 text-green-700", text: "مدفوعة", icon: Check },
             partial: { color: "bg-yellow-100 text-yellow-700", text: "دفع جزئي", icon: FileText },
             paid: { color: "bg-green-100 text-green-700", text: "مدفوعة", icon: Check },
             cancelled: { color: "bg-red-100 text-red-700", text: "ملغاة", icon: X },
@@ -186,10 +186,8 @@ export default function InvoicesPage() {
                     className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                     <option value="">كل الحالات</option>
-                    <option value="draft">مسودة</option>
-                    <option value="confirmed">مؤكدة</option>
-                    <option value="partial">دفع جزئي</option>
-                    <option value="paid">مدفوعة</option>
+                    <option value="draft">مسودة (غير مدفوعة)</option>
+                    <option value="confirmed">مدفوعة</option>
                     <option value="cancelled">ملغاة</option>
                 </select>
             </div>
