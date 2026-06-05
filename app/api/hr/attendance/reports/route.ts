@@ -154,10 +154,7 @@ export async function GET(request: Request) {
                         return { date: dayStr, status: "off" };
                     }
 
-                    const att = records.find((r) => {
-                        const rd = new Date(r.date);
-                        return rd.getFullYear() === dy && rd.getMonth() + 1 === dm && rd.getDate() === dd;
-                    });
+                    const att = records.find((r) => String(r.date).startsWith(dayStr));
 
                     let status: string;
                     if (att) {
@@ -224,8 +221,9 @@ export async function GET(request: Request) {
                 if (offIdx.includes(dow)) continue; // يوم راحة
 
                 const att = attendanceRecords.find((r) => {
-                    const rd = new Date(r.date);
-                    return rd.getFullYear() === year && rd.getMonth() + 1 === month && rd.getDate() === d;
+                    // استخدام split بدل new Date() لتجنب مشكلة timezone (UTC midnight → يوم -1)
+                    const rDay = String(r.date).slice(8, 10).replace(/^0/, "");
+                    return parseInt(rDay) === d;
                 });
 
                 if (att) {
