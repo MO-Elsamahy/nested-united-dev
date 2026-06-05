@@ -72,7 +72,13 @@ export async function DELETE(
                 );
             }
 
-            // 3. Audit log
+            // 3. Soft delete payment move
+            await conn.execute(
+                "UPDATE accounting_moves SET deleted_at = NOW() WHERE ref = ?",
+                [`Payment: ${payment.payment_number}`]
+            );
+
+            // 4. Audit log
             await conn.execute(
                 `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
                  VALUES (UUID(), ?, 'delete', 'payment', ?, ?)`,

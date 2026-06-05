@@ -341,13 +341,17 @@ export async function DELETE(
             [invoiceId]
         );
 
-        // 2. Soft-delete the invoice's journal entry if it exists
+        // 2. Soft-delete the invoice's journal entry (both by ID and by reference as safety net)
         if (invoice.accounting_move_id) {
             await query(
                 "UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?",
                 [invoice.accounting_move_id]
             );
         }
+        await query(
+            "UPDATE accounting_moves SET deleted_at = NOW() WHERE ref = ?",
+            [`Invoice: ${invoice.invoice_number}`]
+        );
 
         // 3. Find and clean up payments associated with this invoice
         const allocations = await query<{ payment_id: string }>(

@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import {
     Search,
     Trash2,
-    BookOpen
+    BookOpen,
+    Edit
 } from "lucide-react";
 import { useCallback } from "react";
 import { useDialog } from "@/components/accounting/DialogProvider";
@@ -67,7 +69,14 @@ export default function PaymentsPage() {
             // نجلب القيود من مجلات الخزينة والبنك فقط (type=cash أو type=bank)
             const res = await fetch(`/api/accounting/moves?journal_types=cash,bank`);
             if (res.ok) {
-                setJournalMoves(await res.json());
+                const data: JournalMove[] = await res.json();
+                // فلترة واستبعاد قيود السندات والفواتير التلقائية لتظهر فقط القيود المباشرة
+                const directMoves = data.filter(m => 
+                    !m.ref?.startsWith("Payment: ") && 
+                    !m.ref?.startsWith("Invoice: ") && 
+                    !m.ref?.startsWith("REV-")
+                );
+                setJournalMoves(directMoves);
             }
         } finally {
             setLoading(false);
@@ -92,6 +101,19 @@ export default function PaymentsPage() {
         } else {
             const error = await res.json();
             await alert(error.error || "فشل الحذف");
+        }
+    };
+
+    const handleDeleteMove = async (id: string) => {
+        if (!await confirm("هل أنت متأكد من حذف هذا القيد؟")) return;
+
+        const res = await fetch(`/api/accounting/moves?id=${id}`, { method: "DELETE" });
+        if (res.ok) {
+            fetchJournalMoves();
+            await alert("تم حذف القيد بنجاح");
+        } else {
+            const error = await res.json();
+            await alert(error.error || "فشل حذف القيد");
         }
     };
 
@@ -303,13 +325,14 @@ export default function PaymentsPage() {
                                 <th className="px-6 py-3">الطرف</th>
                                 <th className="px-6 py-3">البيان</th>
                                 <th className="px-6 py-3">المبلغ</th>
+                                <th className="px-6 py-3">إجراءات</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y">
                             {loading ? (
-                                <tr><td colSpan={6} className="p-12 text-center text-gray-400">جاري التحميل...</td></tr>
+                                <tr><td colSpan={7} className="p-12 text-center text-gray-400">جاري التحميل...</td></tr>
                             ) : filteredMoves.length === 0 ? (
-                                <tr><td colSpan={6} className="p-12 text-center text-gray-400">لا توجد قيود مباشرة</td></tr>
+                                <tr><td colSpan={7} className="p-12 text-center text-gray-400">لا توجد قيود مباشرة</td></tr>
                             ) : (
                                 filteredMoves.map((m) => (
                                     <tr key={m.id} className="hover:bg-gray-50">
@@ -326,6 +349,26 @@ export default function PaymentsPage() {
                                         <td className="px-6 py-4 max-w-xs truncate text-gray-500">{m.narration || "—"}</td>
                                         <td className="px-6 py-4 font-bold">
                                             {Number(m.amount_total).toLocaleString("ar-SA")} ر.س
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex gap-2">
+                                                <Link
+                                                    href={`/accounting/moves/${m.id}/edit`}
+                                                    className="p-1.5 hover:bg-yellow-50 rounded text-yellow-600 transition"
+                                                    title="تعديل القيد"
+                                                >
+                                                    <Edit className="w-4 h-4" />
+                                                </Link>
+                                                {isSuperAdmin && (
+                                                    <button
+                                                        onClick={() => handleDeleteMove(m.id)}
+                                                        className="p-1.5 hover:bg-red-50 rounded text-red-600 transition"
+                                                        title="حذف القيد"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

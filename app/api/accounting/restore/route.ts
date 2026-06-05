@@ -10,6 +10,14 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
         // Undo deletion -> RESTORE the entity
         if (L.entity_type === "move") {
             await conn.execute("UPDATE accounting_moves SET deleted_at = NULL WHERE id = ?", [L.entity_id]);
+            const [moves] = await conn.execute(
+                "SELECT partner_id FROM accounting_moves WHERE id = ?",
+                [L.entity_id]
+            ) as any[];
+            const move = moves?.[0];
+            if (move?.partner_id) {
+                await conn.execute("UPDATE accounting_partners SET deleted_at = NULL WHERE id = ?", [move.partner_id]);
+            }
         } else if (L.entity_type === "account") {
             await conn.execute("UPDATE accounting_accounts SET deleted_at = NULL WHERE id = ?", [L.entity_id]);
         } else if (L.entity_type === "journal") {
@@ -19,6 +27,17 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
         } else if (L.entity_type === "payment") {
             // Restore payment
             await conn.execute("UPDATE accounting_payments SET deleted_at = NULL WHERE id = ?", [L.entity_id]);
+
+            // Fetch payment details (partner_id, payment_number)
+            const [payments] = await conn.execute(
+                "SELECT partner_id, payment_number FROM accounting_payments WHERE id = ?",
+                [L.entity_id]
+            ) as any[];
+            const payment = payments?.[0];
+
+            if (payment?.partner_id) {
+                await conn.execute("UPDATE accounting_partners SET deleted_at = NULL WHERE id = ?", [payment.partner_id]);
+            }
 
             // Get allocations
             const [allocations] = await conn.execute(
@@ -42,12 +61,7 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
             }
 
             // Restore corresponding moves
-            const [payments] = await conn.execute(
-                "SELECT payment_number FROM accounting_payments WHERE id = ?",
-                [L.entity_id]
-            ) as any[];
-            const payment = payments?.[0];
-            if (payment) {
+            if (payment?.payment_number) {
                 await conn.execute(
                     "UPDATE accounting_moves SET deleted_at = NULL WHERE ref = ? AND deleted_at IS NOT NULL",
                     [`Payment: ${payment.payment_number}`]
@@ -57,14 +71,19 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
             // Restore invoice
             await conn.execute("UPDATE accounting_invoices SET deleted_at = NULL WHERE id = ?", [L.entity_id]);
 
-            // Restore the invoice's journal entry if it exists
+            // Restore the partner of this invoice if soft-deleted
             const [invoices] = await conn.execute(
-                "SELECT accounting_move_id FROM accounting_invoices WHERE id = ?",
+                "SELECT partner_id, accounting_move_id FROM accounting_invoices WHERE id = ?",
                 [L.entity_id]
             ) as any[];
             const invoice = invoices?.[0];
-            if (invoice?.accounting_move_id) {
-                await conn.execute("UPDATE accounting_moves SET deleted_at = NULL WHERE id = ?", [invoice.accounting_move_id]);
+            if (invoice) {
+                if (invoice.partner_id) {
+                    await conn.execute("UPDATE accounting_partners SET deleted_at = NULL WHERE id = ?", [invoice.partner_id]);
+                }
+                if (invoice.accounting_move_id) {
+                    await conn.execute("UPDATE accounting_moves SET deleted_at = NULL WHERE id = ?", [invoice.accounting_move_id]);
+                }
             }
 
             // Restore associated payments and payment moves
