@@ -3,17 +3,19 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface AcceptTicketButtonProps {
   ticketId: string;
 }
 
 export function AcceptTicketButton({ ticketId }: AcceptTicketButtonProps) {
+  const { alert, confirm } = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleAccept = async () => {
-    if (!confirm("هل تريد قبول هذه التذكرة؟")) return;
+    if (!await confirm("هل تريد قبول هذه التذكرة؟")) return;
 
     setLoading(true);
     try {
@@ -25,10 +27,10 @@ export function AcceptTicketButton({ ticketId }: AcceptTicketButtonProps) {
         router.refresh();
       } else {
         const data = await response.json();
-        alert(data.error || "حدث خطأ");
+        await alert(data.error || "حدث خطأ");
       }
     } catch {
-      alert("حدث خطأ في الاتصال");
+      await alert("حدث خطأ في الاتصال");
     } finally {
       setLoading(false);
     }

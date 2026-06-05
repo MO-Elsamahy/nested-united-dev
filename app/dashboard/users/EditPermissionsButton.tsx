@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import { Settings, Building2, Calculator, Users, Users2, Wrench, Check, X } from "lucide-react";
 
 interface Permission {
@@ -24,6 +25,7 @@ const SYSTEM_CONFIG: Record<string, { label: string; icon: any; color: string }>
 };
 
 export function EditPermissionsButton({ userId, userName }: EditPermissionsButtonProps) {
+  const { alert } = useDialog();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -101,12 +103,12 @@ export function EditPermissionsButton({ userId, userName }: EditPermissionsButto
           window.dispatchEvent(new Event("permissions-updated"));
         }
         router.refresh();
-        alert("تم حفظ الصلاحيات بنجاح");
+        await alert("تم حفظ الصلاحيات بنجاح");
       } else {
-        alert("حدث خطأ أثناء حفظ الصلاحيات");
+        await alert("حدث خطأ أثناء حفظ الصلاحيات");
       }
     } catch (_error) {
-      alert("حدث خطأ أثناء حفظ الصلاحيات");
+      await alert("حدث خطأ أثناء حفظ الصلاحيات");
     } finally {
       setSaving(false);
     }

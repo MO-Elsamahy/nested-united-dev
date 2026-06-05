@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { ChevronRight, ChevronLeft, Edit } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Booking {
   id: string;
@@ -28,6 +29,7 @@ interface CalendarViewProps {
 }
 
 export function CalendarView({ year: initialYear, month: initialMonth, initialBookings }: CalendarViewProps) {
+  const { alert } = useDialog();
   const router = useRouter();
   const [currentDate, setCurrentDate] = useState(new Date(initialYear, initialMonth, 1));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -56,11 +58,11 @@ export function CalendarView({ year: initialYear, month: initialMonth, initialBo
         // Redirect to edit page
         router.push(`/dashboard/bookings/edit/${data.booking_id}`);
       } else {
-        alert('فشل تحويل الحجز');
+        await alert('فشل تحويل الحجز');
       }
     } catch (error) {
       console.error('Error converting:', error);
-      alert('حدث خطأ');
+      await alert('حدث خطأ');
     } finally {
       setConverting(null);
     }

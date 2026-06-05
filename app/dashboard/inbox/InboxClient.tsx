@@ -5,6 +5,7 @@ import {
   MessageSquare, RefreshCw, Send, Search,
   CheckCircle2, X, Wifi, WifiOff, AlertCircle,
 } from 'lucide-react';
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 // ─────────────────────────────────────────────
 // Types
@@ -92,6 +93,7 @@ function HealthDot({ status }: { status: SessionHealth['status'] }) {
 // ─────────────────────────────────────────────
 
 export default function InboxClient({ accounts }: { accounts: Account[] }) {
+  const { alert } = useDialog();
   const [threads,          setThreads]          = useState<Message[]>([]);
   const [activeThreadId,   setActiveThreadId]   = useState<string | null>(null);
   const [history,          setHistory]          = useState<Message[]>([]);
@@ -262,7 +264,7 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
   const handleReply = async () => {
     if (!selectedThread || !replyText.trim()) return;
     const api = (window as unknown as { electronAPI?: { sendMessage: (p: { accountId: string; platform: string; threadId: string; text: string; metadata: Record<string, unknown> }) => Promise<{ success: boolean; error?: string }> } }).electronAPI;
-    if (!api) return alert('الرجاء التشغيل عبر تطبيق Electron');
+    if (!api) return await alert('الرجاء التشغيل عبر تطبيق Electron');
 
     setSendError(null);
 

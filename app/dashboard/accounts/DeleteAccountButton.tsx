@@ -2,13 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export function DeleteAccountButton({ id, name }: { id: string; name: string }) {
+  const { alert, confirm } = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`هل أنت متأكد من حذف الحساب "${name}"؟`)) return;
+    if (!await confirm(`هل أنت متأكد من حذف الحساب "${name}"؟`)) return;
 
     setLoading(true);
     try {
@@ -16,10 +18,10 @@ export function DeleteAccountButton({ id, name }: { id: string; name: string }) 
       if (response.ok) {
         router.refresh();
       } else {
-        alert("حدث خطأ أثناء الحذف");
+        await alert("حدث خطأ أثناء الحذف");
       }
     } catch {
-      alert("حدث خطأ");
+      await alert("حدث خطأ");
     } finally {
       setLoading(false);
     }

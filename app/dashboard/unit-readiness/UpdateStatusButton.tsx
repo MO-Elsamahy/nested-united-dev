@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import { Edit } from "lucide-react";
 
 import { Unit } from "@/lib/types/pms";
@@ -18,6 +19,7 @@ const STATUS_OPTIONS = [
 ];
 
 export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; currentStatus: string }) {
+  const { alert } = useDialog();
   const [isOpen, setIsOpen] = useState(false);
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -85,7 +87,7 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
       router.refresh();
     } catch (error) {
       console.error("Error updating status:", error);
-      alert(
+      await alert(
         error instanceof Error
           ? error.message
           : "حدث خطأ أثناء تحديث الحالة"

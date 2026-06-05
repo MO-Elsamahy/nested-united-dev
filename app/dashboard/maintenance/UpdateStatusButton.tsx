@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export function UpdateStatusButton({
   id,
@@ -10,6 +11,7 @@ export function UpdateStatusButton({
   id: string;
   currentStatus: string;
 }) {
+  const { alert } = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -25,7 +27,7 @@ export function UpdateStatusButton({
         router.refresh();
       }
     } catch {
-      alert("حدث خطأ");
+      await alert("حدث خطأ");
     } finally {
       setLoading(false);
     }

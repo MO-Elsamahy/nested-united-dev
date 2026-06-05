@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import { Trash2 } from "lucide-react";
 
 interface DeleteUserButtonProps {
@@ -11,6 +12,7 @@ interface DeleteUserButtonProps {
 }
 
 export function DeleteUserButton({ userId, userName, userEmail }: DeleteUserButtonProps) {
+  const { alert } = useDialog();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,7 @@ export function DeleteUserButton({ userId, userName, userEmail }: DeleteUserButt
 
       setIsOpen(false);
       router.refresh();
-      alert("تم حذف المستخدم بنجاح");
+      await alert("تم حذف المستخدم بنجاح");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {

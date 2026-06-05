@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { ArrowRight, Plus, Trash2, Calendar } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface CalendarItem {
     id: string;
@@ -26,6 +27,7 @@ export default function UnitCalendarsPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const { alert, confirm } = useDialog();
   const { id } = use(params);
   const [calendars, setCalendars] = useState<CalendarItem[]>([]);
   const [accounts, setAccounts] = useState<AccountItem[]>([]);
@@ -75,18 +77,18 @@ export default function UnitCalendarsPage({
         (e.target as HTMLFormElement).reset();
       } else {
         const result = await response.json();
-        alert(result.error || "حدث خطأ");
+        await alert(result.error || "حدث خطأ");
       }
     } catch {
-      alert("حدث خطأ");
+      await alert("حدث خطأ");
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (calendarId: string) => {
-    if (!confirm("هل أنت متأكد من حذف رابط التقويم؟")) return;
-
+    if (!await confirm("هل أنت متأكد من حذف رابط التقويم؟")) return;
+ 
     try {
       const response = await fetch(`/api/units/${id}/calendars?calendarId=${calendarId}`, {
         method: "DELETE",
@@ -95,7 +97,7 @@ export default function UnitCalendarsPage({
         fetchCalendars();
       }
     } catch {
-      alert("حدث خطأ");
+      await alert("حدث خطأ");
     }
   };
 

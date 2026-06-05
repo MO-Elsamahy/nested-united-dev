@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export function ToggleUserButton({
   id,
@@ -10,12 +11,13 @@ export function ToggleUserButton({
   id: string;
   isActive: boolean;
 }) {
+  const { alert, confirm } = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleToggle = async () => {
     const action = isActive ? "تعطيل" : "تفعيل";
-    if (!confirm(`هل أنت متأكد من ${action} هذا المستخدم؟`)) return;
+    if (!await confirm(`هل أنت متأكد من ${action} هذا المستخدم؟`)) return;
 
     setLoading(true);
     try {
@@ -25,10 +27,10 @@ export function ToggleUserButton({
       if (response.ok) {
         router.refresh();
       } else {
-        alert("حدث خطأ");
+        await alert("حدث خطأ");
       }
     } catch {
-      alert("حدث خطأ");
+      await alert("حدث خطأ");
     } finally {
       setLoading(false);
     }

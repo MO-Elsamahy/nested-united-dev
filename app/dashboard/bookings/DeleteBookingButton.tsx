@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface DeleteBookingButtonProps {
   bookingId: string;
@@ -10,6 +11,7 @@ interface DeleteBookingButtonProps {
 }
 
 export function DeleteBookingButton({ bookingId, canEdit = false }: DeleteBookingButtonProps) {
+  const { alert, confirm } = useDialog();
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
@@ -18,7 +20,7 @@ export function DeleteBookingButton({ bookingId, canEdit = false }: DeleteBookin
   }
 
   const handleDelete = async () => {
-    if (!confirm("هل أنت متأكد من حذف هذا الحجز؟")) return;
+    if (!await confirm("هل أنت متأكد من حذف هذا الحجز؟")) return;
 
     setDeleting(true);
     try {
@@ -35,11 +37,11 @@ export function DeleteBookingButton({ bookingId, canEdit = false }: DeleteBookin
       if (res.ok) {
         router.refresh();
       } else {
-        alert("فشل الحذف");
+        await alert("فشل الحذف");
       }
     } catch (error) {
       console.error(error);
-      alert("حدث خطأ");
+      await alert("حدث خطأ");
     } finally {
       setDeleting(false);
     }

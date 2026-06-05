@@ -3,13 +3,15 @@
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export function DeleteTicketButton({ id }: { id: string }) {
+  const { alert, confirm } = useDialog();
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const handleDelete = async () => {
-    if (!confirm("هل أنت متأكد من حذف هذه التذكرة؟ لا يمكن التراجع عن هذا الإجراء.")) {
+    if (!await confirm("هل أنت متأكد من حذف هذه التذكرة؟ لا يمكن التراجع عن هذا الإجراء.")) {
       return;
     }
 
@@ -26,7 +28,7 @@ export function DeleteTicketButton({ id }: { id: string }) {
 
       router.refresh();
     } catch (error) {
-      alert(error instanceof Error ? error.message : "حدث خطأ أثناء الحذف");
+      await alert(error instanceof Error ? error.message : "حدث خطأ أثناء الحذف");
     } finally {
       setLoading(false);
     }

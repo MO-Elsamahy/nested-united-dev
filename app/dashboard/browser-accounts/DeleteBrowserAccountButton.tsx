@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2, Loader2 } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface DeleteBrowserAccountButtonProps {
   accountId: string;
@@ -13,11 +14,12 @@ export function DeleteBrowserAccountButton({
   accountId,
   accountName,
 }: DeleteBrowserAccountButtonProps) {
+  const { alert, confirm } = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!confirm(`هل تريد حذف "${accountName}"؟\n\nسيتم حذف بيانات تسجيل الدخول المحفوظة.`)) {
+    if (!await confirm(`هل تريد حذف "${accountName}"؟\n\nسيتم حذف بيانات تسجيل الدخول المحفوظة.`)) {
       return;
     }
 
@@ -38,10 +40,10 @@ export function DeleteBrowserAccountButton({
         router.refresh();
       } else {
         const data = await response.json();
-        alert(data.error || "حدث خطأ");
+        await alert(data.error || "حدث خطأ");
       }
     } catch {
-      alert("حدث خطأ في الحذف");
+      await alert("حدث خطأ في الحذف");
     } finally {
       setLoading(false);
     }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import { Edit } from "lucide-react";
 
 interface EditUserButtonProps {
@@ -12,6 +13,7 @@ interface EditUserButtonProps {
 }
 
 export function EditUserButton({ userId, userName, userEmail, userRole }: EditUserButtonProps) {
+  const { alert } = useDialog();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -52,7 +54,7 @@ export function EditUserButton({ userId, userName, userEmail, userRole }: EditUs
 
       setIsOpen(false);
       router.refresh();
-      alert("تم تحديث المستخدم بنجاح");
+      await alert("تم تحديث المستخدم بنجاح");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {

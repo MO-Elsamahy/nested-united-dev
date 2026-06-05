@@ -2,8 +2,10 @@
 
 import { Bell } from "lucide-react";
 import { useState } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export function TestNotificationButton() {
+  const { alert } = useDialog();
   const [testing, setTesting] = useState(false);
 
   const handleTest = async () => {
@@ -29,7 +31,7 @@ export function TestNotificationButton() {
       
       setTimeout(() => setTesting(false), 2000);
     } else {
-      alert("هذا الزر يعمل فقط في تطبيق Electron");
+      await alert("هذا الزر يعمل فقط في تطبيق Electron");
     }
   };
 

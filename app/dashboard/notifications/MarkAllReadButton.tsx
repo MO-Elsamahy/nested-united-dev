@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 export function MarkAllReadButton() {
+  const { alert } = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -13,7 +15,7 @@ export function MarkAllReadButton() {
       await fetch("/api/notifications/read-all", { method: "POST" });
       router.refresh();
     } catch {
-      alert("حدث خطأ");
+      await alert("حدث خطأ");
     } finally {
       setLoading(false);
     }

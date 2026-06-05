@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { UserPlus } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 
 interface Worker {
   id: string;
@@ -15,6 +16,7 @@ interface AssignWorkerButtonProps {
 }
 
 export function AssignWorkerButton({ ticketId, workers }: AssignWorkerButtonProps) {
+  const { alert } = useDialog();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -33,10 +35,10 @@ export function AssignWorkerButton({ ticketId, workers }: AssignWorkerButtonProp
         router.refresh();
       } else {
         const data = await response.json();
-        alert(data.error || "حدث خطأ");
+        await alert(data.error || "حدث خطأ");
       }
     } catch {
-      alert("حدث خطأ في الاتصال");
+      await alert("حدث خطأ في الاتصال");
     } finally {
       setLoading(false);
     }
