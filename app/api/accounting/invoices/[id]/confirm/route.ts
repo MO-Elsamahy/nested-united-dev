@@ -47,111 +47,102 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
 
         const { id: invoiceId } = await context.params;
 
-        // Get invoice with lines
-        const invoices = await query<InvoiceRow>(
-            "SELECT * FROM accounting_invoices WHERE id = ? AND deleted_at IS NULL",
-            [invoiceId]
-        );
-
-        if (!invoices || invoices.length === 0) {
-            return NextResponse.json({ error: "الفاتورة غير موجودة" }, { status: 404 });
-        }
-
-        const invoice = invoices[0];
-
-        // Check if already confirmed
-        if (invoice.state !== "draft") {
-            return NextResponse.json(
-                { error: "Invoice is already confirmed or cancelled" },
-                { status: 400 }
-            );
-        }
-
-        // Get invoice lines
-        const lines = await query<InvoiceLineRow>(
-            "SELECT * FROM accounting_invoice_lines WHERE invoice_id = ?",
-            [invoiceId]
-        );
-
-        if (!lines || lines.length === 0) {
-            return NextResponse.json(
-                { error: "Invoice has no lines" },
-                { status: 400 }
-            );
-        }
-
-        // Get appropriate journal (Sales or Purchase)
-        const journalType = invoice.invoice_type === "customer_invoice" || invoice.invoice_type === "credit_note"
-            ? "sale"
-            : "purchase";
-
-        const journals = await query<JournalRow>(
-            "SELECT * FROM accounting_journals WHERE type = ? AND deleted_at IS NULL LIMIT 1",
-            [journalType]
-        );
-
-        if (!journals || journals.length === 0) {
-            return NextResponse.json(
-                { error: `No ${journalType} journal found. Please create one first.` },
-                { status: 400 }
-            );
-        }
-
-        const journal = journals[0];
-
-        // Get default accounts based on invoice type
-        // For customer invoice: Debit Receivable, Credit Revenue
-        // For supplier bill: Debit Expense, Credit Payable
-
-        const receivableAccounts = await query<AccountRow>(
-            `SELECT * FROM accounting_accounts 
-             WHERE (type = 'asset_receivable' 
-                OR (type = 'asset_current' AND (name LIKE '%عميل%' OR name LIKE '%العملاء%' OR LOWER(name) LIKE '%customer%' OR LOWER(name) LIKE '%receivable%')))
-               AND deleted_at IS NULL 
-             LIMIT 1`
-        );
-
-        const payableAccounts = await query<AccountRow>(
-            `SELECT * FROM accounting_accounts 
-             WHERE (type = 'liability_payable' 
-                OR (type = 'liability_current' AND (name LIKE '%مورد%' OR name LIKE '%الموردين%' OR LOWER(name) LIKE '%supplier%' OR LOWER(name) LIKE '%payable%')))
-               AND deleted_at IS NULL 
-             LIMIT 1`
-        );
-
-        const incomeAccounts = await query<AccountRow>(
-            "SELECT * FROM accounting_accounts WHERE type = 'income' AND deleted_at IS NULL LIMIT 1"
-        );
-
-        const expenseAccounts = await query<AccountRow>(
-            "SELECT * FROM accounting_accounts WHERE type = 'expense' OR type = 'cost_of_sales' ORDER BY FIELD(type, 'cost_of_sales', 'expense') LIMIT 1"
-        );
-
-        const taxAccounts = await query<AccountRow>(
-            "SELECT * FROM accounting_accounts WHERE type = 'liability_current' AND code LIKE '22%' AND deleted_at IS NULL LIMIT 1"
-        );
-
-        if (invoice.invoice_type === "customer_invoice" && (!receivableAccounts || receivableAccounts.length === 0)) {
-            return NextResponse.json(
-                { error: "No receivable account found. Please create an 'Accounts Receivable' account first." },
-                { status: 400 }
-            );
-        }
-
-        if ((invoice.invoice_type === "supplier_bill" || invoice.invoice_type === "vendor_bill") && (!payableAccounts || payableAccounts.length === 0)) {
-            return NextResponse.json(
-                { error: "No payable account found. Please create an 'Accounts Payable' account first." },
-                { status: 400 }
-            );
-        }
-
-        // Create accounting move (journal entry) inside transaction
         const moveId = uuidv4();
-        const moveRef = `Invoice: ${invoice.invoice_number}`;
-
         let updatedInvoice: InvoiceRow & { partner_name: string };
 
         await executeTransaction(async (conn) => {
+            // 1. Get invoice and lock the row using FOR UPDATE
+            const [invoices] = await conn.execute(
+                "SELECT * FROM accounting_invoices WHERE id = ? AND deleted_at IS NULL FOR UPDATE",
+                [invoiceId]
+            ) as any[];
+
+            if (!invoices || invoices.length === 0) {
+                throw new Error("الفاتورة غير موجودة");
+            }
+
+            const invoice = invoices[0] as InvoiceRow;
+
+            // 2. Check if already confirmed
+            if (invoice.state !== "draft") {
+                throw new Error("الفاتورة مؤكدة بالفعل أو ملغاة");
+            }
+
+            // 3. Get invoice lines
+            const [lines] = await conn.execute(
+                "SELECT * FROM accounting_invoice_lines WHERE invoice_id = ?",
+                [invoiceId]
+            ) as any[];
+
+            if (!lines || lines.length === 0) {
+                throw new Error("الفاتورة لا تحتوي على أي بنود");
+            }
+
+            // 4. Get appropriate journal (Sales or Purchase)
+            const journalType = invoice.invoice_type === "customer_invoice" || invoice.invoice_type === "credit_note"
+                ? "sale"
+                : "purchase";
+
+            const [journals] = await conn.execute(
+                "SELECT * FROM accounting_journals WHERE type = ? AND deleted_at IS NULL LIMIT 1",
+                [journalType]
+            ) as any[];
+
+            if (!journals || journals.length === 0) {
+                throw new Error(`لم يتم العثور على دفتر يومية للـ ${journalType === 'sale' ? 'مبيعات' : 'مشتريات'}. يرجى إعداده أولاً.`);
+            }
+
+            const journal = journals[0] as JournalRow;
+
+            // 5. Get default accounts based on invoice type
+            const [receivableAccounts] = await conn.execute(
+                `SELECT * FROM accounting_accounts 
+                 WHERE (type = 'asset_receivable' 
+                    OR (type = 'asset_current' AND (name LIKE '%عميل%' OR name LIKE '%العملاء%' OR LOWER(name) LIKE '%customer%' OR LOWER(name) LIKE '%receivable%')))
+                   AND deleted_at IS NULL 
+                 LIMIT 1`
+            ) as any[];
+
+            const [payableAccounts] = await conn.execute(
+                `SELECT * FROM accounting_accounts 
+                 WHERE (type = 'liability_payable' 
+                    OR (type = 'liability_current' AND (name LIKE '%مورد%' OR name LIKE '%الموردين%' OR LOWER(name) LIKE '%supplier%' OR LOWER(name) LIKE '%payable%')))
+                   AND deleted_at IS NULL 
+                 LIMIT 1`
+            ) as any[];
+
+            const [incomeAccounts] = await conn.execute(
+                "SELECT * FROM accounting_accounts WHERE type = 'income' AND deleted_at IS NULL LIMIT 1"
+            ) as any[];
+
+            const [expenseAccounts] = await conn.execute(
+                "SELECT * FROM accounting_accounts WHERE type = 'expense' OR type = 'cost_of_sales' ORDER BY FIELD(type, 'cost_of_sales', 'expense') LIMIT 1"
+            ) as any[];
+
+            const [taxAccounts] = await conn.execute(
+                "SELECT * FROM accounting_accounts WHERE type = 'liability_current' AND code LIKE '22%' AND deleted_at IS NULL LIMIT 1"
+            ) as any[];
+
+            if (invoice.invoice_type === "customer_invoice") {
+                if (!receivableAccounts || receivableAccounts.length === 0) {
+                    throw new Error("لم يتم العثور على حساب للمدينين/العملاء. يرجى إنشاء حساب 'Accounts Receivable' أولاً.");
+                }
+                if (!incomeAccounts || incomeAccounts.length === 0) {
+                    throw new Error("لم يتم العثور على حساب للإيرادات. يرجى إنشاء حساب 'Income' أولاً.");
+                }
+            }
+
+            if (invoice.invoice_type === "supplier_bill" || invoice.invoice_type === "vendor_bill") {
+                if (!payableAccounts || payableAccounts.length === 0) {
+                    throw new Error("لم يتم العثور على حساب للدائنين/الموردين. يرجى إنشاء حساب 'Accounts Payable' أولاً.");
+                }
+                if (!expenseAccounts || expenseAccounts.length === 0) {
+                    throw new Error("لم يتم العثور على حساب للمصروفات. يرجى إنشاء حساب 'Expense' أولاً.");
+                }
+            }
+
+            const moveRef = `Invoice: ${invoice.invoice_number}`;
+
             await conn.execute(
                 `INSERT INTO accounting_moves (
                     id, journal_id, date, ref, narration, state,

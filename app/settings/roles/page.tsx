@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import {
     Check,
     X,
@@ -64,6 +65,7 @@ function RoleIcon({ role }: { role: string }) {
 }
 
 export default function RolePermissionsPage() {
+    const { alert } = useDialog();
     const [data, setData] = useState<RolePermissionsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export default function RolePermissionsPage() {
             });
             const body = await res.json().catch(() => ({}));
             if (!res.ok) {
-                alert(
+                await alert(
                     typeof (body as { error?: string }).error === "string"
                         ? (body as { error: string }).error
                         : "تعذّر حفظ الصلاحية"
@@ -114,7 +116,7 @@ export default function RolePermissionsPage() {
                 };
             });
         } catch {
-            alert("خطأ في الاتصال أثناء حفظ الصلاحية");
+            await alert("خطأ في الاتصال أثناء حفظ الصلاحية");
             await fetchPermissions();
         } finally {
             setSaving(null);

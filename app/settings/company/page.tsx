@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Upload, Save, Building2 } from "lucide-react";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import Image from "next/image";
 
 interface CompanySettings {
@@ -28,6 +29,7 @@ interface CompanySettings {
 }
 
 export default function CompanySettingsPage() {
+    const { alert } = useDialog();
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [settings, setSettings] = useState<CompanySettings>({
@@ -83,13 +85,13 @@ export default function CompanySettingsPage() {
             });
 
             if (res.ok) {
-                alert("تم حفظ الإعدادات بنجاح");
+                await alert("تم حفظ الإعدادات بنجاح");
             } else {
                 const error = await res.json();
-                alert(`خطأ: ${error.error}`);
+                await alert(`خطأ: ${error.error}`);
             }
         } catch (error: unknown) {
-            alert(error instanceof Error ? error.message : "حدث خطأ أثناء الحفظ");
+            await alert(error instanceof Error ? error.message : "حدث خطأ أثناء الحفظ");
         } finally {
             setSaving(false);
         }

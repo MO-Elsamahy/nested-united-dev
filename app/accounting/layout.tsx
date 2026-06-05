@@ -9,7 +9,6 @@ import { getAppFeatures } from "@/lib/features";
 import { User } from "@/lib/types/database";
 
 import { checkUserPermission } from "@/lib/permissions";
-import { DialogProvider } from "@/components/accounting/DialogProvider";
 
 export default async function AccountingLayout({
     children,
@@ -38,13 +37,11 @@ export default async function AccountingLayout({
     }
 
     return (
-        <DialogProvider>
-            <AppShell
-                header={<Header user={user} features={features} />}
-                sidebar={<AccountingSidebar user={user} />}
-            >
-                {children}
-            </AppShell>
-        </DialogProvider>
+        <AppShell
+            header={<Header user={user} features={features} />}
+            sidebar={<AccountingSidebar user={user} />}
+        >
+            {children}
+        </AppShell>
     );
 }
