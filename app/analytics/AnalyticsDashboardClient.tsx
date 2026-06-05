@@ -326,30 +326,32 @@ export function AnalyticsDashboardClient({
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 md:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
           {/* Smart Account Filter */}
-          <div className="flex flex-col gap-1.5 min-w-[220px]">
-            <label className="text-xs font-bold text-gray-600 flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-gray-400" />
-              <span>مصدر البيانات والمنصات</span>
-            </label>
-            <div className="relative">
-              <select
-                value={selectedAccount}
-                onChange={(e) => {
-                  bypassCacheRef.current = true;
-                  setSelectedAccount(e.target.value);
-                }}
-                className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none pl-8"
-              >
-                <option value="all">كل المنصات والحسابات</option>
-                {initialAccounts.map((account) => (
-                  <option key={account.id} value={account.ids || account.id}>
-                    {account.account_name}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          {activeTab !== "hr" && (
+            <div className="flex flex-col gap-1.5 min-w-[220px]">
+              <label className="text-xs font-bold text-gray-600 flex items-center gap-1.5">
+                <Filter className="w-3.5 h-3.5 text-gray-400" />
+                <span>مصدر البيانات والمنصات</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedAccount}
+                  onChange={(e) => {
+                    bypassCacheRef.current = true;
+                    setSelectedAccount(e.target.value);
+                  }}
+                  className="w-full bg-gray-50/50 hover:bg-gray-50 border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all appearance-none pl-8"
+                >
+                  <option value="all">كل المنصات والحسابات</option>
+                  {initialAccounts.map((account) => (
+                    <option key={account.id} value={account.ids || account.id}>
+                      {account.account_name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Date Range Filter */}
           {activeTab !== "live_ops" && (
