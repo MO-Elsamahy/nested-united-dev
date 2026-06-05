@@ -95,7 +95,7 @@ export function JournalForm({ onClose, onSuccess, journal }: JournalFormProps) {
                         >
                             <option value="sale">مبيعات</option>
                             <option value="purchase">مشتريات</option>
-                            <option value="cash">نقدية</option>
+                            <option value="cash">خزينة</option>
                             <option value="bank">بنك</option>
                             <option value="general">عمليات متنوعة</option>
                         </select>

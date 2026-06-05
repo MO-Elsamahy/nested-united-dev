@@ -96,7 +96,7 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
                         >
                             <optgroup label="الأصول">
                                 <option value="asset_receivable">مدينون (Receivable)</option>
-                                <option value="asset_bank">نقدية وبنوك</option>
+                                <option value="asset_bank">خزينة وبنوك</option>
                                 <option value="asset_current">أصول متداولة أخرى</option>
                                 <option value="asset_fixed">أصول ثابتة</option>
                             </optgroup>
