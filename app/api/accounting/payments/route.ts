@@ -104,27 +104,36 @@ export async function POST(req: NextRequest) {
                 journalId = cashJournals[0].id;
             }
 
-            // 3. حساب الخزينة / البنك
+            // 3. حساب الخزينة / البنك — نبحث بالترتيب: asset_bank → أي حساب في الجورنال
             const [cashAccounts] = await conn.execute(
-                "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL LIMIT 1"
+                "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL ORDER BY code ASC LIMIT 1"
             ) as any[];
-            if (!cashAccounts || cashAccounts.length === 0) {
-                throw new Error("لم يتم العثور على حساب نقدي. يرجى إعداده أولاً.");
+            // fallback: نجلب الحساب المرتبط بالجورنال مباشرة
+            let cashAccount = cashAccounts?.[0] || null;
+            if (!cashAccount) {
+                const [journalAccounts] = await conn.execute(
+                    "SELECT aa.* FROM accounting_journals j JOIN accounting_accounts aa ON aa.id = j.default_account_id WHERE j.id = ? AND aa.deleted_at IS NULL LIMIT 1",
+                    [journalId]
+                ) as any[];
+                cashAccount = journalAccounts?.[0] || null;
             }
-            const cashAccount = cashAccounts[0];
+            // إذا لم يكن هناك حساب — نكمل بدون قيد محاسبي (السند يُنشأ لكن بدون move)
+            const skipJournalEntry = !cashAccount;
 
-            // 4. حساب الذمم (عملاء / موردين) للتسوية
+            // 4. حساب الذمم (عملاء / موردين) للتسوية — اختياري
             let partnerAccount = null;
-            if (payment_type === "inbound") {
-                const [receivableAccounts] = await conn.execute(
-                    `SELECT * FROM accounting_accounts WHERE (type = 'asset_receivable' OR (type='asset_current' AND (name LIKE '%عميل%' OR name LIKE '%العملاء%'))) AND deleted_at IS NULL LIMIT 1`
-                ) as any[];
-                partnerAccount = receivableAccounts?.[0] || null;
-            } else {
-                const [payableAccounts] = await conn.execute(
-                    `SELECT * FROM accounting_accounts WHERE (type = 'liability_payable' OR (type='liability_current' AND (name LIKE '%مورد%' OR name LIKE '%الموردين%'))) AND deleted_at IS NULL LIMIT 1`
-                ) as any[];
-                partnerAccount = payableAccounts?.[0] || null;
+            if (!skipJournalEntry) {
+                if (payment_type === "inbound") {
+                    const [receivableAccounts] = await conn.execute(
+                        `SELECT * FROM accounting_accounts WHERE type IN ('asset_receivable','asset_current') AND deleted_at IS NULL ORDER BY type ASC LIMIT 1`
+                    ) as any[];
+                    partnerAccount = receivableAccounts?.[0] || cashAccount;
+                } else {
+                    const [payableAccounts] = await conn.execute(
+                        `SELECT * FROM accounting_accounts WHERE type IN ('liability_payable','liability_current') AND deleted_at IS NULL ORDER BY type ASC LIMIT 1`
+                    ) as any[];
+                    partnerAccount = payableAccounts?.[0] || cashAccount;
+                }
             }
 
             // 5. إنشاء السند في قاعدة البيانات
@@ -142,51 +151,49 @@ export async function POST(req: NextRequest) {
                 ]
             );
 
-            // 6. إنشاء القيد المحاسبي للسند
-            const moveId = uuidv4();
-            const moveRef = `Payment: ${paymentNumber}`;
-            const moveNarration = notes || `${payment_type === "inbound" ? "سند قبض" : "سند صرف"} ${paymentNumber}`;
+            // 6. إنشاء القيد المحاسبي (اختياري — يُتخطى إذا لم تُعثر على حسابات)
+            if (!skipJournalEntry) {
+                const moveId = uuidv4();
+                const moveRef = `Payment: ${paymentNumber}`;
+                const moveNarration = notes || `${payment_type === "inbound" ? "سند قبض" : "سند صرف"} ${paymentNumber}`;
 
-            await conn.execute(
-                `INSERT INTO accounting_moves (
-                    id, journal_id, date, ref, narration, state,
-                    partner_id, amount_total, created_by
-                ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
-                [
-                    moveId, journalId, payment_date, moveRef, moveNarration,
-                    partner_id || null, Number(amount), user.id
-                ]
-            );
+                await conn.execute(
+                    `INSERT INTO accounting_moves (
+                        id, journal_id, date, ref, narration, state,
+                        partner_id, amount_total, created_by
+                    ) VALUES (?, ?, ?, ?, ?, 'posted', ?, ?, ?)`,
+                    [
+                        moveId, journalId, payment_date, moveRef, moveNarration,
+                        partner_id || null, Number(amount), user.id
+                    ]
+                );
 
-            // 7. أسطر القيد (قيد مزدوج)
-            if (payment_type === "inbound") {
-                // مدين: خزينة / بنك (نستلم)
-                await conn.execute(
-                    `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
-                     VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
-                    [moveId, cashAccount.id, partner_id || null, moveNarration, Number(amount)]
-                );
-                // دائن: ذمم مدينة (أو حساب عام إذا لم تكن هناك فاتورة)
-                const creditAccount = partnerAccount || cashAccount;
-                await conn.execute(
-                    `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
-                     VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
-                    [moveId, creditAccount.id, partner_id || null, `تسوية - ${moveNarration}`, Number(amount)]
-                );
-            } else {
-                // مدين: ذمم دائنة (ندفع) 
-                const debitAccount = partnerAccount || cashAccount;
-                await conn.execute(
-                    `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
-                     VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
-                    [moveId, debitAccount.id, partner_id || null, moveNarration, Number(amount)]
-                );
-                // دائن: خزينة / بنك (ندفع)
-                await conn.execute(
-                    `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
-                     VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
-                    [moveId, cashAccount.id, partner_id || null, `صرف - ${moveNarration}`, Number(amount)]
-                );
+                // 7. أسطر القيد (قيد مزدوج)
+                if (payment_type === "inbound") {
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
+                         VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
+                        [moveId, cashAccount.id, partner_id || null, moveNarration, Number(amount)]
+                    );
+                    const creditAccount = partnerAccount || cashAccount;
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
+                         VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
+                        [moveId, creditAccount.id, partner_id || null, `تسوية - ${moveNarration}`, Number(amount)]
+                    );
+                } else {
+                    const debitAccount = partnerAccount || cashAccount;
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
+                         VALUES (UUID(), ?, ?, ?, ?, ?, 0)`,
+                        [moveId, debitAccount.id, partner_id || null, moveNarration, Number(amount)]
+                    );
+                    await conn.execute(
+                        `INSERT INTO accounting_move_lines (id, move_id, account_id, partner_id, name, debit, credit)
+                         VALUES (UUID(), ?, ?, ?, ?, 0, ?)`,
+                        [moveId, cashAccount.id, partner_id || null, `صرف - ${moveNarration}`, Number(amount)]
+                    );
+                }
             }
 
             // 8. تسوية الفواتير (إذا وُجدت)
