@@ -63,7 +63,7 @@ export async function getAccountingDashboardStats(asOfDate?: string): Promise<Ac
             FROM accounting_invoices
             WHERE deleted_at IS NULL
               AND invoice_type = 'customer_invoice'
-              AND state IN ('posted', 'partial', 'confirmed')
+              AND state NOT IN ('paid', 'cancelled', '')
               AND invoice_date <= ?
         `, [as_of_date]);
 
@@ -73,7 +73,7 @@ export async function getAccountingDashboardStats(asOfDate?: string): Promise<Ac
             FROM accounting_invoices
             WHERE deleted_at IS NULL
               AND invoice_type IN ('supplier_bill', 'vendor_bill')
-              AND state IN ('posted', 'partial', 'confirmed')
+              AND state NOT IN ('paid', 'cancelled', '')
               AND invoice_date <= ?
         `, [as_of_date]);
 
