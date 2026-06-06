@@ -197,10 +197,11 @@ async function undoAuditLog(conn: any, L: { action: string; entity_type: string;
             );
 
             // 2. Soft-delete the invoice's journal entry move if it exists
-            if (details.invoice_move_id) {
+            const invoiceMoveId = details.accounting_move_id || details.invoice_move_id;
+            if (invoiceMoveId) {
                 await conn.execute(
                     "UPDATE accounting_moves SET deleted_at = NOW() WHERE id = ?",
-                    [details.invoice_move_id]
+                    [invoiceMoveId]
                 );
             }
 

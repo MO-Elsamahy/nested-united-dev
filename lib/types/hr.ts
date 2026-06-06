@@ -97,6 +97,7 @@ export interface Shift {
     start_time: string;
     end_time: string;
     late_grace_minutes: number;
+    days_off?: string | null;
     created_at: string;
 }
 
