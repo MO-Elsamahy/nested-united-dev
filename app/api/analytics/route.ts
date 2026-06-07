@@ -661,7 +661,19 @@ export async function GET(req: NextRequest) {
       ]
     );
 
-    const liveUnits = liveUnitsList.map((unit: any) => {
+    // Fetch unit calendars for all active units
+    const activeUnitIds = liveUnitsList.map((u: any) => u.id);
+    let calendars: any[] = [];
+    if (activeUnitIds.length > 0) {
+      calendars = await query<any>(
+        `SELECT id, unit_id, platform, is_primary FROM unit_calendars WHERE unit_id IN (${activeUnitIds.map(() => '?').join(',')})`,
+        activeUnitIds
+      );
+    }
+
+    for (const unit of liveUnitsList) {
+      unit.unit_calendars = calendars.filter((c: any) => c.unit_id === unit.id);
+
       // 1. Sync from active booking if present and staff hasn't manually overridden it
       const activeGuest = unit.active_manual_guest || unit.active_ical_guest;
       const activeCheckinDate = unit.active_manual_checkin || unit.active_ical_checkin;
@@ -690,7 +702,7 @@ export async function GET(req: NextRequest) {
       
       const updatedAt = unit.readiness_updated_at ? new Date(unit.readiness_updated_at) : null;
       const wasUpdatedToday = updatedAt && 
-        `${updatedAt.getFullYear()}-${String(updatedAt.getMonth() + 1).padStart(2, '0')}-\${String(updatedAt.getDate()).padStart(2, '0')}` === todayStr;
+        `${updatedAt.getFullYear()}-${String(updatedAt.getMonth() + 1).padStart(2, '0')}-${String(updatedAt.getDate()).padStart(2, '0')}` === todayStr;
       
       let computed = unit.readiness_status || "ready";
 
@@ -702,89 +714,133 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      // Map computed status to Arabic text and matching classes
-      let status = "شاغر وجاهز";
-      let colorClass = "border-r-blue-500 bg-blue-50/10";
-      
-      if (computed === "dirty" || computed === "awaiting_cleaning" || computed === "cleaning_in_progress") {
-        status = "تنظيف";
-        colorClass = "border-r-amber-500 bg-amber-50/10";
-      } else if (computed === "maintenance") {
-        status = "تحت الصيانة";
-        colorClass = "border-r-rose-500 bg-rose-50/10";
-      } else if (computed === "occupied") {
-        status = "مأهول";
-        colorClass = "border-r-emerald-500 bg-emerald-50/10";
-      } else if (computed === "booked") {
-        status = "إشغال";
-        colorClass = "border-r-indigo-500 bg-indigo-50/10";
-      } else if (computed === "checkout_today") {
-        status = "خروج اليوم";
-        colorClass = "border-r-purple-500 bg-purple-50/10";
-      } else if (computed === "checkin_today") {
-        status = "دخول اليوم";
-        colorClass = "border-r-sky-500 bg-sky-50/10";
-      } else if (computed === "guest_not_checked_out") {
-        status = "لم يغادر";
-        colorClass = "border-r-rose-500 bg-rose-50/10";
+      unit._computed_status = computed;
+      unit._has_checkin_today = hasCheckinToday;
+      unit._has_checkout_today = hasCheckoutToday;
+      unit._readinessGuest = readinessGuest;
+      unit._readinessCheckin = readinessCheckin;
+      unit._readinessCheckout = readinessCheckout;
+      unit._readinessNotes = readinessNotes;
+    }
+
+    const grouped = new Map<string, { primary: any; units: any[] }>();
+
+    for (const unit of liveUnitsList) {
+      const key =
+        (unit.readiness_group_id as string | null) ||
+        (unit.unit_code as string | null) ||
+        (unit.unit_name as string | null) ||
+        (unit.id as string);
+
+      const existing = grouped.get(key);
+      if (!existing) {
+        grouped.set(key, { primary: unit, units: [unit] });
+      } else {
+        existing.units.push(unit);
       }
+    }
 
-      // Calculate booked days for calendar (Timezone-safe YYYY-MM-DD string comparison)
+    const liveUnits = Array.from(grouped.values()).map(({ primary, units }) => {
+      let totalRevenue = 0;
+      let totalBookings = 0;
+      let totalMaint = 0;
       const bookedDays = new Set<number>();
-      const unitBookings = activeBookings.filter((b: any) => b.unit_id === unit.id);
-      const unitReservations = activeReservations.filter((r: any) => r.unit_id === unit.id);
-      
-      const parseToYYYYMMDD = (val: any) => {
-        if (!val) return "";
-        if (val instanceof Date) {
-          const year = val.getFullYear();
-          const month = String(val.getMonth() + 1).padStart(2, '0');
-          const day = String(val.getDate()).padStart(2, '0');
-          return `${year}-${month}-\${day}`;
+      const platforms = new Set<string>();
+
+      for (const u of units) {
+        totalRevenue += Number(u.total_revenue || 0);
+        totalBookings += Number(u.bookings_count || 0);
+        totalMaint += Number(u.active_maint_tickets || 0);
+
+        if (u.unit_calendars) {
+          for (const cal of u.unit_calendars) {
+            if (cal.platform) {
+              platforms.add(cal.platform.toLowerCase());
+            }
+          }
         }
-        if (typeof val === 'string') {
-          return val.split('T')[0];
-        }
-        return "";
-      };
 
-      const allIntervals = [
-        ...unitBookings.map((b: any) => ({ start: parseToYYYYMMDD(b.start_date), end: parseToYYYYMMDD(b.end_date) })),
-        ...unitReservations.map((r: any) => ({ start: parseToYYYYMMDD(r.start_date), end: parseToYYYYMMDD(r.end_date) }))
-      ];
+        const unitBookings = activeBookings.filter((b: any) => b.unit_id === u.id);
+        const unitReservations = activeReservations.filter((r: any) => r.unit_id === u.id);
 
-      const calYear = calNow.getFullYear();
-      const calMonthStr = String(calNow.getMonth() + 1).padStart(2, '0');
+        const parseToYYYYMMDD = (val: any) => {
+          if (!val) return "";
+          if (val instanceof Date) {
+            const year = val.getFullYear();
+            const month = String(val.getMonth() + 1).padStart(2, '0');
+            const day = String(val.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+          }
+          if (typeof val === 'string') {
+            return val.split('T')[0];
+          }
+          return "";
+        };
 
-      for (let day = 1; day <= calLastDay; day++) {
-        const checkDateStr = `${calYear}-${calMonthStr}-${String(day).padStart(2, '0')}`;
-        for (const interval of allIntervals) {
-          if (interval.start && interval.end) {
-            if (checkDateStr >= interval.start && checkDateStr <= interval.end) {
-              bookedDays.add(day);
-              break;
+        const allIntervals = [
+          ...unitBookings.map((b: any) => ({ start: parseToYYYYMMDD(b.start_date), end: parseToYYYYMMDD(b.end_date) })),
+          ...unitReservations.map((r: any) => ({ start: parseToYYYYMMDD(r.start_date), end: parseToYYYYMMDD(r.end_date) }))
+        ];
+
+        const calYear = calNow.getFullYear();
+        const calMonthStr = String(calNow.getMonth() + 1).padStart(2, '0');
+
+        for (let day = 1; day <= calLastDay; day++) {
+          const checkDateStr = `${calYear}-${calMonthStr}-${String(day).padStart(2, '0')}`;
+          for (const interval of allIntervals) {
+            if (interval.start && interval.end) {
+              if (checkDateStr >= interval.start && checkDateStr <= interval.end) {
+                bookedDays.add(day);
+                break;
+              }
             }
           }
         }
       }
 
+      const checkinDateVal = primary._readinessCheckin;
+      const checkoutDateVal = primary._readinessCheckout;
+      const updatedAtVal = primary.readiness_updated_at;
+
       return {
-        id: unit.id,
-        title: unit.unit_name,
-        unitCode: unit.unit_code || null,
-        platform: unit.platform ? (unit.platform === "airbnb" ? "Airbnb" : "Gathern") : "مباشر",
-        status,
-        readinessStatus: computed,
-        guest: readinessGuest || null,
-        checkinDate: readinessCheckin ? (typeof readinessCheckin === 'string' ? readinessCheckin.split("T")[0] : readinessCheckin.toISOString().split("T")[0]) : null,
-        checkoutDate: readinessCheckout ? (typeof readinessCheckout === 'string' ? readinessCheckout.split("T")[0] : readinessCheckout.toISOString().split("T")[0]) : null,
-        notes: readinessNotes || null,
-        updatedAt: unit.readiness_updated_at ? (typeof unit.readiness_updated_at === 'string' ? unit.readiness_updated_at : unit.readiness_updated_at.toISOString()) : null,
-        revenue: Number(unit.total_revenue),
-        bookingsCount: Number(unit.bookings_count),
-        activeMaintTickets: Number(unit.active_maint_tickets),
+        id: primary.id,
+        title: primary.unit_name,
+        unitCode: primary.unit_code || null,
+        status: primary._computed_status,
+        readinessStatus: primary._computed_status,
+        guest: primary._readinessGuest || null,
+        checkinDate: checkinDateVal ? (typeof checkinDateVal === 'string' ? checkinDateVal.split("T")[0] : checkinDateVal.toISOString().split("T")[0]) : null,
+        checkoutDate: checkoutDateVal ? (typeof checkoutDateVal === 'string' ? checkoutDateVal.split("T")[0] : checkoutDateVal.toISOString().split("T")[0]) : null,
+        notes: primary._readinessNotes || null,
+        updatedAt: updatedAtVal ? (typeof updatedAtVal === 'string' ? updatedAtVal : updatedAtVal.toISOString()) : null,
+        revenue: totalRevenue,
+        bookingsCount: totalBookings,
+        activeMaintTickets: totalMaint,
         bookedDays: Array.from(bookedDays),
-        color: colorClass,
+        platforms: Array.from(platforms),
+
+        unit_name: primary.unit_name,
+        unit_code: primary.unit_code || null,
+        readiness_status: primary.readiness_status,
+        readiness_checkout_date: primary.readiness_checkout_date,
+        readiness_checkin_date: primary.readiness_checkin_date,
+        readiness_guest_name: primary.readiness_guest_name,
+        readiness_notes: primary.readiness_notes,
+        readiness_updated_at: primary.readiness_updated_at,
+        readiness_updated_by: primary.readiness_updated_by,
+        readiness_group_id: primary.readiness_group_id,
+
+        active_manual_guest: primary.active_manual_guest,
+        active_ical_guest: primary.active_ical_guest,
+        active_manual_checkin: primary.active_manual_checkin,
+        active_ical_checkin: primary.active_ical_checkin,
+        active_manual_checkout: primary.active_manual_checkout,
+        active_ical_checkout: primary.active_ical_checkout,
+        active_manual_notes: primary.active_manual_notes,
+
+        _has_checkin_today: primary._has_checkin_today,
+        _has_checkout_today: primary._has_checkout_today,
+        _merged_units: units
       };
     });
 

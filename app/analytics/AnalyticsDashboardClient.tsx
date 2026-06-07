@@ -1,4 +1,5 @@
 "use client";
+import { UpdateStatusButton } from "@/app/dashboard/unit-readiness/UpdateStatusButton";
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -1474,11 +1475,11 @@ export function AnalyticsDashboardClient({
                 {/* Operations KPI Grid (3x2 layout) */}
                 {(() => {
                   const totalUnits = data.liveUnits?.length || 0;
-                  const occupiedUnits = (data.liveUnits || []).filter((u: any) => u.status === "مأهول" || u.status === "إشغال" || u.status === "لم يغادر").length;
+                  const occupiedUnits = (data.liveUnits || []).filter((u: any) => u.status === "occupied" || u.status === "booked" || u.status === "guest_not_checked_out").length;
                   const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
-                  const readyUnits = (data.liveUnits || []).filter((u: any) => u.status === "شاغر وجاهز" || u.status === "دخول اليوم" || u.status === "خروج اليوم").length;
-                  const cleaningUnits = (data.liveUnits || []).filter((u: any) => u.status === "تنظيف").length;
-                  const maintUnits = (data.liveUnits || []).filter((u: any) => u.status === "تحت الصيانة" || u.activeMaintTickets > 0).length;
+                  const readyUnits = (data.liveUnits || []).filter((u: any) => u.status === "ready" || u.status === "checkin_today" || u.status === "checkout_today").length;
+                  const cleaningUnits = (data.liveUnits || []).filter((u: any) => u.status === "awaiting_cleaning" || u.status === "cleaning_in_progress").length;
+                  const maintUnits = (data.liveUnits || []).filter((u: any) => u.status === "maintenance" || u.activeMaintTickets > 0).length;
 
                   return (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -1607,12 +1608,78 @@ export function AnalyticsDashboardClient({
 
                 {/* Active Operational Grid */}
                 {(() => {
+                  const STATUS_CONFIG = {
+                    checkout_today: {
+                      label: "خروج اليوم",
+                      color: "text-orange-600 border-orange-200 bg-orange-50/50",
+                      badge: "bg-orange-50 text-orange-700 border-orange-200",
+                      border: "border-r-orange-500",
+                      icon: "📤",
+                    },
+                    checkin_today: {
+                      label: "دخول اليوم",
+                      color: "text-blue-600 border-blue-200 bg-blue-50/50",
+                      badge: "bg-blue-50 text-blue-700 border-blue-200",
+                      border: "border-r-blue-500",
+                      icon: "📥",
+                    },
+                    guest_not_checked_out: {
+                      label: "الضيف لم يخرج",
+                      color: "text-red-600 border-red-200 bg-red-50/50",
+                      badge: "bg-red-50 text-red-700 border-red-200",
+                      border: "border-r-red-500",
+                      icon: "⚠️",
+                    },
+                    awaiting_cleaning: {
+                      label: "في انتظار التنظيف",
+                      color: "text-amber-600 border-amber-200 bg-amber-50/50",
+                      badge: "bg-amber-50 text-amber-700 border-amber-200",
+                      border: "border-r-amber-500",
+                      icon: "⏳",
+                    },
+                    cleaning_in_progress: {
+                      label: "قيد التنظيف",
+                      color: "text-purple-600 border-purple-200 bg-purple-50/50",
+                      badge: "bg-purple-50 text-purple-700 border-purple-200",
+                      border: "border-r-purple-500",
+                      icon: "🧹",
+                    },
+                    ready: {
+                      label: "جاهزة للتسكين",
+                      color: "text-emerald-600 border-emerald-200 bg-emerald-50/50",
+                      badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
+                      border: "border-r-emerald-500",
+                      icon: "✅",
+                    },
+                    occupied: {
+                      label: "تم التسكين",
+                      color: "text-indigo-600 border-indigo-200 bg-indigo-50/50",
+                      badge: "bg-indigo-50 text-indigo-700 border-indigo-200",
+                      border: "border-r-indigo-500",
+                      icon: "🏠",
+                    },
+                    booked: {
+                      label: "إشغال",
+                      color: "text-sky-600 border-sky-200 bg-sky-50/50",
+                      badge: "bg-sky-50 text-sky-700 border-sky-200",
+                      border: "border-r-sky-500",
+                      icon: "📅",
+                    },
+                    maintenance: {
+                      label: "تحت الصيانة",
+                      color: "text-rose-600 border-rose-200 bg-rose-50/50",
+                      badge: "bg-rose-50 text-rose-700 border-rose-200",
+                      border: "border-r-rose-500",
+                      icon: "🔧",
+                    },
+                  };
+
                   const filteredUnits = (data.liveUnits || []).filter((unit: any) => {
                     if (liveOpsFilter === "all") return true;
-                    if (liveOpsFilter === "occupied") return unit.status === "مأهول" || unit.status === "إشغال" || unit.status === "لم يغادر";
-                    if (liveOpsFilter === "ready") return unit.status === "شاغر وجاهز" || unit.status === "دخول اليوم" || unit.status === "خروج اليوم";
-                    if (liveOpsFilter === "cleaning") return unit.status === "تنظيف";
-                    if (liveOpsFilter === "maintenance") return unit.status === "تحت الصيانة" || unit.activeMaintTickets > 0;
+                    if (liveOpsFilter === "occupied") return unit.status === "occupied" || unit.status === "booked" || unit.status === "guest_not_checked_out";
+                    if (liveOpsFilter === "ready") return unit.status === "ready" || unit.status === "checkin_today" || unit.status === "checkout_today";
+                    if (liveOpsFilter === "cleaning") return unit.status === "awaiting_cleaning" || unit.status === "cleaning_in_progress";
+                    if (liveOpsFilter === "maintenance") return unit.status === "maintenance" || unit.activeMaintTickets > 0;
                     return true;
                   });
 
@@ -1648,19 +1715,11 @@ export function AnalyticsDashboardClient({
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                           {filteredUnits.map((unit: any, idx: number) => {
-                            const isAirbnb = unit.platform === "Airbnb";
-                            const isGathern = unit.platform === "Gathern";
+                            const config = STATUS_CONFIG[unit.status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG.ready;
+                            const platforms = unit.platforms || [];
 
                             return (
-                              <div key={idx} className={`bg-white border border-gray-150 border-r-4 rounded-2xl p-5 flex flex-col justify-between min-h-[220px] transition-all hover:shadow-md hover:scale-[1.01] duration-205 ${unit.status === "مأهول" ? "border-r-emerald-500" :
-                                  unit.status === "إشغال" ? "border-r-indigo-500" :
-                                    unit.status === "لم يغادر" ? "border-r-rose-500" :
-                                      unit.status === "شاغر وجاهز" ? "border-r-blue-500" :
-                                        unit.status === "دخول اليوم" ? "border-r-sky-500" :
-                                          unit.status === "خروج اليوم" ? "border-r-purple-500" :
-                                            unit.status === "تنظيف" ? "border-r-amber-500" :
-                                              "border-r-rose-500"
-                                }`}>
+                              <div key={idx} className={`bg-white border border-gray-150 border-r-4 rounded-2xl p-5 flex flex-col justify-between min-h-[220px] transition-all hover:shadow-md hover:scale-[1.01] duration-205 ${config.border}`}>
                                 {/* Header: Title, Code, Status & Platform */}
                                 <div className="space-y-1.5">
                                   <div className="flex items-start justify-between">
@@ -1673,37 +1732,50 @@ export function AnalyticsDashboardClient({
                                       </h4>
                                     </div>
 
-                                    {/* Platform Badge */}
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isAirbnb ? "bg-red-50 text-red-600 border border-red-100" :
-                                        isGathern ? "bg-orange-50 text-orange-600 border border-orange-100" :
-                                          "bg-slate-50 text-slate-600 border border-slate-100"
-                                      }`}>
-                                      {unit.platform}
-                                    </span>
+                                    {/* Platform Badges */}
+                                    <div className="flex gap-1">
+                                      {platforms.length > 0 ? (
+                                        platforms.map((p: string, pIdx: number) => {
+                                          const isAirbnb = p === "airbnb";
+                                          const isGathern = p === "gathern";
+                                          return (
+                                            <span key={pIdx} className={`text-[9px] font-bold px-1.5 py-0.5 rounded border capitalize ${
+                                              isAirbnb ? "bg-red-50 text-red-600 border-red-100" :
+                                              isGathern ? "bg-orange-50 text-orange-600 border-orange-100" :
+                                              "bg-slate-50 text-slate-600 border-slate-100"
+                                            }`}>
+                                              {isAirbnb ? "Airbnb" : isGathern ? "Gathern" : p}
+                                            </span>
+                                          );
+                                        })
+                                      ) : (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-100">
+                                          مباشر
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
 
                                   {/* Status Pill */}
                                   <div className="flex items-center gap-2">
-                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${unit.status === "مأهول" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
-                                        unit.status === "إشغال" ? "bg-indigo-50 text-indigo-700 border border-indigo-100" :
-                                          unit.status === "لم يغادر" ? "bg-rose-50 text-rose-700 border border-rose-100" :
-                                            unit.status === "شاغر وجاهز" ? "bg-blue-50 text-blue-700 border border-blue-100" :
-                                              unit.status === "دخول اليوم" ? "bg-sky-50 text-sky-700 border border-sky-100" :
-                                                unit.status === "خروج اليوم" ? "bg-purple-50 text-purple-700 border border-purple-100" :
-                                                  unit.status === "تنظيف" ? "bg-amber-50 text-amber-700 border border-amber-100" :
-                                                    "bg-rose-50 text-rose-700 border border-rose-100"
-                                      }`}>
-                                      <span className={`w-1.5 h-1.5 rounded-full ${unit.status === "مأهول" ? "bg-emerald-500" :
-                                          unit.status === "إشغال" ? "bg-indigo-500" :
-                                            unit.status === "لم يغادر" ? "bg-rose-500" :
-                                              unit.status === "شاغر وجاهز" ? "bg-blue-500" :
-                                                unit.status === "دخول اليوم" ? "bg-sky-500" :
-                                                  unit.status === "خروج اليوم" ? "bg-purple-500" :
-                                                    unit.status === "تنظيف" ? "bg-amber-500" :
-                                                      "bg-rose-500"
-                                        }`} />
-                                      {unit.status}
+                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${config.badge}`}>
+                                      <span>{config.icon}</span>
+                                      <span>{config.label}</span>
                                     </span>
+
+                                    {/* Special Today Indicators */}
+                                    <div className="flex gap-1">
+                                      {unit._has_checkin_today && (
+                                        <span className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5" title="دخول اليوم">
+                                          📥 دخول
+                                        </span>
+                                      )}
+                                      {unit._has_checkout_today && (
+                                        <span className="bg-orange-600 text-white text-[9px] px-1.5 py-0.5 rounded flex items-center gap-0.5" title="خروج اليوم">
+                                          📤 خروج
+                                        </span>
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
 
@@ -1814,19 +1886,16 @@ export function AnalyticsDashboardClient({
                                         const cMonth = cDate.getMonth();
                                         const todayDay = cDate.getDate();
 
-                                        // First day of current month
                                         const firstDayDate = new Date(cYear, cMonth, 1);
-                                        const offset = firstDayDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                                        const offset = firstDayDate.getDay();
 
                                         const daysInM = new Date(cYear, cMonth + 1, 0).getDate();
                                         const cells = [];
 
-                                        // Push offset empty cells
                                         for (let i = 0; i < offset; i++) {
                                           cells.push(<div key={`empty-${i}`} className="h-5" />);
                                         }
 
-                                        // Push actual day cells
                                         const bDays = new Set(unit.bookedDays || []);
                                         for (let day = 1; day <= daysInM; day++) {
                                           const isBooked = bDays.has(day);
@@ -1852,7 +1921,7 @@ export function AnalyticsDashboardClient({
                                   </div>
                                 </div>
 
-                                {/* Card Footer: Quick links */}
+                                {/* Card Footer: Quick links & Update Status Button */}
                                 <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px]">
                                   <div className="flex items-center gap-1 text-gray-400">
                                     <Clock className="w-3.5 h-3.5" />
@@ -1863,13 +1932,19 @@ export function AnalyticsDashboardClient({
                                     </span>
                                   </div>
 
-                                  <a
-                                    href={`/dashboard/units/${unit.id}?from=analytics`}
-                                    className="text-blue-600 hover:text-blue-700 font-bold flex items-center gap-0.5 transition-colors"
-                                  >
-                                    <span>ملف الوحدة</span>
-                                    <ArrowUpRight className="w-3.5 h-3.5" />
-                                  </a>
+                                  <div className="flex items-center gap-2">
+                                    <a
+                                      href={`/dashboard/units/${unit.id}?from=analytics`}
+                                      className="px-2.5 py-1 bg-white border border-gray-200 rounded-md hover:bg-gray-50 text-gray-700 font-bold flex items-center gap-0.5 transition-colors text-[11px]"
+                                    >
+                                      <span>ملف الوحدة</span>
+                                      <ArrowUpRight className="w-3 h-3" />
+                                    </a>
+                                    <UpdateStatusButton
+                                      unit={unit}
+                                      currentStatus={unit.status || "ready"}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             );
