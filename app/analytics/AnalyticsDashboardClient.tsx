@@ -981,47 +981,71 @@ export function AnalyticsDashboardClient({
                   <div className="border border-gray-100 rounded-2xl p-5 flex flex-col justify-between bg-white shadow-sm space-y-4">
                     <div>
                       <h3 className="text-sm font-bold text-gray-900">نظرة عامة على العمليات الحية</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">ملخص الحالة التشغيلية الفورية وأعمال الصيانة</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">ملخص الحالة التشغيلية الفورية وأعمال الصيانة (اضغط للتفاصيل)</p>
                     </div>
 
                     <div className="space-y-3.5 my-auto">
-                      <div className="flex items-center justify-between p-3 bg-blue-50/40 rounded-xl border border-blue-100/50">
+                      <div
+                        onClick={() => {
+                          setActiveTab("live_ops");
+                          setLiveOpsFilter("ready");
+                        }}
+                        className="flex items-center justify-between p-3 bg-blue-50/40 rounded-xl border border-blue-100/50 cursor-pointer hover:bg-blue-50/80 hover:border-blue-200 transition-all"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                           <span className="text-xs font-bold text-gray-600">شقق جاهزة وشاغرة</span>
                         </div>
                         <span className="text-sm font-black text-blue-700">
-                          {(data.liveUnits || []).filter((u: any) => u.status === "شاغر وجاهز").length} شقة
+                          {(data.liveUnits || []).filter((u: any) => u.status === "ready" || u.status === "checkin_today" || u.status === "checkout_today").length} شقة
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 bg-emerald-50/40 rounded-xl border border-emerald-100/50">
+                      <div
+                        onClick={() => {
+                          setActiveTab("live_ops");
+                          setLiveOpsFilter("occupied");
+                        }}
+                        className="flex items-center justify-between p-3 bg-emerald-50/40 rounded-xl border border-emerald-100/50 cursor-pointer hover:bg-emerald-50/80 hover:border-emerald-200 transition-all"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                           <span className="text-xs font-bold text-gray-600">شقق مأهولة بالنزلاء</span>
                         </div>
                         <span className="text-sm font-black text-emerald-700">
-                          {(data.liveUnits || []).filter((u: any) => u.status === "مأهول").length} شقة
+                          {(data.liveUnits || []).filter((u: any) => u.status === "occupied" || u.status === "booked" || u.status === "guest_not_checked_out").length} شقة
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 bg-amber-50/40 rounded-xl border border-amber-100/50">
+                      <div
+                        onClick={() => {
+                          setActiveTab("live_ops");
+                          setLiveOpsFilter("cleaning");
+                        }}
+                        className="flex items-center justify-between p-3 bg-amber-50/40 rounded-xl border border-amber-100/50 cursor-pointer hover:bg-amber-50/80 hover:border-amber-200 transition-all"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                           <span className="text-xs font-bold text-gray-600">شقق قيد التنظيف والتحضير</span>
                         </div>
                         <span className="text-sm font-black text-amber-700">
-                          {(data.liveUnits || []).filter((u: any) => u.status === "تنظيف").length} شقة
+                          {(data.liveUnits || []).filter((u: any) => u.status === "awaiting_cleaning" || u.status === "cleaning_in_progress").length} شقة
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-between p-3 bg-rose-50/40 rounded-xl border border-rose-100/50">
+                      <div
+                        onClick={() => {
+                          setActiveTab("live_ops");
+                          setLiveOpsFilter("maintenance");
+                        }}
+                        className="flex items-center justify-between p-3 bg-rose-50/40 rounded-xl border border-rose-100/50 cursor-pointer hover:bg-rose-50/80 hover:border-rose-200 transition-all"
+                      >
                         <div className="flex items-center gap-2">
                           <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
                           <span className="text-xs font-bold text-gray-600">أعمال صيانة نشطة</span>
                         </div>
                         <span className="text-sm font-black text-rose-700">
-                          {(data.liveUnits || []).filter((u: any) => u.status === "تحت الصيانة").length} شقة
+                          {(data.liveUnits || []).filter((u: any) => u.status === "maintenance" || u.activeMaintTickets > 0).length} شقة
                         </span>
                       </div>
                     </div>
