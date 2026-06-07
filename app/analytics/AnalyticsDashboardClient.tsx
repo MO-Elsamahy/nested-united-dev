@@ -2545,54 +2545,79 @@ export function AnalyticsDashboardClient({
                         })()}
                       </div>
                       <div className="w-full h-[280px] relative" style={{ direction: "ltr" }}>
-                        {isMounted && (dynamicJobTitleStats || []).length > 0 ? (
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart 
-                              data={(dynamicJobTitleStats || []).map((item: any) => ({
-                                ...item,
-                                name: translateJobTitle(item.name)
-                              }))} 
-                              margin={{ top: 10, right: 10, left: -20, bottom: 60 }}
-                            >
-                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                              <XAxis 
-                                dataKey="name"
-                                tick={{ fill: '#475569', fontSize: 9, fontWeight: 'bold' }} 
-                                axisLine={false} 
-                                tickLine={false}
-                                interval={0}
-                                angle={-35}
-                                textAnchor="end"
-                              />
-                              <YAxis 
-                                tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
-                                axisLine={false} 
-                                tickLine={false}
-                                allowDecimals={false}
-                                domain={[0, 'dataMax + 1']}
-                              />
-                              <RechartsTooltip
-                                wrapperStyle={{ zIndex: 100 }}
-                                content={({ active, payload }) => {
-                                  if (active && payload && payload.length) {
-                                    return (
-                                      <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl">
-                                        <p className="text-gray-400">{payload[0].payload.name}</p>
-                                        <p className="text-indigo-400">{payload[0].value} موظفين ({Math.round(Number(payload[0].value)/totalEmployees * 100)}%)</p>
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                }}
-                              />
-                              <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={30}>
-                                {(dynamicJobTitleStats || []).map((entry: any, index: number) => (
-                                  <Cell key={`cell-${index}`} fill={COLORS_PIE[index % COLORS_PIE.length]} />
-                                ))}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
-                        ) : (
+                        {isMounted && (dynamicJobTitleStats || []).length > 0 ? (() => {
+                          const sortedHRData = [...(dynamicJobTitleStats || [])]
+                            .sort((a: any, b: any) => b.value - a.value)
+                            .map((item: any) => ({
+                              ...item,
+                              name: translateJobTitle(item.name)
+                            }));
+                          const maxVal = Math.max(...sortedHRData.map((d: any) => d.value), 0);
+                          const yTicks = Array.from({ length: maxVal + 1 }, (_, i) => i + 1);
+
+                          // 12 shades of Teal from darkest to lightest
+                          const tealShades = [
+                            "#042f2e", // teal-950 (darkest)
+                            "#134e4a", // teal-900
+                            "#115e59", // teal-800
+                            "#0f766e", // teal-700
+                            "#0d9488", // teal-600
+                            "#14b8a6", // teal-500 (color in the image!)
+                            "#2dd4bf", // teal-400
+                            "#5eead4", // teal-300
+                            "#99f6e4", // teal-200
+                            "#ccfbf1", // teal-100
+                            "#e6fffa", // light teal
+                            "#f0fdfa", // teal-50 (lightest)
+                          ];
+
+                          return (
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart 
+                                data={sortedHRData} 
+                                margin={{ top: 10, right: 10, left: -20, bottom: 60 }}
+                              >
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis 
+                                  dataKey="name"
+                                  tick={{ fill: '#475569', fontSize: 9, fontWeight: 'bold' }} 
+                                  axisLine={false} 
+                                  tickLine={false}
+                                  interval={0}
+                                  angle={-35}
+                                  textAnchor="end"
+                                />
+                                <YAxis 
+                                  ticks={yTicks}
+                                  tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
+                                  axisLine={false} 
+                                  tickLine={false}
+                                  allowDecimals={false}
+                                  domain={[1, maxVal + 1]}
+                                />
+                                <RechartsTooltip
+                                  wrapperStyle={{ zIndex: 100 }}
+                                  content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-slate-900 text-white p-3 rounded-xl shadow-lg border border-slate-800 text-xs font-bold text-right dir-rtl">
+                                          <p className="text-gray-400">{payload[0].payload.name}</p>
+                                          <p className="text-teal-400">{payload[0].value} موظفين ({Math.round(Number(payload[0].value) / totalEmployees * 100)}%)</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={30}>
+                                  {sortedHRData.map((entry: any, index: number) => (
+                                    <Cell key={`cell-${index}`} fill={tealShades[Math.min(index, tealShades.length - 1)]} />
+                                  ))}
+                                </Bar>
+                              </BarChart>
+                            </ResponsiveContainer>
+                          );
+                        })() : (
                           <NoDataState />
                         )}
                       </div>
@@ -2694,7 +2719,7 @@ export function AnalyticsDashboardClient({
                         {isMounted && (dynamicAttendanceStats || []).map((item: any, idx: number) => {
                           const color = ATT_COLORS[item.status] || COLORS_PIE[idx % COLORS_PIE.length];
                           const totalCount = (dynamicAttendanceStats || []).reduce((a:number,c:any)=>a+c.count,0) || 1;
-                          const percent = Math.round(item.count/totalCount * 100);
+                          const percent = Math.round((item.count / totalCount) * 100);
                           return (
                             <div key={idx} className="space-y-1">
                               <div className="flex justify-between items-center text-[10px] font-bold">
