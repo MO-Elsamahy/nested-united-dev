@@ -522,16 +522,11 @@ export async function GET(req: NextRequest) {
     const eDate = new Date(endDateStr);
 
     if (range === "today") {
-      // Show daily trend for the 7 days of the week containing eDate
-      const monday = new Date(eDate);
-      const dayVal = eDate.getDay();
-      const diffVal = dayVal === 0 ? 6 : dayVal - 1; // ISO Monday start
-      monday.setDate(eDate.getDate() - diffVal);
-
-      const arabicDays = ["الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت", "الأحد"];
-      for (let i = 0; i < 7; i++) {
-        const targetDay = new Date(monday);
-        targetDay.setDate(monday.getDate() + i);
+      // Show daily trend centered around the selected eDate (-3 days to +3 days)
+      const arabicDayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+      for (let i = -3; i <= 3; i++) {
+        const targetDay = new Date(eDate);
+        targetDay.setDate(eDate.getDate() + i);
         const dayStr = format(targetDay);
 
         const dRevenue = await getPeriodRevenue(dayStr, dayStr);
@@ -540,8 +535,10 @@ export async function GET(req: NextRequest) {
         const dExpenses = await getPeriodExpenses(dayStr, dayStr, 1);
         const dayNum = targetDay.getDate();
         const monthNum = targetDay.getMonth() + 1;
+        const dayName = arabicDayNames[targetDay.getDay()];
+        
         monthlyData.push({
-          month: `${arabicDays[i]} ${dayNum}/${monthNum}`,
+          month: `${dayName} ${dayNum}/${monthNum}`,
           amount: dRevenue,
           expenses: dExpenses,
           occupancy: dOccupancy,

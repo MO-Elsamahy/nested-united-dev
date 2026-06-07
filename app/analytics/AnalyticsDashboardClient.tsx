@@ -630,16 +630,16 @@ export function AnalyticsDashboardClient({
                   </div>
 
                   {/* Card 5 */}
-                  <div className="bg-gradient-to-br from-rose-50/40 to-rose-50/10 border border-rose-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
+                  <div className="bg-gradient-to-br from-slate-50/40 to-slate-50/10 border border-slate-200/60 rounded-2xl p-5 space-y-3 relative overflow-hidden">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-gray-500">إجمالي الحجوزات</span>
-                      <div className="p-2 bg-rose-500 text-white rounded-xl">
+                      <div className="p-2 bg-slate-500 text-white rounded-xl">
                         <ClipboardList className="w-4 h-4" />
                       </div>
                     </div>
                     <div className="space-y-1">
                       <p className="text-2xl font-black text-gray-900">{data.stats.totalBookings} حجز</p>
-                      <div className="flex items-center gap-1 text-rose-600 text-xs font-bold">
+                      <div className="flex items-center gap-1 text-slate-600 text-xs font-bold">
                         <span>إجمالي الحجوزات المسجلة</span>
                       </div>
                     </div>
@@ -1353,7 +1353,7 @@ export function AnalyticsDashboardClient({
                               />
                               <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={12}>
                                 {(data.maintenanceAnalytics?.topUnits || []).map((entry: any, index: number) => {
-                                  let color = "#3b82f6"; // Blue for low tickets (2 or fewer)
+                                  let color = "#10b981"; // Green for low tickets (2 or fewer)
                                   if (entry.count >= 5) color = "#ef4444";      // Red for high tickets (5 or more)
                                   else if (entry.count >= 3) color = "#f59e0b"; // Amber/Orange for medium tickets (3 or 4)
                                   return <Cell key={`cell-${index}`} fill={color} />;
