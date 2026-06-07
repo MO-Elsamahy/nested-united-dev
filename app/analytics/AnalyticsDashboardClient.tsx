@@ -994,6 +994,7 @@ export function AnalyticsDashboardClient({
                     <div className="space-y-3.5 my-auto">
                       <div
                         onClick={() => {
+                          window.history.pushState(null, "", "/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("ready");
                         }}
@@ -1010,6 +1011,7 @@ export function AnalyticsDashboardClient({
 
                       <div
                         onClick={() => {
+                          window.history.pushState(null, "", "/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("occupied");
                         }}
@@ -1026,6 +1028,7 @@ export function AnalyticsDashboardClient({
 
                       <div
                         onClick={() => {
+                          window.history.pushState(null, "", "/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("cleaning");
                         }}
@@ -1042,6 +1045,7 @@ export function AnalyticsDashboardClient({
 
                       <div
                         onClick={() => {
+                          window.history.pushState(null, "", "/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("maintenance");
                         }}
