@@ -299,14 +299,14 @@ export function AnalyticsDashboardClient({
   ]);
 
   // Data availability checks for showing NoDataState placeholders
-  const hasRevenueTrendData = data?.monthlyData && data.monthlyData.length > 0 && data.monthlyData.some((item: any) => (item.amount || 0) > 0);
+  const hasRevenueTrendData = data?.monthlyData && data.monthlyData.length > 0;
   const hasPlatformShareData = data?.platformShare && ((data.platformShare.airbnb?.percent || 0) > 0 || (data.platformShare.gathern?.percent || 0) > 0 || (data.platformShare.external?.percent || 0) > 0);
   const hasProfitabilityData = data?.profitability && data.profitability.length > 0 && data.profitability.some((u: any) => {
     const rev = u.revenue ? parseFloat(u.revenue.replace(/,/g, "")) : 0;
     return rev > 0;
   });
-  const hasCashFlowData = data?.monthlyData && data.monthlyData.length > 0 && data.monthlyData.some((item: any) => (item.amount || 0) > 0 || (item.expenses || 0) > 0);
-  const hasOccupancyData = data?.monthlyData && data.monthlyData.length > 0 && data.monthlyData.some((item: any) => (item.occupancy || 0) > 0);
+  const hasCashFlowData = data?.monthlyData && data.monthlyData.length > 0;
+  const hasOccupancyData = data?.monthlyData && data.monthlyData.length > 0;
 
   const totalTickets = data?.maintenanceAnalytics?.statusDist
     ? data.maintenanceAnalytics.statusDist.reduce((acc: number, r: any) => acc + r.count, 0)
@@ -699,10 +699,20 @@ export function AnalyticsDashboardClient({
                   {/* Revenue Growth Card */}
                   <div className="lg:col-span-2 border border-gray-100 rounded-2xl p-5 flex flex-col justify-between bg-white shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-bold text-gray-900">تحليل الإيرادات والنمو الشهري</h3>
-                        <p className="text-[11px] text-gray-400 mt-0.5">منحنى نمو تدفق المبيعات للأشهر الستة الأخيرة (ر.س)</p>
-                      </div>
+                        <h3 className="text-sm font-bold text-gray-900">
+                          {dateRange === "today"
+                            ? "تحليل الإيرادات والنمو اليومي"
+                            : dateRange === "week"
+                            ? "تحليل الإيرادات والنمو الأسبوعي"
+                            : "تحليل الإيرادات والنمو الشهري"}
+                        </h3>
+                        <p className="text-[11px] text-gray-400 mt-0.5">
+                          {dateRange === "today"
+                            ? "منحنى نمو تدفق المبيعات اليومي لأيام الأسبوع الحالي (ر.س)"
+                            : dateRange === "week"
+                            ? "منحنى نمو تدفق المبيعات الأسبوعي للأسابيع المقارنة (ر.س)"
+                            : "منحنى نمو تدفق المبيعات للأشهر الستة الأخيرة (ر.س)"}
+                        </p>
                       <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-lg">إيرادات نشطة</span>
                     </div>
 
@@ -805,7 +815,7 @@ export function AnalyticsDashboardClient({
                               name: "Gathern Local",
                               value: data.platformShare.gathern.percent,
                               raw: data.platformShare.gathern.value,
-                              color: "#ff9750"
+                              color: "#8b5cf6"
                             },
                             {
                               name: "حجز خارجي",
@@ -881,13 +891,13 @@ export function AnalyticsDashboardClient({
                       </div>
 
                       <div 
-                        style={{ backgroundColor: "rgba(255, 151, 80, 0.05)", borderColor: "rgba(255, 151, 80, 0.15)" }} 
-                        className="border rounded-xl p-2.5 text-center transition-all hover:bg-[rgba(255,151,80,0.08)] flex flex-col justify-between min-h-[105px]"
+                        style={{ backgroundColor: "rgba(139, 92, 246, 0.05)", borderColor: "rgba(139, 92, 246, 0.15)" }} 
+                        className="border rounded-xl p-2.5 text-center transition-all hover:bg-[rgba(139,92,246,0.08)] flex flex-col justify-between min-h-[105px]"
                       >
                         <div className="flex items-center justify-center h-8 mb-1">
                           <img src="/images/platforms/gathern.svg" className="h-6 object-contain" alt="Gathern" />
                         </div>
-                        <p style={{ color: "#ff9750" }} className="text-base font-black leading-none">{data.platformShare.gathern.percent}%</p>
+                        <p style={{ color: "#8b5cf6" }} className="text-base font-black leading-none">{data.platformShare.gathern.percent}%</p>
                         <span className="text-[10px] font-bold text-gray-500 mt-1 block">{data.platformShare.gathern.value}</span>
                       </div>
 
@@ -1028,8 +1038,20 @@ export function AnalyticsDashboardClient({
                   {/* Chart 1: Cashflow (Income vs Expenses) */}
                   <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4 justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900">مقارنة التدفق النقدي شهرياً (الإيرادات مقابل المصروفات)</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">تحليل الإيرادات المحققة مقابل المصاريف الكلية والرواتب والصيانة (ر.س)</p>
+                      <h3 className="text-sm font-bold text-gray-900">
+                        {dateRange === "today"
+                          ? "مقارنة التدفق النقدي يومياً (الإيرادات مقابل المصروفات)"
+                          : dateRange === "week"
+                          ? "مقارنة التدفق النقدي أسبوعياً (الإيرادات مقابل المصروفات)"
+                          : "مقارنة التدفق النقدي شهرياً (الإيرادات مقابل المصروفات)"}
+                      </h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {dateRange === "today"
+                          ? "تحليل الإيرادات اليومية مقابل المصاريف الكلية والرواتب والصيانة (ر.س)"
+                          : dateRange === "week"
+                          ? "تحليل الإيرادات الأسبوعية مقابل المصاريف الكلية والرواتب والصيانة (ر.س)"
+                          : "تحليل الإيرادات المحققة مقابل المصاريف الكلية والرواتب والصيانة (ر.س)"}
+                      </p>
                     </div>
                     <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
                       {isMounted ? (
@@ -1098,8 +1120,20 @@ export function AnalyticsDashboardClient({
                   {/* Chart 2: Occupancy Rate Seasonality */}
                   <div className="border border-gray-100 rounded-2xl p-5 flex flex-col bg-white shadow-sm space-y-4 justify-between">
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900">منحنى مواسم نسب الإشغال الشهري</h3>
-                      <p className="text-[11px] text-gray-400 mt-0.5">تحليل تقلبات نسب الإشغال على مدار أشهر السنة لتحديد فترات الذروة (%)</p>
+                      <h3 className="text-sm font-bold text-gray-900">
+                        {dateRange === "today"
+                          ? "منحنى مواسم نسب الإشغال اليومي"
+                          : dateRange === "week"
+                          ? "منحنى مواسم نسب الإشغال الأسبوعي"
+                          : "منحنى مواسم نسب الإشغال الشهري"}
+                      </h3>
+                      <p className="text-[11px] text-gray-400 mt-0.5">
+                        {dateRange === "today"
+                          ? "تحليل تقلبات نسب الإشغال اليومية على مدار الأسبوع الحالي (%)"
+                          : dateRange === "week"
+                          ? "تحليل تقلبات نسب الإشغال الأسبوعية للأسابيع المقارنة (%)"
+                          : "تحليل تقلبات نسب الإشغال على مدار أشهر السنة لتحديد فترات الذروة (%)"}
+                      </p>
                     </div>
                     <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
                       {isMounted ? (
