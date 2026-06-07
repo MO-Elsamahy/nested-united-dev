@@ -2593,7 +2593,7 @@ export function AnalyticsDashboardClient({
                                   axisLine={false} 
                                   tickLine={false}
                                   allowDecimals={false}
-                                  domain={[1, maxVal + 1]}
+                                  domain={[0, maxVal + 1]}
                                 />
                                 <RechartsTooltip
                                   wrapperStyle={{ zIndex: 100 }}
