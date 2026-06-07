@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useDialog } from "@/components/accounting/DialogProvider";
 import {
     Plus,
     Trash2,
@@ -59,6 +60,7 @@ interface InvoiceFormProps {
 
 export function InvoiceForm({ initialData, invoiceId, invoiceType = "customer_invoice" }: InvoiceFormProps) {
     const router = useRouter();
+    const { alert } = useDialog();
     const isVendorBill = invoiceType === "vendor_bill";
     const [loading, setLoading] = useState(false);
     const [allPartners, setAllPartners] = useState<Partner[]>([]);
@@ -239,11 +241,11 @@ export function InvoiceForm({ initialData, invoiceId, invoiceType = "customer_in
                 const data = await res.json();
                 setAttachmentUrl(data.url);
             } else {
-                alert("فشل رفع الملف");
+                await alert("فشل رفع الملف");
             }
         } catch (error) {
             console.error("Upload error:", error);
-            alert("حدث خطأ أثناء الرفع");
+            await alert("حدث خطأ أثناء الرفع");
         } finally {
             setIsUploading(false);
         }
@@ -253,7 +255,7 @@ export function InvoiceForm({ initialData, invoiceId, invoiceType = "customer_in
         e.preventDefault();
 
         if (!partnerQuery.trim()) {
-            alert(isVendorBill ? "الرجاء إدخال اسم المورد" : "الرجاء إدخال اسم العميل");
+            await alert(isVendorBill ? "الرجاء إدخال اسم المورد" : "الرجاء إدخال اسم العميل");
             return;
         }
 
@@ -278,7 +280,7 @@ export function InvoiceForm({ initialData, invoiceId, invoiceType = "customer_in
                 });
                 if (!createRes.ok) {
                     const err = await createRes.json();
-                    alert(`فشل إضافة ${isVendorBill ? "المورد" : "العميل"}: ${err.error}`);
+                    await alert(`فشل إضافة ${isVendorBill ? "المورد" : "العميل"}: ${err.error}`);
                     setLoading(false);
                     return;
                 }
@@ -319,7 +321,7 @@ export function InvoiceForm({ initialData, invoiceId, invoiceType = "customer_in
                     });
                     if (!confirmRes.ok) {
                         const error = await confirmRes.json();
-                        alert(`فشل التأكيد: ${error.error}`);
+                        await alert(`فشل التأكيد: ${error.error}`);
                         router.push(`/accounting/invoices/${invoice.id}`);
                         return;
                     }
@@ -327,11 +329,11 @@ export function InvoiceForm({ initialData, invoiceId, invoiceType = "customer_in
                 router.push(`/accounting/invoices/${invoice.id || invoiceId}`);
             } else {
                 const error = await res.json();
-                alert(`خطأ: ${error.error}`);
+                await alert(`خطأ: ${error.error}`);
             }
         } catch (error) {
             console.error(error);
-            alert("حدث خطأ أثناء الحفظ");
+            await alert("حدث خطأ أثناء الحفظ");
         } finally {
             setLoading(false);
         }

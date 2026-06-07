@@ -95,6 +95,20 @@ export async function POST(request: Request) {
                 workEndTimeStr = shift.end_time;     // HH:MM:SS
                 lateGraceMinutes = shift.late_grace_minutes || 0;
                 shiftName = shift.name;
+
+                // ─── فحص يوم الراحة الأسبوعي ───
+                if (shift.days_off) {
+                    const offDays = shift.days_off.split(",").filter(Boolean).map(Number);
+                    // getDay() على التاريخ المحلي (0=أحد ... 6=سبت)
+                    const todayDayIndex = new Date(today).getDay();
+                    if (offDays.includes(todayDayIndex)) {
+                        const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+                        return NextResponse.json(
+                            { error: `يوم ${dayNames[todayDayIndex]} يوم راحة أسبوعية وفقاً لوردية "${shiftName}". لا يمكن تسجيل الحضور.` },
+                            { status: 400 }
+                        );
+                    }
+                }
             }
         } else {
             // Fallback to global settings
@@ -107,10 +121,26 @@ export async function POST(request: Request) {
             const graceSetting = await queryOne<{ setting_value: string }>(
                 `SELECT setting_value FROM hr_settings WHERE setting_key = 'late_grace_minutes'`
             );
+            const defaultOffSetting = await queryOne<{ setting_value: string }>(
+                `SELECT setting_value FROM hr_settings WHERE setting_key = 'default_days_off'`
+            );
 
             if (workStartSetting?.setting_value) workStartTimeStr = workStartSetting.setting_value;
             if (workEndSetting?.setting_value) workEndTimeStr = workEndSetting.setting_value;
             if (graceSetting?.setting_value) lateGraceMinutes = parseInt(graceSetting.setting_value);
+
+            // ─── فحص يوم الراحة الافتراضي للموظفين بدون وردية ───
+            const defaultOffDays = defaultOffSetting?.setting_value
+                ? defaultOffSetting.setting_value.split(",").filter(Boolean).map(Number)
+                : [5, 6]; // افتراضي: جمعة + سبت
+            const todayDayIndex = new Date(today).getDay();
+            if (defaultOffDays.includes(todayDayIndex)) {
+                const dayNames = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+                return NextResponse.json(
+                    { error: `يوم ${dayNames[todayDayIndex]} يوم راحة أسبوعية. لا يمكن تسجيل الحضور.` },
+                    { status: 400 }
+                );
+            }
         }
 
         // Helper to convert time string to minutes

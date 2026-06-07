@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDialog } from "@/components/accounting/DialogProvider";
 import { Edit } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { usePermission } from "@/lib/hooks/usePermission";
 
 import { Unit } from "@/lib/types/pms";
 
@@ -19,17 +21,20 @@ const STATUS_OPTIONS = [
 ];
 
 export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; currentStatus: string }) {
+  const { data: session } = useSession();
   const { alert } = useDialog();
   const [isOpen, setIsOpen] = useState(false);
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const hasEditPermission = usePermission("edit", "/dashboard/unit-readiness");
+
   const formatDateForInput = (dateObj: string | number | Date | null | undefined) => {
     if (!dateObj) return "";
     const d = new Date(dateObj);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
-  // Check if there's an active booking driving the guest/dates display
   const hasActiveBooking = !!(unit as any).active_manual_guest || !!(unit as any).active_ical_guest;
 
   const [formData, setFormData] = useState({
@@ -40,6 +45,13 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
     notes: unit.readiness_notes || "",
   });
   const router = useRouter();
+
+  const userRole = session?.user?.role;
+  const isDefaultAuthorized = userRole === "admin" || userRole === "super_admin" || userRole === "maintenance_worker";
+  const canUpdate = isDefaultAuthorized || hasEditPermission === true;
+
+  // All hooks are above — safe to return null conditionally here
+  if (!canUpdate) return null;
 
   const openWithDefaults = async () => {
     setIsOpen(true);

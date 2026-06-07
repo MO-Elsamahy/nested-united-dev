@@ -220,14 +220,14 @@ export default function InvoiceDetailPage() {
                         </button>
                     )}
 
-                    {/* Register Payment for posted/partial invoices with outstanding balance */}
-                    {["posted", "partial"].includes(invoice.state) && Number(invoice.amount_due) > 0 && (
+                    {/* Register Payment — show whenever invoice is confirmed AND has outstanding balance */}
+                    {!["draft", "cancelled", "paid"].includes(invoice.state) && Number(invoice.amount_due) > 0 && (
                         <button
-                            onClick={() => { setPaymentAmount(String(invoice.amount_due)); setShowPaymentModal(true); }}
+                            onClick={() => { setPaymentAmount(String(Number(invoice.amount_due).toFixed(2))); setShowPaymentModal(true); }}
                             className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
                         >
                             <Check className="w-4 h-4" />
-                            تسجيل دفعة
+                            تسجيل دفعة ({Number(invoice.amount_due).toLocaleString("ar-SA")} ر.س)
                         </button>
                     )}
 

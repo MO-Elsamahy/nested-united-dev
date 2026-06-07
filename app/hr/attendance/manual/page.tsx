@@ -1,7 +1,9 @@
 "use client";
 
+import React from "react";
 import { useState, useEffect, useCallback } from "react";
 import { Pencil, Plus, X, Save, Clock, CheckCircle, AlertTriangle, Loader2, Calendar } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface EmployeeAttendance {
     id: string;
@@ -27,23 +29,26 @@ function formatTimeFromDB(datetimeStr: string | null): string {
 }
 
 function getStatusBadge(emp: EmployeeAttendance) {
-    if (!emp.check_in) {
+    // إذا كان في سجل بالداتابيس → نعتمد على حقل status
+    if (emp.attendance_id) {
+        const map: Record<string, { label: string; cls: string; icon: ReactNode }> = {
+            present: { label: "حاضر",  cls: "text-green-600 bg-green-50",  icon: <CheckCircle className="w-3 h-3" /> },
+            late:    { label: `متأخر ${emp.late_minutes || 0}د`, cls: "text-yellow-600 bg-yellow-50", icon: <Clock className="w-3 h-3" /> },
+            absent:  { label: "غائب",  cls: "text-red-600 bg-red-50",     icon: <AlertTriangle className="w-3 h-3" /> },
+            leave:   { label: "إجازة",  cls: "text-blue-600 bg-blue-50",  icon: <CheckCircle className="w-3 h-3" /> },
+            holiday: { label: "عطلة",   cls: "text-purple-600 bg-purple-50", icon: <CheckCircle className="w-3 h-3" /> },
+        };
+        const s = map[emp.status || ""] || { label: emp.status || "غير محدد", cls: "text-gray-600 bg-gray-50", icon: <Clock className="w-3 h-3" /> };
         return (
-            <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded text-xs">
-                <AlertTriangle className="w-3 h-3" /> غائب
+            <span className={`flex items-center gap-1 ${s.cls} px-2 py-1 rounded text-xs`}>
+                {s.icon} {s.label}
             </span>
         );
     }
-    if (emp.status === "late") {
-        return (
-            <span className="flex items-center gap-1 text-yellow-600 bg-yellow-50 px-2 py-1 rounded text-xs">
-                <Clock className="w-3 h-3" /> متأخر {emp.late_minutes} د
-            </span>
-        );
-    }
+    // لو مافيش سجل خالص → غائب بالكامل
     return (
-        <span className="flex items-center gap-1 text-green-600 bg-green-50 px-2 py-1 rounded text-xs">
-            <CheckCircle className="w-3 h-3" /> حاضر
+        <span className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded text-xs">
+            <AlertTriangle className="w-3 h-3" /> غائب
         </span>
     );
 }
@@ -240,10 +245,10 @@ export default function ManualAttendancePage() {
     }
 
     const stats = {
-        total: employees.length,
-        present: employees.filter((e) => e.check_in && e.status !== "absent").length,
-        absent: employees.filter((e) => !e.check_in || e.status === "absent").length,
-        late: employees.filter((e) => e.status === "late").length,
+        total:   employees.length,
+        present: employees.filter((e) => e.attendance_id && (e.status === "present" || e.status === "late")).length,
+        absent:  employees.filter((e) => !e.attendance_id || e.status === "absent").length,
+        late:    employees.filter((e) => e.status === "late").length,
     };
 
     return (
@@ -347,11 +352,11 @@ export default function ManualAttendancePage() {
                                                 onClick={() => setEditingEmployee(emp)}
                                                 className="inline-flex items-center gap-1.5 text-sm bg-violet-50 hover:bg-violet-100 text-violet-700 px-3 py-1.5 rounded-lg transition font-medium"
                                             >
-                                                {emp.check_in ? (
-                                                    <><Pencil className="w-3.5 h-3.5" /> تعديل</>
-                                                ) : (
-                                                    <><Plus className="w-3.5 h-3.5" /> إضافة</>
-                                                )}
+                                                {emp.attendance_id ? (
+                                                     <><Pencil className="w-3.5 h-3.5" /> تعديل</>
+                                                 ) : (
+                                                     <><Plus className="w-3.5 h-3.5" /> إضافة</>
+                                                 )}
                                             </button>
                                         </td>
                                     </tr>

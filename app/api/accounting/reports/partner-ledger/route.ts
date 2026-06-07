@@ -29,13 +29,14 @@ export async function GET(request: Request) {
       AND m.state = 'posted'
       AND m.deleted_at IS NULL
       AND m.date < ?
-      AND (a.type = 'asset_receivable' OR a.type = 'liability_payable')
+      AND a.type IN ('asset_receivable','liability_payable','liability_current')
+      AND a.type NOT IN ('asset_bank','asset_cash')
     `;
         const obRes = await query<{ balance: number }>(obSql, [partnerId, from]);
         openingBalance = Number(obRes[0]?.balance) || 0;
     }
 
-    // Get transactions
+    // Get transactions — طرف العميل/المورد فقط (الذمم)، نستبعد طرف الخزينة/البنك
     let sql = `
     SELECT 
       m.date,
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
       l.debit,
       l.credit,
       a.name as account_name,
+      a.type as account_type,
       j.code as journal_code
     FROM accounting_move_lines l
     JOIN accounting_moves m ON l.move_id = m.id
@@ -53,7 +55,13 @@ export async function GET(request: Request) {
     WHERE l.partner_id = ?
     AND m.state = 'posted'
     AND m.deleted_at IS NULL
-    AND (a.type = 'asset_receivable' OR a.type = 'liability_payable')
+    AND a.type IN (
+      'asset_receivable',   -- ذمم العملاء
+      'liability_payable',  -- ذمم الموردين (standard)
+      'liability_current'   -- ذمم الموردين (في نظامنا)
+    )
+    -- نستبعد صراحةً حسابات الخزينة والبنك لمنع التكرار
+    AND a.type NOT IN ('asset_bank', 'asset_cash')
   `;
 
     const params: (string | number | boolean | null)[] = [partnerId];
