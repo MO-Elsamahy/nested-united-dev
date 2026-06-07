@@ -97,8 +97,15 @@ interface AnalyticsDashboardClientProps {
 export function AnalyticsDashboardClient({
   initialAccounts,
   lastSyncTime,
-  activeTab,
+  activeTab: initialActiveTab,
 }: AnalyticsDashboardClientProps) {
+  const [activeTab, setActiveTab] = useState<"executive" | "live_ops" | "profitability" | "crm" | "hr">(
+    initialActiveTab
+  );
+
+  useEffect(() => {
+    setActiveTab(initialActiveTab);
+  }, [initialActiveTab]);
   const [selectedAccount, setSelectedAccount] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("month");
   const [liveOpsFilter, setLiveOpsFilter] = useState<"all" | "occupied" | "ready" | "cleaning" | "maintenance">("all");
