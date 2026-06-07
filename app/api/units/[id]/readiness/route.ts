@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { checkUserPermission } from "@/lib/permissions";
 import { queryOne, execute } from "@/lib/db";
 
 // GET /api/units/[id]/readiness - Get readiness status for a specific unit
@@ -45,12 +46,17 @@ export async function PUT(
     const { id } = await params;
     const currentUser = await getCurrentUser();
 
-    // Admins + maintenance workers can update readiness
-    if (
-      !currentUser ||
-      !(isAdmin(currentUser) || currentUser.role === "maintenance_worker")
-    ) {
+    if (!currentUser) {
       return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
+    }
+
+    // Admins + maintenance workers can update readiness, or anyone with explicit edit permission on this page
+    const hasEditPermission = await checkUserPermission(currentUser.id, "/dashboard/unit-readiness", "edit");
+    if (!(isAdmin(currentUser) || currentUser.role === "maintenance_worker" || hasEditPermission)) {
+      return NextResponse.json(
+        { error: "ليس لديك صلاحية لتعديل حالة جاهزية الوحدة" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

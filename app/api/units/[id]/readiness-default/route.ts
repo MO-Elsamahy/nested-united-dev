@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
+import { checkUserPermission } from "@/lib/permissions";
 import { queryOne } from "@/lib/db";
 
 // GET /api/units/[id]/readiness-default - Suggest checkin/checkout dates & guest name from bookings/iCal
@@ -11,12 +12,17 @@ export async function GET(
     const { id } = await params;
     const currentUser = await getCurrentUser();
 
-    // Allow admins + maintenance workers
-    if (
-      !currentUser ||
-      !(isAdmin(currentUser) || currentUser.role === "maintenance_worker")
-    ) {
+    if (!currentUser) {
       return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
+    }
+
+    // Allow admins + maintenance workers, or anyone with explicit edit permission on this page
+    const hasEditPermission = await checkUserPermission(currentUser.id, "/dashboard/unit-readiness", "edit");
+    if (!(isAdmin(currentUser) || currentUser.role === "maintenance_worker" || hasEditPermission)) {
+      return NextResponse.json(
+        { error: "ليس لديك صلاحية للوصول لتواريخ الجاهزية الافتراضية" },
+        { status: 403 }
+      );
     }
 
     // Local today based on server/local system time (e.g. Saudi/Egypt)
