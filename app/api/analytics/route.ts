@@ -997,9 +997,12 @@ export async function GET(req: NextRequest) {
 
     // 13. HR & Payroll Overview (Detailed currency breakdown and advanced metrics)
     const hrActiveEmployees = await query<any>(
-      `SELECT basic_salary, housing_allowance, transport_allowance, other_allowances, hire_date, salary_currency 
-       FROM hr_employees 
-       WHERE status = 'active' AND (hire_date IS NULL OR hire_date <= ?)`,
+      `SELECT e.basic_salary, e.housing_allowance, e.transport_allowance, e.other_allowances, e.hire_date, e.salary_currency 
+       FROM hr_employees e
+       LEFT JOIN users u ON e.user_id = u.id
+       WHERE e.status = 'active'
+         AND (u.role IS NULL OR u.role NOT IN ('super_admin', 'accountant'))
+         AND (e.hire_date IS NULL OR e.hire_date <= ?)`,
       [endDateStr]
     );
 
@@ -1085,7 +1088,10 @@ export async function GET(req: NextRequest) {
               s.days_off
        FROM hr_employees e
        LEFT JOIN hr_shifts s ON e.shift_id = s.id
-       WHERE e.status = 'active' AND (e.hire_date IS NULL OR e.hire_date <= ?)`,
+       LEFT JOIN users u ON e.user_id = u.id
+       WHERE e.status = 'active'
+         AND (u.role IS NULL OR u.role NOT IN ('super_admin', 'accountant'))
+         AND (e.hire_date IS NULL OR e.hire_date <= ?)`,
       [endDateStr]
     );
 
@@ -1132,6 +1138,19 @@ export async function GET(req: NextRequest) {
       attendanceMap[empId][dateStr] = att.status;
     }
 
+    // Fetch default days off dynamically from hr_settings to match reports portal fallback
+    const defaultOffSetting = await queryOne<{ setting_value: string }>(
+      "SELECT setting_value FROM hr_settings WHERE setting_key = 'default_days_off'"
+    );
+    const defaultOffDays = defaultOffSetting?.setting_value
+      ? defaultOffSetting.setting_value.split(",").filter(Boolean).map(Number)
+      : [5, 6];
+
+    // Compute UTC+3 local date and yesterday date for accurate range capping
+    const localNow = new Date(Date.now() + 3 * 60 * 60 * 1000);
+    const yesterday = new Date(localNow.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
     let globalPresent = 0;
     let globalLate = 0;
     let globalAbsent = 0;
@@ -1153,7 +1172,10 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      let empEnd = endDateStr < todayStr ? endDateStr : todayStr;
+      // Cap the end date at yesterday for non-daily ranges to prevent today's pending logs from counting as absences
+      let empEnd = range === "today" 
+        ? startDateStr 
+        : (endDateStr < yesterdayStr ? endDateStr : yesterdayStr);
 
       let expected = 0;
       let present = 0;
@@ -1170,7 +1192,9 @@ export async function GET(req: NextRequest) {
 
       if (empStart <= empEnd) {
         const dates = getDatesInRange(empStart, empEnd);
-        const daysOff = emp.days_off ? emp.days_off.split(",").map(Number) : [5]; // Default Friday (5)
+        const daysOff = emp.days_off 
+          ? emp.days_off.split(",").filter(Boolean).map(Number) 
+          : defaultOffDays;
         const empLeaves = activeLeaves.filter((l: any) => l.employee_id === emp.id);
 
         for (const dStr of dates) {
@@ -1182,21 +1206,7 @@ export async function GET(req: NextRequest) {
             continue;
           }
 
-          // 2. Check approved leaves
-          const onLeave = empLeaves.some((l: any) => {
-            const lStart = l.start_date instanceof Date ? l.start_date.toISOString().split("T")[0] : String(l.start_date).split(" ")[0];
-            const lEnd = l.end_date instanceof Date ? l.end_date.toISOString().split("T")[0] : String(l.end_date).split(" ")[0];
-            return dStr >= lStart && dStr <= lEnd;
-          });
-
-          if (onLeave) {
-            leave++;
-            continue;
-          }
-
-          // 3. Expected working day
-          expected++;
-
+          // 2. Check attendance records or approved leaves
           const attStatus = attendanceMap[emp.id]?.[dStr];
           if (attStatus) {
             if (attStatus === 'present') {
@@ -1207,15 +1217,27 @@ export async function GET(req: NextRequest) {
             } else if (attStatus === 'absent') {
               absent++;
             } else if (attStatus === 'leave' || attStatus === 'holiday') {
-              expected--;
               leave++;
             }
           } else {
-            // Missing check-in -> Absent
-            absent++;
+            // Missing check-in -> Check if employee was on an approved leave request
+            const onLeave = empLeaves.some((l: any) => {
+              const lStart = l.start_date instanceof Date ? l.start_date.toISOString().split("T")[0] : String(l.start_date).split(" ")[0];
+              const lEnd = l.end_date instanceof Date ? l.end_date.toISOString().split("T")[0] : String(l.end_date).split(" ")[0];
+              return dStr >= lStart && dStr <= lEnd;
+            });
+
+            if (onLeave) {
+              leave++;
+            } else {
+              absent++;
+            }
           }
         }
       }
+
+      // Compute total expected workdays including leaves to match the reports portal formula
+      expected = present + absent + leave;
 
       globalPresent += present;
       globalLate += late;
@@ -1251,12 +1273,15 @@ export async function GET(req: NextRequest) {
       { status: "إجازة", count: globalLeave }
     ].filter(item => item.count > 0);
 
-    // Job Title distribution count (filtered by date range)
+    // Job Title distribution count excluding super_admin and accountant (filtered by date range)
     const jobTitleStatsList = await query<any>(
-      `SELECT job_title, COUNT(*) as count 
-       FROM hr_employees 
-       WHERE status = 'active' AND (hire_date IS NULL OR hire_date <= ?)
-       GROUP BY job_title`,
+      `SELECT e.job_title, COUNT(*) as count 
+       FROM hr_employees e
+       LEFT JOIN users u ON e.user_id = u.id
+       WHERE e.status = 'active'
+         AND (u.role IS NULL OR u.role NOT IN ('super_admin', 'accountant'))
+         AND (e.hire_date IS NULL OR e.hire_date <= ?)
+       GROUP BY e.job_title`,
       [endDateStr]
     );
     const jobTitleStats = jobTitleStatsList.map((r: any) => ({
@@ -1264,12 +1289,14 @@ export async function GET(req: NextRequest) {
       value: Number(r.count || 0),
     }));
 
-    // Active Leave Requests (filtered by date range overlap)
+    // Active Leave Requests excluding super_admin and accountant (filtered by date range overlap)
     const leaveRequestsList = await query<any>(
       `SELECT r.id, r.request_type, r.start_date, r.end_date, r.days_count, r.reason, r.status, e.full_name as employee_name
        FROM hr_requests r
        INNER JOIN hr_employees e ON r.employee_id = e.id
-       WHERE (r.start_date <= ? AND r.end_date >= ?)
+       LEFT JOIN users u ON e.user_id = u.id
+       WHERE (u.role IS NULL OR u.role NOT IN ('super_admin', 'accountant'))
+         AND (r.start_date <= ? AND r.end_date >= ?)
        ORDER BY r.created_at DESC`,
       [endDateStr, startDateStr]
     );
