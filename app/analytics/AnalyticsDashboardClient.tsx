@@ -1525,18 +1525,18 @@ export function AnalyticsDashboardClient({
                       {/* Card 3: Occupancy Rate */}
                       <div
                         onClick={() => setLiveOpsFilter("occupied")}
-                        className={`bg-gradient-to-br from-blue-50/50 to-blue-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "occupied" ? "border-blue-400 ring-2 ring-blue-500/20 bg-blue-50/80" : "border-blue-100/40"
+                        className={`bg-gradient-to-br from-teal-50/50 to-teal-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "occupied" ? "border-teal-400 ring-2 ring-teal-500/20 bg-teal-50/80" : "border-teal-100/40"
                           }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-gray-500">نسبة الإشغال اللحظي</span>
-                          <div className="p-2 bg-blue-500 text-white rounded-xl">
+                          <div className="p-2 bg-teal-500 text-white rounded-xl">
                             <Percent className="w-4 h-4" />
                           </div>
                         </div>
                         <div className="space-y-1">
                           <p className="text-2xl font-black text-gray-900">{occupancyRate}%</p>
-                          <div className="text-[10px] text-blue-600 font-bold">
+                          <div className="text-[10px] text-teal-600 font-bold">
                             <span>معدل التشغيل الفوري للوحدات</span>
                           </div>
                         </div>
@@ -1545,18 +1545,18 @@ export function AnalyticsDashboardClient({
                       {/* Card 4: Vacant & Ready */}
                       <div
                         onClick={() => setLiveOpsFilter("ready")}
-                        className={`bg-gradient-to-br from-teal-50/50 to-teal-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "ready" ? "border-teal-400 ring-2 ring-teal-500/20 bg-teal-50/80" : "border-teal-100/40"
+                        className={`bg-gradient-to-br from-blue-50/50 to-blue-50/10 border rounded-2xl p-5 space-y-3 relative overflow-hidden shadow-sm cursor-pointer hover:shadow-md hover:scale-[1.01] transition-all duration-200 ${liveOpsFilter === "ready" ? "border-blue-400 ring-2 ring-blue-500/20 bg-blue-50/80" : "border-blue-100/40"
                           }`}
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-gray-500">شاغر وجاهز</span>
-                          <div className="p-2 bg-teal-500 text-white rounded-xl">
+                          <div className="p-2 bg-blue-500 text-white rounded-xl">
                             <CheckCircle className="w-4 h-4" />
                           </div>
                         </div>
                         <div className="space-y-1">
                           <p className="text-2xl font-black text-gray-900">{readyUnits} شقة</p>
-                          <div className="text-[10px] text-teal-600 font-bold">
+                          <div className="text-[10px] text-blue-600 font-bold">
                             <span>تصفية بالشقق النظيفة الجاهزة</span>
                           </div>
                         </div>
