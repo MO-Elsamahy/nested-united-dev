@@ -1,5 +1,6 @@
 "use client";
 import { UpdateStatusButton } from "@/app/dashboard/unit-readiness/UpdateStatusButton";
+import { useRouter } from "next/navigation";
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -99,6 +100,7 @@ export function AnalyticsDashboardClient({
   lastSyncTime,
   activeTab: initialActiveTab,
 }: AnalyticsDashboardClientProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"executive" | "live_ops" | "profitability" | "crm" | "hr">(
     initialActiveTab
   );
@@ -994,7 +996,7 @@ export function AnalyticsDashboardClient({
                     <div className="space-y-3.5 my-auto">
                       <div
                         onClick={() => {
-                          window.history.pushState(null, "", "/analytics?tab=live_ops");
+                          router.push("/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("ready");
                         }}
@@ -1011,7 +1013,7 @@ export function AnalyticsDashboardClient({
 
                       <div
                         onClick={() => {
-                          window.history.pushState(null, "", "/analytics?tab=live_ops");
+                          router.push("/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("occupied");
                         }}
@@ -1028,7 +1030,7 @@ export function AnalyticsDashboardClient({
 
                       <div
                         onClick={() => {
-                          window.history.pushState(null, "", "/analytics?tab=live_ops");
+                          router.push("/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("cleaning");
                         }}
@@ -1045,7 +1047,7 @@ export function AnalyticsDashboardClient({
 
                       <div
                         onClick={() => {
-                          window.history.pushState(null, "", "/analytics?tab=live_ops");
+                          router.push("/analytics?tab=live_ops");
                           setActiveTab("live_ops");
                           setLiveOpsFilter("maintenance");
                         }}
