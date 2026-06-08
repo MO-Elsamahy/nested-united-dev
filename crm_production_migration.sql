@@ -51,3 +51,10 @@ UPDATE hr_employees
 SET job_title = 'مسؤول تسويق' 
 WHERE job_title = 'مسوؤل تسويق';
 
+-- 8. Database Index Optimizations for Advanced Analytics (NEW - 2026-06-08)
+--    Significantly speeds up query processing and reduces database load.
+ALTER TABLE bookings ADD INDEX idx_bookings_checkout_date (checkout_date);
+ALTER TABLE reservations ADD INDEX idx_reservations_end_date (end_date);
+ALTER TABLE hr_requests ADD INDEX idx_hr_requests_dates (start_date, end_date);
+ALTER TABLE crm_deals ADD INDEX idx_crm_deals_status_created (status, created_at);
+
