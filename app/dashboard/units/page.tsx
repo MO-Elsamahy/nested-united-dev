@@ -31,7 +31,7 @@ interface Unit {
 async function getUnits(): Promise<Unit[]> {
   // Get all units
   const units = await query<Unit>(
-    "SELECT * FROM units ORDER BY created_at DESC"
+    "SELECT * FROM units WHERE status NOT IN ('archived', 'inactive') ORDER BY created_at DESC"
   );
 
   // Get calendars for each unit
