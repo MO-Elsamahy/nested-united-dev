@@ -98,7 +98,6 @@ export default async function UnitsPage({
   }
 
   const activeUnits = allUnits.filter((u) => u.status === "active");
-  const inactiveUnits = allUnits.filter((u) => u.status === "inactive");
 
   const hasActiveFilters =
     (resolvedParams.status && resolvedParams.status !== "all") ||
@@ -125,10 +124,6 @@ export default async function UnitsPage({
           <p className="text-gray-600 text-xs sm:text-sm">نشطة</p>
           <p className="text-xl sm:text-2xl md:text-3xl font-bold">{activeUnits.length}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4 border-r-4 border-gray-400">
-          <p className="text-gray-600 text-xs sm:text-sm">غير نشطة</p>
-          <p className="text-xl sm:text-2xl md:text-3xl font-bold">{inactiveUnits.length}</p>
-        </div>
       </div>
 
       {/* Filter */}
@@ -147,8 +142,7 @@ export default async function UnitsPage({
           {units.map((unit) => (
             <div
               key={unit.id}
-              className={`bg-white rounded-lg shadow p-4 hover:shadow-lg transition ${unit.status === "inactive" ? "opacity-60" : ""
-                }`}
+              className={`bg-white rounded-lg shadow p-4 hover:shadow-lg transition`}
             >
               <div className="flex justify-between items-start mb-3">
                 <Link href={`/dashboard/units/${unit.id}`} className="flex-1">
@@ -204,7 +198,7 @@ export default async function UnitsPage({
                       : "bg-gray-100 text-gray-600"
                       }`}
                   >
-                    {unit.status === "active" ? "نشطة" : "غير نشطة"}
+                    {unit.status === "active" ? "نشطة" : unit.status}
                   </span>
                 </div>
               </Link>
