@@ -2572,14 +2572,7 @@ export function AnalyticsDashboardClient({
                       <div className="flex justify-between items-start">
                         <div className="space-y-1">
                           <span className="text-xs font-bold text-gray-400">مسيرة الرواتب النشطة</span>
-                          <div className="space-y-0.5">
-                            <div className="text-sm font-black text-slate-800">
-                              السعودية: <span className="text-indigo-600">{sarNetFormatted}</span>
-                            </div>
-                            <div className="text-sm font-black text-slate-800">
-                              مصر: <span className="text-emerald-600">{egpNetFormatted}</span>
-                            </div>
-                          </div>
+                          <h3 className="text-2xl font-black text-indigo-600">{sarNetFormatted}</h3>
                         </div>
                         <div className="p-2.5 bg-emerald-50 text-emerald-500 rounded-xl">
                           <Briefcase className="w-5 h-5" />
