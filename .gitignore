@@ -71,3 +71,6 @@ sync_results.json
 .agents/
 .agent/
 
+# Scratch files
+/scratch/
+
