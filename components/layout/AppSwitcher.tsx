@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { LayoutGrid, Building2, Calculator, UserCog, Users2, Settings, Users } from "lucide-react";
+import { LayoutGrid, Building2, Calculator, UserCog, Users2, Settings, Users, PieChart } from "lucide-react";
 
 import { AppFeatures } from "@/lib/features";
 
@@ -27,6 +27,7 @@ export function AppSwitcher({ features }: AppSwitcherProps) {
 
     const apps = [
         { id: "rentals",    name: "إدارة التأجير",         icon: Building2, href: "/dashboard", color: "text-blue-600" },
+        { id: "analytics",  name: "التحليلات المتقدمة",    icon: PieChart,  href: "/analytics", color: "text-teal-600" },
         { id: "accounting", name: "النظام المالي",          icon: Calculator, href: "/accounting", color: "text-emerald-600" },
         { id: "hr",         name: "الموارد البشرية",        icon: UserCog,   href: "/hr",        color: "text-violet-600" },
         { id: "employee",   name: "بوابة الموظف",           icon: Users,     href: "/employee",  color: "text-orange-600" },

@@ -1,5 +1,6 @@
 import { 
     DASHBOARD_NAV, 
+    ANALYTICS_NAV,
     ACCOUNTING_NAV, 
     HR_NAV, 
     CRM_NAV, 
@@ -44,7 +45,15 @@ function flattenNav(sections: NavSection[], moduleName: string): SearchablePage[
 
 export function getSearchablePages(): SearchablePage[] {
     return [
+        {
+            label: "التحليلات المتقدمة",
+            subtitle: "لوحة تحليلات النظام",
+            href: "/analytics",
+            keywords: ["التحليلات المتقدمة", "analytics", "المؤشرات", "advanced analytics", "dashboard", "لوحة القيادة", "التقرير التنفيذي", "التشغيل", "الربحية", "العملاء", "الموارد البشرية"],
+            requiresSuperAdmin: false,
+        },
         ...flattenNav(DASHBOARD_NAV, "إدارة التأجير"),
+        ...flattenNav(ANALYTICS_NAV, "التحليلات المتقدمة"),
         ...flattenNav(ACCOUNTING_NAV, "المحاسبة"),
         ...flattenNav(HR_NAV, "الموارد البشرية"),
         ...flattenNav(CRM_NAV, "إدارة العملاء"),

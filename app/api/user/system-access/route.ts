@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { hasSystemAccess } from "@/lib/permissions";
 
-const SYSTEMS = ["rentals", "maintenance", "accounting", "hr", "crm"];
+const SYSTEMS = ["rentals", "maintenance", "accounting", "hr", "crm", "analytics"];
 
 /**
  * Returns which systems the current user can access.
