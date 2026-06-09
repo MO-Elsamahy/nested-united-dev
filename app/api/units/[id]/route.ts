@@ -242,9 +242,12 @@ export async function DELETE(
       return NextResponse.json({ error: "الوحدة غير موجودة" }, { status: 404 });
     }
 
-    // Soft Delete: Archive the unit instead of deleting it
-    // This preserves historical bookings, revenue, and maintenance logs.
-    await execute("UPDATE units SET status = 'archived' WHERE id = ?", [id]);
+    // Hard Delete: Remove the unit completely from DB and UI
+    await execute("DELETE FROM unit_calendars WHERE unit_id = ?", [id]);
+    await execute("DELETE FROM reservations WHERE unit_id = ?", [id]);
+    await execute("DELETE FROM bookings WHERE unit_id = ?", [id]);
+    await execute("DELETE FROM maintenance_tickets WHERE unit_id = ?", [id]);
+    await execute("DELETE FROM units WHERE id = ?", [id]);
 
     // Log activity
     await logActivityInServer({
@@ -253,11 +256,11 @@ export async function DELETE(
       page_path: "/dashboard/units",
       resource_type: "unit",
       resource_id: id,
-      description: `أرشفة الوحدة: ${unit.unit_name} (إخفاء من القائمة النشطة)`,
+      description: `حذف الوحدة بالكامل: ${unit.unit_name}`,
       metadata: { unit_name: unit.unit_name, unit_id: id },
     });
 
-    return NextResponse.json({ success: true, message: "تمت أرشفة الوحدة بنجاح وحفظ تاريخها" });
+    return NextResponse.json({ success: true, message: "تم حذف الوحدة بالكامل بنجاح" });
   } catch (error) {
     console.error("Delete Unit Error:", error);
     return NextResponse.json({ error: "حدث خطأ أثناء حذف الوحدة" }, { status: 500 });

@@ -68,7 +68,7 @@ interface UnitDetail {
   city: string | null;
   address: string | null;
   capacity: number | null;
-  status: "active" | "inactive" | "maintenance";
+  status: "active" | "maintenance";
   readiness_status: string;
   readiness_guest_name: string | null;
   readiness_checkin_date: string | null;
@@ -302,7 +302,7 @@ export default async function UnitDetailsPage({
                   : "bg-gray-100 text-gray-600"
                   }`}
               >
-                {unit.status === "active" ? "نشطة" : "غير نشطة"}
+                {unit.status === "active" ? "نشطة" : unit.status}
               </span>
               <span className={`px-2 py-1 rounded text-xs ${readinessConfig.color}`}>
                 {readinessConfig.icon} {readinessConfig.label}
