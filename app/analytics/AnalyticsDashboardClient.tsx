@@ -2781,24 +2781,62 @@ export function AnalyticsDashboardClient({
                       {isMounted && (dynamicAttendanceStats || []).length > 0 && (() => {
                         const stats = dynamicAttendanceStats || [];
                         const total = stats.reduce((a:number,c:any)=>a+c.count,0) || 0;
-                        const present = stats.find((s:any)=>s.status === 'حاضر' || s.status === 'Present')?.count || 0;
-                        const late = stats.find((s:any)=>s.status === 'متأخر' || s.status === 'Late')?.count || 0;
-                        const absent = stats.find((s:any)=>s.status === 'غائب' || s.status === 'Absent')?.count || 0;
+                        const present = stats.find((s:any)=>s.status === 'حاضر')?.count || 0;
+                        const late = stats.find((s:any)=>s.status === 'متأخر')?.count || 0;
+                        const absent = stats.find((s:any)=>s.status === 'غائب')?.count || 0;
                         
                         const attendanceRate = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
                         const punctualityRate = (present + late) > 0 ? Math.round((present / (present + late)) * 100) : 100;
 
-                        let recommendation = "";
-                        let recommendationColor = "text-slate-500";
-                        if (attendanceRate < 80) {
-                          recommendation = "تنبيه: هناك انخفاض ملحوظ في نسبة الحضور العام (غيابات متكررة)، يتطلب مراجعة من إدارة الموارد البشرية.";
-                          recommendationColor = "text-rose-500 font-extrabold";
-                        } else if (punctualityRate < 80) {
-                          recommendation = "معدل الحضور العام ممتاز، ولكن يوصى بتنبيه الموظفين المتأخرين للالتزام بمواعيد العمل الرسمية.";
-                          recommendationColor = "text-amber-600";
+                        // 1. General assessment sentence
+                        let generalText = "";
+                        if (attendanceRate >= 95) {
+                          generalText = `يسجل الكادر الوظيفي انضباطاً استثنائياً بنسبة حضور ممتازة بلغت ${attendanceRate}%.`;
+                        } else if (attendanceRate >= 85) {
+                          generalText = `يسجل الموظفون نسبة حضور مستقرة وجيدة بلغت ${attendanceRate}%.`;
+                        } else if (attendanceRate >= 70) {
+                          generalText = `تظهر السجلات نسبة حضور متوسطة تبلغ ${attendanceRate}%، مما يستدعي المراقبة والمتابعة.`;
                         } else {
-                          recommendation = "مؤشرات الحضور والانضباط ممتازة جداً وتعكس بيئة عمل ملتزمة.";
-                          recommendationColor = "text-emerald-600";
+                          generalText = `هناك انخفاض حاد ومقلق في نسبة الحضور العام بلغت ${attendanceRate}%، نتيجة تكرار الغيابات.`;
+                        }
+
+                        // 2. Absence sentence
+                        let absenceText = "";
+                        if (absent > 0) {
+                          absenceText = ` تم رصد ${absent} غيابات خلال الفترة، وهو ما ينعكس سلباً على وتيرة العمل اليومي.`;
+                        } else {
+                          absenceText = " مع خلو السجل تماماً من حالات الغياب غير المبررة.";
+                        }
+
+                        // 3. Punctuality sentence
+                        let punctualityText = "";
+                        if (late > 0) {
+                          if (punctualityRate >= 90) {
+                            punctualityText = ` وتظهر السجلات التزاماً ممتازاً بالمواعيد بنسبة انضباط ${punctualityRate}% (حيث تم تسجيل ${late} تأخيرات طفيفة فقط).`;
+                          } else if (punctualityRate >= 75) {
+                            punctualityText = ` كما بلغت نسبة الالتزام بالمواعيد (دون تأخير) ${punctualityRate}% مع رصد ${late} حالات تأخير خلال الفترة.`;
+                          } else {
+                            punctualityText = ` ويلاحظ تراجع واضح في الالتزام بمواعيد العمل حيث بلغت نسبة الانضباط ${punctualityRate}% مع تسجيل ${late} حالات تأخير متكررة.`;
+                          }
+                        } else {
+                          punctualityText = " كما تم تسجيل التزام تام ومثالي بجميع مواعيد العمل الرسمية دون أي تأخير.";
+                        }
+
+                        // 4. Recommendation and color
+                        let recommendation = "";
+                        let recommendationColor = "";
+                        if (attendanceRate < 70) {
+                          recommendation = "التوصية الإدارية: يجب توجيه تنبيهات فورية للموظفين متكرري الغياب والتحقق من الأسباب الطبية أو الشخصية لتفادي تأثير ذلك على العمليات التشغيلية.";
+                          recommendationColor = "text-rose-600 font-extrabold";
+                        } else if (punctualityRate < 75) {
+                          recommendation = "التوصية الإدارية: يوصى بتطبيق لائحة التأخيرات والحديث مع الموظفين المعنيين لضمان الالتزام بساعات الحضور الرسمية وتفادي تراكم التأخيرات.";
+                          recommendationColor = "text-amber-600 font-extrabold";
+                        } else if (attendanceRate >= 90 && punctualityRate >= 90) {
+                          recommendation = "التوصية الإدارية: مؤشرات انضباط وحضور مثالية للغاية. يُنصح بتقديم خطاب شكر رمزي أو توجيه إشادة من الإدارة للحفاظ على هذا المستوى المميز.";
+                          recommendationColor = "text-emerald-600 font-extrabold";
+                        } else {
+                          recommendation = "التوصية الإدارية: مؤشرات الانضباط مقبولة وفي المدى الطبيعي، يوصى بالاستمرار في المتابعة الدورية وتشجيع الكادر على تعزيز نسب الالتزام.";
+                          recommendationColor = "text-slate-600 font-bold";
                         }
 
                         return (
@@ -2807,12 +2845,12 @@ export function AnalyticsDashboardClient({
                               <span>تحليل الانضباط العام</span>
                               <span>💡</span>
                             </h4>
-                            <p className="text-[9.5px] text-gray-500 font-bold leading-relaxed">
-                              نسبة الحضور العام للموظفين بلغت <span className="text-teal-600 font-extrabold">{attendanceRate}%</span>.
-                              {late > 0 && <> بلغت نسبة الالتزام بالمواعيد (دون تأخير) <span className="text-amber-500 font-extrabold">{punctualityRate}%</span> (تم تسجيل {late} تأخير).</>}
-                              {absent > 0 && <> وهناك <span className="text-rose-500 font-extrabold">{absent}</span> غياب عن العمل.</>}
+                            <p className="text-[9.5px] text-gray-500 font-semibold leading-relaxed">
+                              {generalText}
+                              {absenceText}
+                              {punctualityText}
                             </p>
-                            <p className={`text-[9px] mt-1 font-bold ${recommendationColor}`}>
+                            <p className={`text-[9px] mt-1.5 ${recommendationColor}`}>
                               {recommendation}
                             </p>
                           </div>
