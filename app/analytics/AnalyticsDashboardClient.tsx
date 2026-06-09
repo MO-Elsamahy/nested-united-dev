@@ -2784,45 +2784,57 @@ export function AnalyticsDashboardClient({
                         const present = stats.find((s:any)=>s.status === 'حاضر')?.count || 0;
                         const late = stats.find((s:any)=>s.status === 'متأخر')?.count || 0;
                         const absent = stats.find((s:any)=>s.status === 'غائب')?.count || 0;
+                        const leave = stats.find((s:any)=>s.status === 'إجازة')?.count || 0;
                         
-                        const attendanceRate = total > 0 ? Math.round(((present + late) / total) * 100) : 100;
+                        const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
+                        const latePercent = total > 0 ? Math.round((late / total) * 100) : 0;
+                        const absentPercent = total > 0 ? Math.round((absent / total) * 100) : 0;
+                        const leavePercent = total > 0 ? Math.round((leave / total) * 100) : 0;
+                        
+                        const attendanceRate = presentPercent + latePercent;
                         const punctualityRate = (present + late) > 0 ? Math.round((present / (present + late)) * 100) : 100;
 
                         // 1. General assessment sentence
                         let generalText = "";
                         if (attendanceRate >= 95) {
-                          generalText = `يسجل الكادر الوظيفي انضباطاً استثنائياً بنسبة حضور ممتازة بلغت ${attendanceRate}%.`;
+                          generalText = `يسجل الكادر الوظيفي انضباطاً استثنائياً بنسبة حضور إجمالية بلغت ${attendanceRate}% (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً).`;
                         } else if (attendanceRate >= 85) {
-                          generalText = `يسجل الموظفون نسبة حضور مستقرة وجيدة بلغت ${attendanceRate}%.`;
+                          generalText = `يسجل الموظفون نسبة حضور مستقرة وجيدة بلغت ${attendanceRate}% (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً).`;
                         } else if (attendanceRate >= 70) {
-                          generalText = `تظهر السجلات نسبة حضور متوسطة تبلغ ${attendanceRate}%، مما يستدعي المراقبة والمتابعة.`;
+                          generalText = `تظهر السجلات نسبة حضور إجمالية متوسطة تبلغ ${attendanceRate}% (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً)، مما يستدعي المراقبة والمتابعة.`;
                         } else {
-                          generalText = `هناك انخفاض حاد ومقلق في نسبة الحضور العام بلغت ${attendanceRate}%، نتيجة تكرار الغيابات.`;
+                          generalText = `هناك انخفاض حاد ومقلق في نسبة الحضور الإجمالية بلغت ${attendanceRate}% فقط (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً).`;
                         }
 
                         // 2. Absence sentence
                         let absenceText = "";
                         if (absent > 0) {
-                          absenceText = ` تم رصد ${absent} غيابات خلال الفترة، وهو ما ينعكس سلباً على وتيرة العمل اليومي.`;
+                          absenceText = ` وبلغت نسبة الغياب ${absentPercent}% (بواقع ${absent} أيام غياب)، مما ينعكس سلباً على الأداء التشغيلي.`;
                         } else {
-                          absenceText = " مع خلو السجل تماماً من حالات الغياب غير المبررة.";
+                          absenceText = " مع خلو السجل تماماً من حالات الغياب غير المبررة (0%).";
                         }
 
-                        // 3. Punctuality sentence
+                        // 3. Leave sentence
+                        let leaveText = "";
+                        if (leave > 0) {
+                          leaveText = ` وبلغت نسبة الإجازات المعتمدة ${leavePercent}% (بواقع ${leave} أيام إجازة).`;
+                        }
+
+                        // 4. Punctuality sentence
                         let punctualityText = "";
                         if (late > 0) {
                           if (punctualityRate >= 90) {
-                            punctualityText = ` وتظهر السجلات التزاماً ممتازاً بالمواعيد بنسبة انضباط ${punctualityRate}% (حيث تم تسجيل ${late} تأخيرات طفيفة فقط).`;
+                            punctualityText = ` وتظهر نسبة الالتزام بالمواعيد للموظفين الذين حضروا ${punctualityRate}% (حيث تم تسجيل ${late} تأخيرات طفيفة فقط).`;
                           } else if (punctualityRate >= 75) {
-                            punctualityText = ` كما بلغت نسبة الالتزام بالمواعيد (دون تأخير) ${punctualityRate}% مع رصد ${late} حالات تأخير خلال الفترة.`;
+                            punctualityText = ` وبلغت نسبة الالتزام بالمواعيد دون تأخير لمن حضروا ${punctualityRate}% (حيث تم تسجيل ${late} تأخيرات).`;
                           } else {
-                            punctualityText = ` ويلاحظ تراجع واضح في الالتزام بمواعيد العمل حيث بلغت نسبة الانضباط ${punctualityRate}% مع تسجيل ${late} حالات تأخير متكررة.`;
+                            punctualityText = ` وتراجعت نسبة الالتزام بالمواعيد دون تأخير لمن حضروا إلى ${punctualityRate}% نتيجة تسجيل ${late} تأخيرات متكررة.`;
                           }
                         } else {
-                          punctualityText = " كما تم تسجيل التزام تام ومثالي بجميع مواعيد العمل الرسمية دون أي تأخير.";
+                          punctualityText = " وتميز الحضور بالتزام تام بجميع المواعيد الرسمية دون رصد أي تأخير (100% انضباط).";
                         }
 
-                        // 4. Recommendation and color
+                        // 5. Recommendation and color
                         let recommendation = "";
                         let recommendationColor = "";
                         if (attendanceRate < 70) {
@@ -2848,6 +2860,7 @@ export function AnalyticsDashboardClient({
                             <p className="text-[9.5px] text-gray-500 font-semibold leading-relaxed">
                               {generalText}
                               {absenceText}
+                              {leaveText}
                               {punctualityText}
                             </p>
                             <p className={`text-[9px] mt-1.5 ${recommendationColor}`}>
