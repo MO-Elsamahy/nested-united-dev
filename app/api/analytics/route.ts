@@ -310,16 +310,14 @@ export async function GET(req: NextRequest) {
         }
 
         const currency = emp.salary_currency || 'SAR';
+        if (currency.toUpperCase() === 'EGP') {
+          continue; // Skip Egyptian employees, accountant handles them manually in SAR
+        }
+
         let basic = Number(emp.basic_salary || 0);
         let allowances = Number(emp.housing_allowance || 0) + 
                            Number(emp.transport_allowance || 0) + 
                            Number(emp.other_allowances || 0);
-
-        // Convert EGP to SAR (Exchange rate: 1 SAR = 13.80 EGP -> 1 EGP = 0.0725 SAR)
-        if (currency.toUpperCase() === 'EGP') {
-          basic = basic * 0.0725;
-          allowances = allowances * 0.0725;
-        }
 
         const deductions = Math.round(basic * 0.02);
         const monthlyNet = basic + allowances - deductions;
@@ -1106,14 +1104,13 @@ export async function GET(req: NextRequest) {
     const sarNet = Math.round(sarBasic + sarAllowances - sarDeductions);
     const egpNet = Math.round(egpBasic + egpAllowances - egpDeductions);
 
-    // Convert EGP to SAR for the unified expenses and cashflow calculation
-    const convertedEgpNet = egpNet * 0.0725;
-    const totalPayrollSAR = Math.round(sarNet + convertedEgpNet);
+    // EGP employees are not included in unified SAR payroll costs (accountant enters them manually in SAR)
+    const totalPayrollSAR = Math.round(sarNet);
 
     const hrPayroll = {
-      basic: `${Math.round(sarBasic + egpBasic * 0.0725).toLocaleString("en-US")} ر.س`,
-      allowances: `${Math.round(sarAllowances + egpAllowances * 0.0725).toLocaleString("en-US")} ر.س`,
-      deductions: `${Math.round(sarDeductions + egpDeductions * 0.0725).toLocaleString("en-US")} ر.س`,
+      basic: `${Math.round(sarBasic).toLocaleString("en-US")} ر.س`,
+      allowances: `${Math.round(sarAllowances).toLocaleString("en-US")} ر.س`,
+      deductions: `${Math.round(sarDeductions).toLocaleString("en-US")} ر.س`,
       net: `${totalPayrollSAR.toLocaleString("en-US")} ر.س`,
     };
 
