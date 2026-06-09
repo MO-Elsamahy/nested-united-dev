@@ -2777,122 +2777,31 @@ export function AnalyticsDashboardClient({
                         </div>
                       </div>
 
-                      {/* Dynamic Analytical Summary Widget */}
-                      {isMounted && (dynamicAttendanceStats || []).length > 0 && (() => {
-                        const stats = dynamicAttendanceStats || [];
-                        const total = stats.reduce((a:number,c:any)=>a+c.count,0) || 0;
-                        const present = stats.find((s:any)=>s.status === 'حاضر')?.count || 0;
-                        const late = stats.find((s:any)=>s.status === 'متأخر')?.count || 0;
-                        const absent = stats.find((s:any)=>s.status === 'غائب')?.count || 0;
-                        const leave = stats.find((s:any)=>s.status === 'إجازة')?.count || 0;
-                        
-                        const presentPercent = total > 0 ? Math.round((present / total) * 100) : 0;
-                        const latePercent = total > 0 ? Math.round((late / total) * 100) : 0;
-                        const absentPercent = total > 0 ? Math.round((absent / total) * 100) : 0;
-                        const leavePercent = total > 0 ? Math.round((leave / total) * 100) : 0;
-                        
-                        const attendanceRate = presentPercent + latePercent;
-                        const punctualityRate = (present + late) > 0 ? Math.round((present / (present + late)) * 100) : 100;
-
-                        // 1. General assessment sentence
-                        let generalText = "";
-                        if (attendanceRate >= 95) {
-                          generalText = `يسجل الكادر الوظيفي انضباطاً استثنائياً بنسبة حضور إجمالية بلغت ${attendanceRate}% (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً).`;
-                        } else if (attendanceRate >= 85) {
-                          generalText = `يسجل الموظفون نسبة حضور مستقرة وجيدة بلغت ${attendanceRate}% (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً).`;
-                        } else if (attendanceRate >= 70) {
-                          generalText = `تظهر السجلات نسبة حضور إجمالية متوسطة تبلغ ${attendanceRate}% (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً)، مما يستدعي المراقبة والمتابعة.`;
-                        } else {
-                          generalText = `هناك انخفاض حاد ومقلق في نسبة الحضور الإجمالية بلغت ${attendanceRate}% فقط (تشمل ${presentPercent}% حضوراً بالموعد و${latePercent}% حضوراً متأخراً).`;
-                        }
-
-                        // 2. Absence sentence
-                        let absenceText = "";
-                        if (absent > 0) {
-                          absenceText = ` وبلغت نسبة الغياب ${absentPercent}% (بواقع ${absent} أيام غياب)، مما ينعكس سلباً على الأداء التشغيلي.`;
-                        } else {
-                          absenceText = " مع خلو السجل تماماً من حالات الغياب غير المبررة (0%).";
-                        }
-
-                        // 3. Leave sentence
-                        let leaveText = "";
-                        if (leave > 0) {
-                          leaveText = ` وبلغت نسبة الإجازات المعتمدة ${leavePercent}% (بواقع ${leave} أيام إجازة).`;
-                        }
-
-                        // 4. Punctuality sentence
-                        let punctualityText = "";
-                        if (late > 0) {
-                          if (punctualityRate >= 90) {
-                            punctualityText = ` وتظهر نسبة الالتزام بالمواعيد للموظفين الذين حضروا ${punctualityRate}% (حيث تم تسجيل ${late} تأخيرات طفيفة فقط).`;
-                          } else if (punctualityRate >= 75) {
-                            punctualityText = ` وبلغت نسبة الالتزام بالمواعيد دون تأخير لمن حضروا ${punctualityRate}% (حيث تم تسجيل ${late} تأخيرات).`;
-                          } else {
-                            punctualityText = ` وتراجعت نسبة الالتزام بالمواعيد دون تأخير لمن حضروا إلى ${punctualityRate}% نتيجة تسجيل ${late} تأخيرات متكررة.`;
-                          }
-                        } else {
-                          punctualityText = " وتميز الحضور بالتزام تام بجميع المواعيد الرسمية دون رصد أي تأخير (100% انضباط).";
-                        }
-
-                        // 5. Recommendation and color
-                        let recommendation = "";
-                        let recommendationColor = "";
-                        if (attendanceRate < 70) {
-                          recommendation = "التوصية الإدارية: يجب توجيه تنبيهات فورية للموظفين متكرري الغياب والتحقق من الأسباب الطبية أو الشخصية لتفادي تأثير ذلك على العمليات التشغيلية.";
-                          recommendationColor = "text-rose-600 font-extrabold";
-                        } else if (punctualityRate < 75) {
-                          recommendation = "التوصية الإدارية: يوصى بتطبيق لائحة التأخيرات والحديث مع الموظفين المعنيين لضمان الالتزام بساعات الحضور الرسمية وتفادي تراكم التأخيرات.";
-                          recommendationColor = "text-amber-600 font-extrabold";
-                        } else if (attendanceRate >= 90 && punctualityRate >= 90) {
-                          recommendation = "التوصية الإدارية: مؤشرات انضباط وحضور مثالية للغاية. يُنصح بتقديم خطاب شكر رمزي أو توجيه إشادة من الإدارة للحفاظ على هذا المستوى المميز.";
-                          recommendationColor = "text-emerald-600 font-extrabold";
-                        } else {
-                          recommendation = "التوصية الإدارية: مؤشرات الانضباط مقبولة وفي المدى الطبيعي، يوصى بالاستمرار في المتابعة الدورية وتشجيع الكادر على تعزيز نسب الالتزام.";
-                          recommendationColor = "text-slate-600 font-bold";
-                        }
-
-                        return (
-                          <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 my-2 text-right">
-                            <h4 className="text-[10px] font-extrabold text-slate-800 mb-1 flex items-center gap-1 justify-end">
-                              <span>تحليل الانضباط العام</span>
-                              <span>💡</span>
-                            </h4>
-                            <p className="text-[9.5px] text-gray-500 font-semibold leading-relaxed">
-                              {generalText}
-                              {absenceText}
-                              {leaveText}
-                              {punctualityText}
-                            </p>
-                            <p className={`text-[9px] mt-1.5 ${recommendationColor}`}>
-                              {recommendation}
-                            </p>
-                          </div>
-                        );
-                      })()}
-                      
-                      {/* Attendance Legends with Progress Bars */}
-                      <div className="space-y-2 border-t border-gray-100 pt-3 mt-1.5">
+                      {/* Attendance Legends with Progress Bars in a Grid Layout */}
+                      <div className="grid grid-cols-2 gap-3 border-t border-gray-100 pt-4 mt-2">
                         {isMounted && (dynamicAttendanceStats || []).map((item: any, idx: number) => {
                           const color = ATT_COLORS[item.status] || COLORS_PIE[idx % COLORS_PIE.length];
                           const totalCount = (dynamicAttendanceStats || []).reduce((a:number,c:any)=>a+c.count,0) || 1;
                           const percent = Math.round((item.count / totalCount) * 100);
                           return (
-                            <div key={idx} className="space-y-1">
+                            <div key={idx} className="bg-slate-50/50 border border-slate-100/50 rounded-xl p-2.5 flex flex-col justify-between space-y-1.5 hover:border-slate-200 hover:bg-slate-50 transition-all">
                               <div className="flex justify-between items-center text-[10px] font-bold">
                                 <div className="flex items-center gap-1.5">
                                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
                                   <span className="text-gray-600">{item.status}</span>
                                 </div>
-                                <span className="text-gray-500">{item.count} ({percent}%)</span>
+                                <span className="text-gray-700 font-extrabold">{item.count} <span className="text-[8.5px] text-gray-400 font-bold">({percent}%)</span></span>
                               </div>
-                              <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                                <div className="h-full rounded-full" style={{ backgroundColor: color, width: `${percent}%` }} />
+                              <div className="w-full bg-gray-150 h-1.5 rounded-full overflow-hidden">
+                                <div className="h-full rounded-full transition-all duration-500" style={{ backgroundColor: color, width: `${percent}%` }} />
                               </div>
                             </div>
                           );
                         })}
                         {(dynamicAttendanceStats || []).length === 0 && (
-                          <p className="text-xs text-gray-400 text-center">لا توجد سجلات حضور مسجلة للفترة المحددة</p>
+                          <div className="col-span-2 py-6 text-center text-xs font-bold text-gray-400">
+                            لا توجد سجلات حضور مسجلة للفترة المحددة
+                          </div>
                         )}
                       </div>
                     </div>
