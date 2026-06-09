@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useDialog } from "@/components/accounting/DialogProvider";
 import { Edit } from "lucide-react";
@@ -20,12 +21,26 @@ const STATUS_OPTIONS = [
   { value: "booked", label: "إشغال", icon: "📅" },
 ];
 
-export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; currentStatus: string }) {
+export function UpdateStatusButton({ 
+  unit, 
+  currentStatus,
+  onSuccess
+}: { 
+  unit: Unit; 
+  currentStatus: string;
+  onSuccess?: () => void;
+}) {
   const { data: session } = useSession();
   const { alert } = useDialog();
   const [isOpen, setIsOpen] = useState(false);
   const [isPrefilling, setIsPrefilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<"status" | "guest">("status");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const hasEditPermission = usePermission("edit", "/dashboard/unit-readiness");
 
@@ -50,10 +65,10 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
   const isDefaultAuthorized = userRole === "admin" || userRole === "super_admin" || userRole === "maintenance_worker";
   const canUpdate = isDefaultAuthorized || hasEditPermission === true;
 
-  // All hooks are above — safe to return null conditionally here
   if (!canUpdate) return null;
 
   const openWithDefaults = async () => {
+    setActiveTab("status");
     setIsOpen(true);
 
     // لو مفيش تواريخ محفوظة، نحاول نجيبها تلقائياً من الحجوزات (iCal + يدوي)
@@ -97,6 +112,9 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
 
       setIsOpen(false);
       router.refresh();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       console.error("Error updating status:", error);
       await alert(
@@ -120,113 +138,157 @@ export function UpdateStatusButton({ unit, currentStatus }: { unit: Unit; curren
       </button>
 
       {/* Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
+      {isOpen && mounted && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] flex flex-col overflow-hidden border border-gray-150 text-right" dir="rtl">
+            {/* Header */}
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">
                 تحديث حالة الوحدة: {unit.unit_name}
               </h2>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Status */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    الحالة
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.icon} {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Checkin Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تاريخ الدخول
-                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز - قابل للتعديل)</span>}
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.checkin_date}
-                    onChange={(e) => setFormData({ ...formData, checkin_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Checkout Date */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    تاريخ الخروج
-                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز - قابل للتعديل)</span>}
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.checkout_date}
-                    onChange={(e) => setFormData({ ...formData, checkout_date: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Guest Name */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    اسم الضيف
-                    {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز - قابل للتعديل)</span>}
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.guest_name}
-                    onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
-                    placeholder="اسم الضيف"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    ملاحظات (اختياري)
-                  </label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="ملاحظات إضافية..."
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-3 mt-6">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {isSubmitting ? "جاري الحفظ..." : "حفظ"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    disabled={isSubmitting}
-                    className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  >
-                    إلغاء
-                  </button>
-                </div>
-              </form>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors text-lg"
+              >
+                ✕
+              </button>
             </div>
+
+            {/* Tab buttons */}
+            <div className="px-6 pt-4 flex gap-2 border-b border-gray-100 bg-gray-50/50">
+              <button
+                type="button"
+                onClick={() => setActiveTab("status")}
+                className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all ${
+                  activeTab === "status"
+                    ? "border-blue-600 text-blue-600 font-black"
+                    : "border-transparent text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                🔧 حالة الجاهزية
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("guest")}
+                className={`flex-1 pb-3 text-center text-sm font-bold border-b-2 transition-all ${
+                  activeTab === "guest"
+                    ? "border-blue-600 text-blue-600 font-black"
+                    : "border-transparent text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                👤 بيانات الضيف
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+              {/* Scrollable Content */}
+              <div className="p-6 overflow-y-auto space-y-4">
+                {activeTab === "status" ? (
+                  <div className="space-y-4 animate-fadeIn">
+                    {/* Status */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        الحالة
+                      </label>
+                      <select
+                        value={formData.status}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                        required
+                      >
+                        {STATUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.icon} {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Notes */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        ملاحظات (اختياري)
+                      </label>
+                      <textarea
+                        value={formData.notes}
+                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                        placeholder="ملاحظات إضافية عن حالة الوحدة..."
+                        rows={4}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 animate-fadeIn">
+                    {/* Guest Name */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        اسم الضيف
+                        {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز - قابل للتعديل)</span>}
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.guest_name}
+                        onChange={(e) => setFormData({ ...formData, guest_name: e.target.value })}
+                        placeholder="اسم الضيف ثلاثي..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      />
+                    </div>
+
+                    {/* Checkin Date */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        تاريخ الدخول
+                        {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.checkin_date}
+                        onChange={(e) => setFormData({ ...formData, checkin_date: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      />
+                    </div>
+
+                    {/* Checkout Date */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        تاريخ الخروج
+                        {hasActiveBooking && <span className="mr-2 text-xs text-blue-500 font-normal">(من الحجز)</span>}
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.checkout_date}
+                        onChange={(e) => setFormData({ ...formData, checkout_date: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="p-6 border-t border-gray-100 bg-gray-50 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors shadow-sm"
+                >
+                  {isSubmitting ? "جاري الحفظ..." : "حفظ"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

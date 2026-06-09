@@ -1980,6 +1980,7 @@ export function AnalyticsDashboardClient({
                                     <UpdateStatusButton
                                       unit={unit}
                                       currentStatus={unit.status || "ready"}
+                                      onSuccess={() => handleRefresh(true)}
                                     />
                                   </div>
                                 </div>
