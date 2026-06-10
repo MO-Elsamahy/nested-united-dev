@@ -340,8 +340,51 @@ export async function GET(req: NextRequest) {
     const allocatedPayroll = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * calculatePayrollForPeriod(startDateStr, endDateStr) : 0;
     const allocatedInvoices = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * vendorBills : 0;
 
-    const totalExpenses = Math.round(operatingExpenses + maintenanceExpenses + allocatedPayroll + allocatedInvoices);
-    const netIncome = Math.max(0, totalRevenue - totalExpenses);
+    const getInvestorPayouts = async (startStr: string, endStr: string) => {
+      const p = [endStr, startStr, endStr, startStr];
+      const accountIds = account !== "all" ? account.split(",") : [];
+      if (account !== "all") {
+        p.push(...accountIds);
+      }
+      
+      const rows = await query<any>(
+        `SELECT 
+            b.unit_id,
+            SUM(
+              (b.amount / COALESCE(NULLIF(DATEDIFF(b.checkout_date, b.checkin_date), 0), 1)) *
+              GREATEST(0, DATEDIFF(
+                LEAST(CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END, ?),
+                GREATEST(b.checkin_date, ?)
+              ) + 1)
+            ) as unit_revenue,
+            u.profit_share,
+            inv.default_profit_share
+         FROM bookings b
+         INNER JOIN units u ON b.unit_id = u.id
+         LEFT JOIN investors inv ON u.investor_id = inv.id
+         WHERE b.checkin_date <= ? AND (CASE WHEN b.checkout_date = b.checkin_date THEN b.checkout_date ELSE b.checkout_date - INTERVAL 1 DAY END) >= ?
+         ${accountFilterBookings}
+         GROUP BY b.unit_id, u.profit_share, inv.default_profit_share`,
+        p
+      );
+
+      let totalPayout = 0;
+      for (const row of rows) {
+        const rev = Number(row.unit_revenue || 0);
+        const companyPct = row.profit_share !== null 
+          ? Number(row.profit_share) 
+          : (row.default_profit_share !== null ? Number(row.default_profit_share) : 100);
+        
+        const investorPct = Math.max(0, 100 - companyPct);
+        totalPayout += rev * (investorPct / 100);
+      }
+      return Math.round(totalPayout);
+    };
+
+    const mainInvestorPayouts = await getInvestorPayouts(startDateStr, endDateStr);
+
+    const totalExpenses = Math.round(operatingExpenses + maintenanceExpenses + allocatedPayroll + allocatedInvoices + mainInvestorPayouts);
+    const netIncome = totalRevenue - totalExpenses;
 
     // Helpers for dynamic period analytics (Cashflow & Occupancy trends)
     const getPeriodRevenue = async (startStr: string, endStr: string) => {
@@ -456,7 +499,9 @@ export async function GET(req: NextRequest) {
       const allocPayroll = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * periodPayroll : 0;
       const allocInvoices = totalUnitsCount > 0 ? (totalUnits / totalUnitsCount) * vendorBillsVal : 0;
 
-      return Math.round(opExpenses + maintExpenses + allocPayroll + allocInvoices);
+      const subInvestorPayouts = await getInvestorPayouts(startStr, endStr);
+
+      return Math.round(opExpenses + maintExpenses + allocPayroll + allocInvoices + subInvestorPayouts);
     };
 
     // Repeat Guest Rate

@@ -672,20 +672,25 @@ export function AnalyticsDashboardClient({
                   </div>
 
                   {/* Card 7 */}
-                  <div className="bg-gradient-to-br from-blue-50/40 to-blue-50/10 border border-blue-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-500">صافي الدخل</span>
-                      <div className="p-2 bg-blue-500 text-white rounded-xl">
-                        <Briefcase className="w-4 h-4" />
+                  {(() => {
+                    const isLoss = data.stats.netIncome?.trim().startsWith("-");
+                    return (
+                      <div className={`bg-gradient-to-br ${isLoss ? "from-red-50/40 to-red-50/10 border-red-100/70" : "from-blue-50/40 to-blue-50/10 border-blue-100/70"} rounded-2xl p-5 space-y-3 relative overflow-hidden`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-gray-500">{isLoss ? "صافي خسارة" : "صافي الدخل"}</span>
+                          <div className={`p-2 ${isLoss ? "bg-red-500" : "bg-blue-500"} text-white rounded-xl`}>
+                            <Briefcase className="w-4 h-4" />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <p className={`text-2xl font-black ${isLoss ? "text-red-600" : "text-gray-900"}`}>{data.stats.netIncome}</p>
+                          <div className={`flex items-center gap-1 ${isLoss ? "text-red-600" : "text-blue-600"} text-xs font-bold`}>
+                            <span>{isLoss ? "صافي الخسائر بعد المصروفات" : "صافي الأرباح بعد المصروفات"}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-2xl font-black text-gray-900">{data.stats.netIncome}</p>
-                      <div className="flex items-center gap-1 text-blue-600 text-xs font-bold">
-                        <span>صافي الأرباح بعد المصروفات</span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })()}
 
                   {/* Card 8 */}
                   <div className="bg-gradient-to-br from-indigo-50/40 to-indigo-50/10 border border-indigo-100/70 rounded-2xl p-5 space-y-3 relative overflow-hidden">
