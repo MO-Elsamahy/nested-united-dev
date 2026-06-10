@@ -35,8 +35,26 @@ export default async function AnalyticsLayout({
     redirect("/login");
   }
 
-  // RBAC: Check if user can access the Analytics module (fallback to rentals permission)
-  const hasAccess = await checkUserPermission(user.id, "/analytics", "view");
+  // RBAC: Check if user can access the Analytics module (at least one page/tab allowed)
+  let hasAccess = false;
+  if (user.role === "super_admin") {
+    hasAccess = true;
+  } else {
+    const analyticsPaths = [
+      "/analytics",
+      "/analytics?tab=live_ops",
+      "/analytics?tab=profitability",
+      "/analytics?tab=crm",
+      "/analytics?tab=hr",
+    ];
+    for (const path of analyticsPaths) {
+      if (await checkUserPermission(user.id, path, "view")) {
+        hasAccess = true;
+        break;
+      }
+    }
+  }
+
   if (!hasAccess) {
     console.warn(`User ${user.email} (role: ${user.role}) attempted unauthorized access to Advanced Analytics`);
     redirect("/portal");

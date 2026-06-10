@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { unit_name, unit_code, city, address, capacity, status, calendars } = body;
+  const { unit_name, unit_code, city, address, capacity, status, calendars, investor_id, profit_share } = body;
 
   if (!unit_name) {
     return NextResponse.json({ error: "اسم الوحدة مطلوب" }, { status: 400 });
@@ -77,9 +77,20 @@ export async function POST(request: NextRequest) {
   try {
     // Create unit
     await execute(
-      `INSERT INTO units (id, unit_name, unit_code, city, address, capacity, status, platform_account_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [unitId, unit_name, unit_code || null, city || null, address || null, capacity || null, status || "active", null]
+      `INSERT INTO units (id, unit_name, unit_code, city, address, capacity, status, platform_account_id, investor_id, profit_share)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        unitId,
+        unit_name,
+        unit_code || null,
+        city || null,
+        address || null,
+        capacity || null,
+        status || "active",
+        null,
+        investor_id || null,
+        profit_share !== undefined ? profit_share : null
+      ]
     );
 
     // Create calendars if provided

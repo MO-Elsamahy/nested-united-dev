@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { query, queryOne } from "@/lib/db";
 import { requirePermission } from "@/lib/server-permissions";
+import { checkUserPermission } from "@/lib/permissions";
 import { AnalyticsDashboardClient } from "./AnalyticsDashboardClient";
 
 export const dynamic = "force-dynamic";
@@ -27,8 +28,43 @@ export default async function AnalyticsPage({
   const resolvedSearchParams = await searchParams;
   const activeTab = (resolvedSearchParams.tab || "executive") as "executive" | "live_ops" | "profitability" | "crm" | "hr";
 
-  // 1. Enforce View Permission for /analytics page
-  await requirePermission("/analytics", "view");
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  // Enforce page-level permissions dynamically per tab
+  const userRole = (session.user as { role?: string }).role || "employee";
+  
+  if (userRole !== "super_admin") {
+    const analyticsPages = [
+      { tab: "executive", path: "/analytics" },
+      { tab: "live_ops", path: "/analytics?tab=live_ops" },
+      { tab: "profitability", path: "/analytics?tab=profitability" },
+      { tab: "crm", path: "/analytics?tab=crm" },
+      { tab: "hr", path: "/analytics?tab=hr" },
+    ];
+
+    const permissions = await Promise.all(
+      analyticsPages.map(async (page) => {
+        const allowed = await checkUserPermission(session.user.id, page.path, "view");
+        return { tab: page.tab, path: page.path, allowed };
+      })
+    );
+
+    const allowedTabs = permissions.filter(p => p.allowed);
+
+    if (allowedTabs.length === 0) {
+      redirect("/dashboard?error=no_permission");
+    }
+
+    const requestedPermission = permissions.find(p => p.tab === activeTab);
+    if (!requestedPermission || !requestedPermission.allowed) {
+      // Redirect to the first allowed tab if the user tries to access a restricted one
+      const firstAllowed = allowedTabs[0];
+      redirect(firstAllowed.path);
+    }
+  }
 
   // 2. Fetch platform accounts for filter
   let accounts: PlatformAccount[] = [];

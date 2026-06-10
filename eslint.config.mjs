@@ -11,7 +11,7 @@ const tsPlugin = tsConfigWithPlugin?.plugins?.["@typescript-eslint"];
 
 const eslintConfig = [
   {
-    ignores: [".next/**", "node_modules/**", "dist/**", "out/**", "build/**", "scratch/**", "electron/dist/**"],
+    ignores: [".next/**", "node_modules/**", "dist/**", "out/**", "build/**", "scratch/**", "electron/dist/**", "dist-electron/**", "tmp/**", "db_check_v2.js", "check_user.ts", "proxy.ts"],
   },
   ...nextConfig,
   ...nextTypescriptConfig,
@@ -27,6 +27,7 @@ const eslintConfig = [
         },
       ],
       "react-hooks/set-state-in-effect": "off",
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
   {

@@ -314,8 +314,8 @@ export async function GET(req: NextRequest) {
           continue; // Skip Egyptian employees, accountant handles them manually in SAR
         }
 
-        let basic = Number(emp.basic_salary || 0);
-        let allowances = Number(emp.housing_allowance || 0) + 
+        const basic = Number(emp.basic_salary || 0);
+        const allowances = Number(emp.housing_allowance || 0) + 
                            Number(emp.transport_allowance || 0) + 
                            Number(emp.other_allowances || 0);
 
@@ -845,7 +845,7 @@ export async function GET(req: NextRequest) {
     // 11. Profitability Table (Group by Unit) - Synced with Date Filters and Hospitality Metrics (ADR, Occupancy, RevPAR)
     const profitabilityList = await query<any>(
       `SELECT * FROM (
-        SELECT u.id, u.unit_name, 
+        SELECT u.id, u.unit_name, u.profit_share, inv.default_profit_share,
                 COALESCE(
                   (SELECT platform FROM bookings b WHERE b.unit_id = u.id ORDER BY b.checkin_date DESC LIMIT 1),
                   (SELECT platform FROM reservations r WHERE r.unit_id = u.id ORDER BY r.start_date DESC LIMIT 1)
@@ -890,8 +890,9 @@ export async function GET(req: NextRequest) {
                 (SELECT COUNT(*) FROM bookings b2 WHERE b2.unit_id = u.id AND b2.checkin_date <= ? AND (CASE WHEN b2.checkout_date = b2.checkin_date THEN b2.checkout_date ELSE b2.checkout_date - INTERVAL 1 DAY END) >= ?) as b_count,
                 (SELECT COUNT(*) FROM maintenance_tickets mt WHERE mt.unit_id = u.id AND mt.status = 'resolved' AND mt.created_at >= ? AND mt.created_at <= ?) as m_tickets
          FROM units u
+         LEFT JOIN investors inv ON u.investor_id = inv.id
          WHERE u.status = 'active' ${accountFilterUnits}
-         GROUP BY u.id, u.unit_name
+         GROUP BY u.id, u.unit_name, u.profit_share, inv.default_profit_share
        ) as tmp
        ORDER BY b_rev DESC`,
       [
@@ -916,10 +917,18 @@ export async function GET(req: NextRequest) {
       const adr = bDays > 0 ? Math.round(uRev / bDays) : 0;
       const revpar = availableDays > 0 ? Math.round(uRev / availableDays) : 0;
 
+      // Profit percentage: check override, fallback to default, default to 100.00
+      const profitShare = unit.profit_share !== null && unit.profit_share !== undefined
+        ? Number(unit.profit_share)
+        : (unit.default_profit_share !== null && unit.default_profit_share !== undefined
+           ? Number(unit.default_profit_share)
+           : 100.00);
+
       // Clean cost estimate: Set to 0 per user instruction
       const cleanCost = 0;
       const totalCost = 0;
-      const netProfit = Math.max(0, uRev - totalCost);
+      // Calculate net profit based on company's percentage of the profit (Revenue - Costs)
+      const netProfit = Math.max(0, (uRev - totalCost) * (profitShare / 100));
       const margin = uRev > 0 ? ((netProfit / uRev) * 100).toFixed(1) : "0.0";
 
       return {
@@ -1226,7 +1235,7 @@ export async function GET(req: NextRequest) {
       }
 
       // Cap the end date at yesterday for non-daily ranges to prevent today's pending logs from counting as absences
-      let empEnd = range === "today" 
+      const empEnd = range === "today" 
         ? startDateStr 
         : (endDateStr < yesterdayStr ? endDateStr : yesterdayStr);
 

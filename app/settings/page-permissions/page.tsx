@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Check, X, Building2, Calculator, Users, Users2, Wrench, LucideIcon } from "lucide-react";
+import { Check, X, Building2, Calculator, Users, Users2, Wrench, PieChart, LucideIcon } from "lucide-react";
 
 const systemTabs: { id: string; label: string; icon: LucideIcon }[] = [
     { id: "rentals", label: "نظام التأجير", icon: Building2 },
+    { id: "analytics", label: "التحليلات المتقدمة", icon: PieChart },
     { id: "accounting", label: "النظام المالي", icon: Calculator },
     { id: "hr", label: "الموارد البشرية", icon: Users },
     { id: "crm", label: "إدارة العملاء", icon: Users2 },
@@ -68,6 +69,12 @@ export default function PagePermissionsPage() {
                 ),
             };
         });
+
+        // Trigger client-side permissions cache clear
+        if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("permissions-updated"));
+        }
+
         setSaving(null);
     }
 
@@ -121,7 +128,9 @@ export default function PagePermissionsPage() {
                             <div className="p-4">
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                     {data.pages.map((page) => {
-                                        const canView = user.permissions[page.path]?.can_view || false;
+                                        const canView = user.permissions[page.path] !== undefined
+                                            ? user.permissions[page.path].can_view
+                                            : true;
                                         const isSaving = saving === `${user.id}-${page.path}`;
 
                                         return (

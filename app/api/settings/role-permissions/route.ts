@@ -1,9 +1,10 @@
 import { getCurrentUser, AppUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
+import { clearEntirePermissionCache } from "@/lib/permissions";
 
 const ROLES = ["super_admin", "admin", "accountant", "hr_manager", "maintenance_worker", "employee"];
-const SYSTEMS = ["rentals", "maintenance", "accounting", "hr", "crm"];
+const SYSTEMS = ["rentals", "maintenance", "accounting", "hr", "crm", "analytics"];
 
 function assertSuperAdmin(user: AppUser | null) {
     if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
@@ -82,6 +83,9 @@ export async function POST(request: Request) {
     `,
             [generateUUID(), role, system_id, can_access ? 1 : 0]
         );
+
+        // Clear server-side permission cache so changes take effect immediately
+        clearEntirePermissionCache();
 
         return NextResponse.json({ success: true });
     } catch (err: unknown) {

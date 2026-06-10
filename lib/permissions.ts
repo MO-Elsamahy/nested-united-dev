@@ -16,6 +16,11 @@ export function clearPermissionCacheForUser(userId: string) {
   keysToDelete.forEach((key) => serverPermissionCache.delete(key));
 }
 
+// Clear all cached permissions (called when role system permissions are updated)
+export function clearEntirePermissionCache() {
+  serverPermissionCache.clear();
+}
+
 interface UserPermission {
   id: string;
   user_id: string;
@@ -192,14 +197,7 @@ export async function hasSystemAccess(role: string, systemId: string): Promise<b
     return !!rentalsPerm?.can_access;
   }
 
-  // Fallback: if no specific analytics permission is set, use rentals permission
-  if (systemId === "analytics") {
-    const rentalsPerm = await queryOne<{ can_access: number }>(
-      "SELECT can_access FROM role_system_permissions WHERE role = ? AND system_id = 'rentals'",
-      [role]
-    );
-    return !!rentalsPerm?.can_access;
-  }
+
 
   return false;
 }

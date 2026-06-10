@@ -2,6 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { execute, query, generateUUID } from "@/lib/db";
 import { SYSTEM_PAGES } from "@/lib/navigation-config";
+import { clearPermissionCacheForUser } from "@/lib/permissions";
 
 interface UserRow {
     id: string;
@@ -102,6 +103,9 @@ export async function POST(request: Request) {
        ON DUPLICATE KEY UPDATE can_view = ?, can_edit = ?`,
             [generateUUID(), user_id, page_path, can_view, can_edit || false, can_view, can_edit || false]
         );
+
+        // Clear permission cache for that user
+        clearPermissionCacheForUser(user_id);
 
         return NextResponse.json({ success: true });
     } catch (err: unknown) {

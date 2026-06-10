@@ -14,6 +14,8 @@ export interface Unit {
     readiness_checkin_date?: string | null;
     readiness_checkout_date?: string | null;
     readiness_group_id?: string | null;
+    investor_id?: string | null;
+    profit_share?: number | null;
     unit_calendars?: UnitCalendar[];
 }
 

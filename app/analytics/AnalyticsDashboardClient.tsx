@@ -1094,7 +1094,7 @@ export function AnalyticsDashboardClient({
                     <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
                       {isMounted ? (
                         hasCashFlowData ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <BarChart
                               data={data.monthlyData || []}
                               margin={{ top: 15, right: 10, left: 10, bottom: 0 }}
@@ -1176,7 +1176,7 @@ export function AnalyticsDashboardClient({
                     <div className="w-full h-[280px]" style={{ direction: "ltr" }}>
                       {isMounted ? (
                         hasOccupancyData ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <AreaChart
                               data={data.monthlyData || []}
                               margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
@@ -1269,7 +1269,7 @@ export function AnalyticsDashboardClient({
                       )}
                       {isMounted ? (
                         hasMaintenanceStatusData ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <PieChart>
                               <Pie
                                 data={data.maintenanceAnalytics?.statusDist || []}
@@ -1356,7 +1356,7 @@ export function AnalyticsDashboardClient({
                     <div className="w-full h-[240px] mt-2" style={{ direction: "ltr" }}>
                       {isMounted ? (
                         hasMaintenanceTopUnitsData ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <BarChart
                               data={data.maintenanceAnalytics?.topUnits || []}
                               layout="vertical"
@@ -1418,7 +1418,7 @@ export function AnalyticsDashboardClient({
                     <div className="w-full h-[240px] mt-2" style={{ direction: "ltr" }}>
                       {isMounted ? (
                         hasInvoiceData ? (
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <BarChart
                               data={data.invoiceAnalytics || []}
                               margin={{ top: 25, right: 10, left: 5, bottom: 0 }}
@@ -2325,7 +2325,7 @@ export function AnalyticsDashboardClient({
                     <div className="w-full h-[200px] flex items-center justify-center relative" style={{ direction: "ltr" }}>
                       {isMounted && data?.crmStatusDistribution ? (
                         <>
-                          <ResponsiveContainer width="100%" height="100%">
+                          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                             <PieChart>
                               <Pie
                                 data={data.crmStatusDistribution}
@@ -2678,7 +2678,7 @@ export function AnalyticsDashboardClient({
                           ];
 
                           return (
-                            <ResponsiveContainer width="100%" height="100%">
+                            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                               <BarChart 
                                 data={sortedHRData} 
                                 margin={{ top: 10, right: 10, left: -20, bottom: 60 }}
@@ -2736,7 +2736,7 @@ export function AnalyticsDashboardClient({
                         <div className="w-full h-[150px] relative" style={{ direction: "ltr" }}>
                           {isMounted && (dynamicAttendanceStats || []).length > 0 ? (
                             <>
-                              <ResponsiveContainer width="100%" height="100%">
+                              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                                 <PieChart>
                                   <RechartsTooltip
                                     wrapperStyle={{ zIndex: 100 }}

@@ -161,7 +161,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { unit_name, unit_code, city, address, capacity, status } = body;
+    const { unit_name, unit_code, city, address, capacity, status, investor_id, profit_share } = body;
 
     if (!unit_name) {
       return NextResponse.json({ error: "اسم الوحدة مطلوب" }, { status: 400 });
@@ -181,7 +181,9 @@ export async function PUT(
            city = ?, 
            address = ?, 
            capacity = ?, 
-           status = ?
+           status = ?,
+           investor_id = ?,
+           profit_share = ?
        WHERE id = ?`,
       [
         unit_name,
@@ -190,6 +192,8 @@ export async function PUT(
         address || null,
         capacity ? Number(capacity) : null,
         status || "active",
+        investor_id || null,
+        profit_share !== undefined ? profit_share : null,
         id,
       ]
     );

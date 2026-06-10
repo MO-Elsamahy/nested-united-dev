@@ -13,7 +13,7 @@ export async function GET() {
 
   try {
     const accounts = await query(
-      "SELECT id, platform, account_name, notes, created_at FROM platform_accounts ORDER BY created_at DESC"
+      "SELECT id, platform, account_name, notes, investor_id, created_at FROM platform_accounts ORDER BY created_at DESC"
     );
     return NextResponse.json(accounts);
   } catch (error: unknown) {
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { platform, account_name, notes } = body;
+  const { platform, account_name, notes, investor_id } = body;
 
   if (!platform || !account_name) {
     return NextResponse.json({ error: "يرجى تعبئة جميع الحقول المطلوبة" }, { status: 400 });
@@ -46,9 +46,9 @@ export async function POST(request: NextRequest) {
 
   try {
     await execute(
-      `INSERT INTO platform_accounts (id, platform, account_name, notes, created_by)
-       VALUES (?, ?, ?, ?, ?)`,
-      [accountId, platform, account_name, notes || null, user.id]
+      `INSERT INTO platform_accounts (id, platform, account_name, notes, created_by, investor_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [accountId, platform, account_name, notes || null, user.id, investor_id || null]
     );
 
     const account = await queryOne(

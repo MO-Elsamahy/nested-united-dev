@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDialog } from "@/components/accounting/DialogProvider";
-import { Settings, Building2, Calculator, Users, Users2, Wrench, Check, X } from "lucide-react";
+import { Settings, Building2, Calculator, Users, Users2, Wrench, Check, X, PieChart } from "lucide-react";
 
 interface Permission {
   page_path: string;
@@ -18,6 +18,7 @@ interface EditPermissionsButtonProps {
 
 const SYSTEM_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   rentals: { label: "إدارة التأجير", icon: Building2, color: "text-blue-600 bg-blue-50 border-blue-200" },
+  analytics: { label: "التحليلات المتقدمة", icon: PieChart, color: "text-teal-600 bg-teal-50 border-teal-200" },
   accounting: { label: "النظام المالي", icon: Calculator, color: "text-emerald-600 bg-emerald-50 border-emerald-200" },
   hr: { label: "الموارد البشرية", icon: Users, color: "text-violet-600 bg-violet-50 border-violet-200" },
   crm: { label: "إدارة العملاء", icon: Users2, color: "text-indigo-600 bg-indigo-50 border-indigo-200" },
@@ -66,8 +67,8 @@ export function EditPermissionsButton({ userId, userName }: EditPermissionsButto
           );
           return {
             page_path: page.path,
-            can_view: existing?.can_view || false,
-            can_edit: existing?.can_edit || false,
+            can_view: existing !== undefined ? existing.can_view : true,
+            can_edit: existing !== undefined ? existing.can_edit : true,
           };
         });
 

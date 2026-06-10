@@ -2,7 +2,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { queryOne, execute } from "@/lib/db";
-import { logActivityInServer } from "@/lib/permissions";
+import { logActivityInServer, clearPermissionCacheForUser } from "@/lib/permissions";
 
 export async function GET(
   request: NextRequest,
@@ -110,6 +110,9 @@ export async function PUT(
       description: `تحديث مستخدم: ${oldUser.name} - ${changes.join(", ")}`,
       metadata: { user_id: id, changes },
     });
+
+    // Clear permission cache for updated user
+    clearPermissionCacheForUser(id);
 
     return NextResponse.json(updatedUser);
   } catch (error: unknown) {

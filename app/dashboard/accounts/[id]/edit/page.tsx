@@ -8,6 +8,11 @@ import { use } from "react";
 import { usePermission } from "@/lib/hooks/usePermission";
 import { PlatformAccount } from "@/lib/types/database";
 
+interface Investor {
+  id: string;
+  name: string;
+}
+
 export default function EditAccountPage({
   params,
 }: {
@@ -19,6 +24,8 @@ export default function EditAccountPage({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [account, setAccount] = useState<PlatformAccount | null>(null);
+  const [investors, setInvestors] = useState<Investor[]>([]);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   useEffect(() => {
     if (canEdit === false) {
@@ -27,10 +34,19 @@ export default function EditAccountPage({
   }, [canEdit, router]);
 
   useEffect(() => {
-    fetch(`/api/accounts/${id}`)
-      .then((res) => res.json())
-      .then(setAccount)
-      .catch(console.error);
+    Promise.all([
+      fetch(`/api/accounts/${id}`).then((res) => res.json()),
+      fetch("/api/investors").then((res) => res.json())
+    ])
+      .then(([accountData, investorsData]) => {
+        setAccount(accountData);
+        setInvestors(Array.isArray(investorsData) ? investorsData : []);
+        setDataLoaded(true);
+      })
+      .catch((err) => {
+        console.error(err);
+        setError("فشل تحميل البيانات");
+      });
   }, [id]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -42,6 +58,7 @@ export default function EditAccountPage({
     const data = {
       account_name: formData.get("account_name"),
       notes: formData.get("notes") || null,
+      investor_id: formData.get("investor_id") || null,
     };
 
     try {
@@ -82,7 +99,7 @@ export default function EditAccountPage({
     );
   }
 
-  if (!account) {
+  if (!dataLoaded || !account) {
     return <div className="text-center py-12">جاري التحميل...</div>;
   }
 
@@ -129,6 +146,24 @@ export default function EditAccountPage({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              المستثمر المرتبط
+            </label>
+            <select
+              name="investor_id"
+              defaultValue={account.investor_id || ""}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">لا يوجد مستثمر مرتبط</option>
+              {investors.map((inv) => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               ملاحظات
             </label>
             <textarea
@@ -159,8 +194,3 @@ export default function EditAccountPage({
     </div>
   );
 }
-
-
-
-
-

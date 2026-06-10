@@ -41,6 +41,7 @@ export interface PlatformAccount {
   notes: string | null;
   created_by: string;
   created_at: string;
+  investor_id?: string | null;
 }
 
 export interface Unit {
@@ -52,6 +53,8 @@ export interface Unit {
   address: string | null;
   capacity: number | null;
   status: UnitStatus;
+  investor_id?: string | null;
+  profit_share?: number | null;
   // Readiness fields (inline on units)
   readiness_status?: UnitReadinessStatus | null;
   readiness_checkout_date?: string | null;

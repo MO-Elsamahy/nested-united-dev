@@ -445,7 +445,7 @@ export default async function BookingsPage({
             <div>
               <h4 className="font-semibold text-sm sm:text-base text-purple-900">تم إنشاء صفقة في CRM تلقائياً</h4>
               <p className="text-xs sm:text-sm text-purple-700 mt-0.5">
-                تم ربط هذا الحجز بصفقة جديدة بمرحلة "مكتمل" تلقائياً
+                تم ربط هذا الحجز بصفقة جديدة بمرحلة {"مكتمل"} تلقائياً
                 {resolvedParams.amount && ` بقيمة ${resolvedParams.amount} SAR`}
               </p>
             </div>

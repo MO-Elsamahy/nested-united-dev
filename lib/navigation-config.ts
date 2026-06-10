@@ -48,7 +48,7 @@ export const DASHBOARD_NAV: NavSection[] = [
         items: [
             { label: "لوحة التحكم", href: "/dashboard", icon: LayoutDashboard },
             { label: "صندوق الوارد", href: "/dashboard/inbox", icon: MessageSquare }, // New Unified Inbox
-            { label: "حسابات المنصات", href: "/dashboard/accounts", icon: Home }, 
+            { label: "حسابات المستثمرين", href: "/dashboard/accounts", icon: Home }, 
             { label: "الوحدات", href: "/dashboard/units", icon: Building2 },
             { label: "الحجوزات", href: "/dashboard/bookings", icon: Calendar },
         ]
@@ -225,7 +225,7 @@ export const PATH_NAME_MAP: Record<string, string> = {
     "browser-accounts": "حسابات المتصفح",
     "activity-logs": "سجل الأنشطة",
     journals: "دفاتر اليومية",
-    accounts: "حسابات المنصات", 
+    accounts: "حسابات المستثمرين", 
     partners: "الشركاء والموردين",
     "cost-centers": "مراكز التكلفة",
     backlog: "سجل الأحداث",
@@ -253,16 +253,22 @@ export const PATH_NAME_MAP: Record<string, string> = {
 export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
     rentals: [
         { path: "/dashboard", label: "لوحة التحكم الرئيسية" },
-        { path: "/analytics", label: "التحليلات المتقدمة" },
         { path: "/dashboard/inbox", label: "صندوق الوارد" },
         { path: "/dashboard/units", label: "الوحدات" },
         { path: "/dashboard/bookings", label: "الحجوزات" },
-        { path: "/dashboard/accounts", label: "حسابات المنصات" },
+        { path: "/dashboard/accounts", label: "حسابات المستثمرين" },
         { path: "/dashboard/maintenance", label: "الصيانة" },
         { path: "/dashboard/browser-accounts", label: "حسابات المتصفح" },
         { path: "/dashboard/notifications", label: "الإشعارات" },
         { path: "/dashboard/unit-readiness", label: "جاهزية الوحدات" },
         { path: "/dashboard/activity-logs", label: "سجل النشاط" },
+    ],
+    analytics: [
+        { path: "/analytics", label: "لوحة القيادة التنفيذية" },
+        { path: "/analytics?tab=live_ops", label: "العمليات المباشرة" },
+        { path: "/analytics?tab=profitability", label: "ربحية الوحدات" },
+        { path: "/analytics?tab=crm", label: "مبيعات وتوقعات CRM" },
+        { path: "/analytics?tab=hr", label: "الموارد البشرية والرواتب" },
     ],
     accounting: [
         { path: "/accounting", label: "لوحة المؤشرات" },

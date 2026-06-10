@@ -46,7 +46,7 @@ export async function PUT(
   }
 
   const body = await request.json();
-  const { account_name, notes } = body;
+  const { account_name, notes, investor_id } = body;
 
   try {
     // Get account before update for logging
@@ -56,8 +56,8 @@ export async function PUT(
     );
 
     await execute(
-      "UPDATE platform_accounts SET account_name = ?, notes = ? WHERE id = ?",
-      [account_name, notes || null, id]
+      "UPDATE platform_accounts SET account_name = ?, notes = ?, investor_id = ? WHERE id = ?",
+      [account_name, notes || null, investor_id || null, id]
     );
 
     const account = await queryOne(

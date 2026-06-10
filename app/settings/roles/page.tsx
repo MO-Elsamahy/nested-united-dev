@@ -13,6 +13,7 @@ import {
     UserCheck,
     LucideIcon,
     Users2,
+    Activity,
 } from "lucide-react";
 
 interface SystemInfo {
@@ -33,6 +34,7 @@ interface RolePermissionsData {
 
 const systemLabels: Record<string, SystemInfo> = {
     rentals: { label: "إدارة التأجير", icon: Building2 },
+    analytics: { label: "التحليلات المتقدمة", icon: Activity },
     accounting: { label: "النظام المالي", icon: Calculator },
     hr: { label: "الموارد البشرية", icon: Users },
     crm: { label: "إدارة العملاء (CRM)", icon: Users2 },
@@ -115,6 +117,11 @@ export default function RolePermissionsPage() {
                     },
                 };
             });
+
+            // Trigger client-side permissions cache clear
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new Event("permissions-updated"));
+            }
         } catch {
             await alert("خطأ في الاتصال أثناء حفظ الصلاحية");
             await fetchPermissions();

@@ -6,17 +6,30 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { usePermission } from "@/lib/hooks/usePermission";
 
+interface Investor {
+  id: string;
+  name: string;
+}
+
 export default function NewAccountPage() {
   const router = useRouter();
   const canEdit = usePermission("edit");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [investors, setInvestors] = useState<Investor[]>([]);
 
   useEffect(() => {
     if (canEdit === false) {
       router.push("/dashboard/accounts?error=no_permission");
     }
   }, [canEdit, router]);
+
+  useEffect(() => {
+    fetch("/api/investors")
+      .then((res) => res.json())
+      .then((data) => setInvestors(Array.isArray(data) ? data : []))
+      .catch(console.error);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -28,6 +41,7 @@ export default function NewAccountPage() {
       platform: formData.get("platform"),
       account_name: formData.get("account_name"),
       notes: formData.get("notes") || null,
+      investor_id: formData.get("investor_id") || null,
     };
 
     try {
@@ -119,6 +133,23 @@ export default function NewAccountPage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
+              المستثمر المرتبط (اختياري)
+            </label>
+            <select
+              name="investor_id"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">اختر المستثمر</option>
+              {investors.map((inv) => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               ملاحظات
             </label>
             <textarea
@@ -149,7 +180,3 @@ export default function NewAccountPage() {
     </div>
   );
 }
-
-
-
-
