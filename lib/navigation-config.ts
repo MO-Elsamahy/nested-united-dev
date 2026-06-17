@@ -110,7 +110,10 @@ export const ACCOUNTING_NAV: NavSection[] = [
     {
         title: "التقارير",
         items: [
-            { label: "مركز التقارير", href: "/accounting/reports", icon: FileBarChart }
+            { label: "مركز التقارير", href: "/accounting/reports", icon: FileBarChart },
+            { label: "قائمة الدخل", href: "/accounting/reports/income-statement", icon: TrendingUp, allowedRoles: ["super_admin", "admin", "accountant"] },
+            { label: "المركز المالي", href: "/accounting/reports/balance-sheet", icon: PieChart, allowedRoles: ["super_admin", "admin", "accountant"] },
+            { label: "الإيرادات والتكاليف", href: "/accounting/reports/revenue-expenses", icon: Activity, allowedRoles: ["super_admin", "admin", "accountant"] },
         ]
     }
 ];
@@ -247,7 +250,8 @@ export const PATH_NAME_MAP: Record<string, string> = {
     "trial-balance": "ميزان المراجعة",
     "general-ledger": "دفتر الأستاذ العام",
     "balance-sheet": "الميزانية العمومية",
-    "income-statement": "قائمة الدخل"
+    "income-statement": "قائمة الدخل",
+    "revenue-expenses": "تقرير الإيرادات والتكاليف"
 };
 
 export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
@@ -286,6 +290,7 @@ export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
         { path: "/accounting/reports/general-ledger", label: "دفتر الأستاذ العام" },
         { path: "/accounting/reports/balance-sheet", label: "الميزانية العمومية" },
         { path: "/accounting/reports/income-statement", label: "قائمة الدخل" },
+        { path: "/accounting/reports/revenue-expenses", label: "تقرير الإيرادات والتكاليف" },
     ],
     hr: [
         { path: "/hr", label: "لوحة التحكم" },
