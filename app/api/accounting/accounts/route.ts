@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     }
 }
 
-// PATCH: Update account_subtype (treasury vs bank classification)
+// PATCH: Update account fields (name, description, is_reconcilable, account_subtype)
 export async function PATCH(request: Request) {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "يرجى تسجيل الدخول أولاً" }, { status: 401 });
@@ -129,28 +129,64 @@ export async function PATCH(request: Request) {
 
     try {
         const body = await request.json();
-        const { id, account_subtype } = body;
+        const { id, account_subtype, name, description, is_reconcilable } = body;
 
         if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
-        const validSubtypes = ["cash", "bank", null];
-        if (!validSubtypes.includes(account_subtype)) {
-            return NextResponse.json({ error: "account_subtype يجب أن يكون: cash, bank, أو null" }, { status: 400 });
+        // ── تحديث account_subtype (تصنيف خزينة/بنك) ──
+        if (account_subtype !== undefined && name === undefined && description === undefined && is_reconcilable === undefined) {
+            const validSubtypes = ["cash", "bank", null];
+            if (!validSubtypes.includes(account_subtype)) {
+                return NextResponse.json({ error: "account_subtype يجب أن يكون: cash, bank, أو null" }, { status: 400 });
+            }
+
+            await execute(
+                `UPDATE accounting_accounts SET account_subtype = ? WHERE id = ? AND type = 'asset_bank'`,
+                [account_subtype, id]
+            );
+
+            await execute(
+                `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+                 VALUES (?, ?, 'update_subtype', 'account', ?, ?)`,
+                [generateUUID(), user.id, id, JSON.stringify({ account_subtype })]
+            );
+
+            return NextResponse.json({ success: true });
         }
 
-        await execute(
-            `UPDATE accounting_accounts SET account_subtype = ? WHERE id = ? AND type = 'asset_bank'`,
-            [account_subtype, id]
-        );
+        // ── تحديث بيانات الحساب (الاسم والوصف) ──
+        if (name !== undefined || description !== undefined || is_reconcilable !== undefined) {
+            if (name !== undefined && (typeof name !== "string" || name.trim().length === 0)) {
+                return NextResponse.json({ error: "اسم الحساب لا يمكن أن يكون فارغاً" }, { status: 400 });
+            }
 
-        await execute(
-            `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
-             VALUES (?, ?, 'update_subtype', 'account', ?, ?)`,
-            [generateUUID(), user.id, id, JSON.stringify({ account_subtype })]
-        );
+            const updates: string[] = [];
+            const params: (string | boolean | null)[] = [];
 
-        return NextResponse.json({ success: true });
+            if (name !== undefined) { updates.push("name = ?"); params.push(name.trim()); }
+            if (description !== undefined) { updates.push("description = ?"); params.push(description || null); }
+            if (is_reconcilable !== undefined) { updates.push("is_reconcilable = ?"); params.push(is_reconcilable); }
+            updates.push("updated_at = NOW()");
+            params.push(id);
+
+            await execute(
+                `UPDATE accounting_accounts SET ${updates.join(", ")} WHERE id = ? AND deleted_at IS NULL`,
+                params
+            );
+
+            await execute(
+                `INSERT INTO accounting_audit_logs (id, user_id, action, entity_type, entity_id, details)
+                 VALUES (?, ?, 'update', 'account', ?, ?)`,
+                [generateUUID(), user.id, id, JSON.stringify({ name, description, is_reconcilable })]
+            );
+
+            return NextResponse.json({ success: true });
+        }
+
+        return NextResponse.json({ error: "لم يتم تحديد أي حقل للتعديل" }, { status: 400 });
+
     } catch (error: unknown) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }
 }
+

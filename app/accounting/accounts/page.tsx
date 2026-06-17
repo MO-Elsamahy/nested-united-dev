@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, FolderOpen, FileText, Folder, Trash2, Vault, Landmark } from "lucide-react";
+import { Plus, Search, FolderOpen, FileText, Folder, Trash2, Vault, Landmark, Pencil } from "lucide-react";
 import { AccountForm } from "./form";
 import { useDialog } from "@/components/accounting/DialogProvider";
 
@@ -20,6 +20,7 @@ export default function AccountsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [showForm, setShowForm] = useState(false);
+    const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
     useEffect(() => {
         fetchAccounts();
@@ -139,6 +140,14 @@ export default function AccountsPage() {
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {/* تعديل اسم الحساب */}
+                                            <button
+                                                onClick={() => { setEditingAccount(account); setShowForm(true); }}
+                                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                                title="تعديل مسمى الحساب"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </button>
                                             {/* تصنيف الخزينة/البنك لحسابات asset_bank */}
                                             {account.type === "asset_bank" && (
                                                 <div className="flex items-center gap-1 text-xs">
@@ -194,10 +203,11 @@ export default function AccountsPage() {
                 </div>
             )}
 
-            {showForm && (
+            {(showForm || editingAccount) && (
                 <AccountForm
-                    onClose={() => setShowForm(false)}
-                    onSuccess={() => { setShowForm(false); fetchAccounts(); }}
+                    account={editingAccount ? accounts.find(a => a.id === editingAccount.id) as import("@/lib/types/accounting").AccountingAccount | undefined : undefined}
+                    onClose={() => { setShowForm(false); setEditingAccount(null); }}
+                    onSuccess={() => { setShowForm(false); setEditingAccount(null); fetchAccounts(); }}
                 />
             )}
         </div>

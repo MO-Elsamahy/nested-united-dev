@@ -11,6 +11,7 @@ interface AccountFormProps {
 }
 
 export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
+    const isEditMode = !!account;
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
 
@@ -28,14 +29,29 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
         setError("");
 
         try {
-            const url = "/api/accounting/accounts"; // Typically POST for create
-            // For Edit, we would use PUT/PATCH with ID, but keeping it simple for now (Create Only or Edit logic needs API update)
+            let res: Response;
 
-            const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(formData),
-            });
+            if (isEditMode) {
+                // وضع التعديل: استخدام PATCH لتحديث الاسم والوصف وقابلية المطابقة فقط
+                // لا يُسمح بتغيير الكود أو النوع لأن ذلك قد يؤثر على التقارير
+                res = await fetch("/api/accounting/accounts", {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        id: account.id,
+                        name: formData.name,
+                        description: formData.description,
+                        is_reconcilable: formData.is_reconcilable,
+                    }),
+                });
+            } else {
+                // وضع الإنشاء
+                res = await fetch("/api/accounting/accounts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(formData),
+                });
+            }
 
             if (!res.ok) {
                 const data = await res.json();
@@ -55,7 +71,7 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
             <div className="bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden">
                 <div className="flex justify-between items-center p-4 border-b bg-gray-50">
                     <h3 className="font-bold text-lg text-gray-900">
-                        {account ? "تعديل حساب" : "إضافة حساب جديد"}
+                        {isEditMode ? "تعديل بيانات الحساب" : "إضافة حساب جديد"}
                     </h3>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
                         <X className="w-5 h-5" />
@@ -70,9 +86,14 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
                             required
                             value={formData.code}
                             onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                            className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                            className={`w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 ${isEditMode ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
                             placeholder="مثلاً: 101001"
+                            disabled={isEditMode}
+                            title={isEditMode ? "لا يمكن تغيير كود الحساب بعد الإنشاء" : ""}
                         />
+                        {isEditMode && (
+                            <p className="text-xs text-gray-400 mt-1">⚠ كود الحساب لا يمكن تغييره للحفاظ على سلامة البيانات</p>
+                        )}
                     </div>
 
                     <div>
@@ -92,7 +113,9 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
                         <select
                             value={formData.type}
                             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                            className="w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500"
+                            className={`w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 ${isEditMode ? "bg-gray-100 text-gray-500 cursor-not-allowed" : ""}`}
+                            disabled={isEditMode}
+                            title={isEditMode ? "لا يمكن تغيير نوع الحساب بعد الإنشاء" : ""}
                         >
                             <optgroup label="الأصول">
                                 <option value="asset_receivable">مدينون (Receivable)</option>
@@ -114,6 +137,9 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
                                 <option value="cost_of_sales">تكلفة مبيعات</option>
                             </optgroup>
                         </select>
+                        {isEditMode && (
+                            <p className="text-xs text-gray-400 mt-1">⚠ نوع الحساب لا يمكن تغييره للحفاظ على سلامة التقارير المالية</p>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -152,7 +178,7 @@ export function AccountForm({ onClose, onSuccess, account }: AccountFormProps) {
                             disabled={loading}
                             className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
                         >
-                            {loading ? "جاري الحفظ..." : "حفظ الحساب"}
+                            {loading ? "جاري الحفظ..." : isEditMode ? "حفظ التعديلات" : "حفظ الحساب"}
                         </button>
                         <button
                             type="button"
