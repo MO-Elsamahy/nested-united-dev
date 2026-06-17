@@ -274,7 +274,7 @@ export default function PartnerLedgerPage() {
                             {data.moves.map((m: GLMove, i: number) => (
                                 <tr key={i} className="hover:bg-gray-50">
                                     <td className="px-6 py-3 whitespace-nowrap text-gray-500">
-                                        {new Date(m.date).toLocaleDateString("en-CA")}
+                                        {(() => { const d = new Date(m.date); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}
                                     </td>
                                     <td className="px-6 py-3 font-mono text-xs">{m.ref || "—"}</td>
                                     <td className="px-6 py-3 max-w-xs truncate">{m.line_name || m.move_narration}</td>

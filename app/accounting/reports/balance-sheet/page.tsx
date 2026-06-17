@@ -73,6 +73,15 @@ export default function BalanceSheetPage() {
         }).format(amount);
     };
 
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return dateStr;
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -116,7 +125,7 @@ export default function BalanceSheetPage() {
                 <div className="bg-white rounded-2xl shadow-sm border p-8">
                     <div className="text-center mb-8">
                         <h2 className="text-2xl font-bold text-gray-900">الميزانية العمومية</h2>
-                        <p className="text-gray-600 mt-1">كما في {data.as_of_date}</p>
+                        <p className="text-gray-600 mt-1">كما في {formatDate(data.as_of_date)}</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

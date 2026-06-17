@@ -99,6 +99,14 @@ export default function InvoicesPage() {
             .toLowerCase();
     };
 
+    const formatDate = (dateStr: string) => {
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     const filtered = invoices.filter((inv) => {
         const term = normalizeText(searchTerm);
         return (
@@ -232,10 +240,10 @@ export default function InvoicesPage() {
                                     </td>
                                     <td className="px-6 py-4">{invoice.partner_name}</td>
                                     <td className="px-6 py-4 text-gray-500">
-                                        {new Date(invoice.invoice_date).toLocaleDateString("ar-SA")}
+                                        {formatDate(invoice.invoice_date)}
                                     </td>
                                     <td className="px-6 py-4 text-gray-500">
-                                        {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("ar-SA") : "—"}
+                                        {invoice.due_date ? formatDate(invoice.due_date) : "—"}
                                     </td>
                                     <td className="px-6 py-4 font-medium">
                                         {Number(invoice.total_amount).toLocaleString("ar-SA")} ر.س

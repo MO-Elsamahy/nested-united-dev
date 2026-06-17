@@ -130,7 +130,7 @@ export default function GeneralLedgerPage() {
                             </tr>
                             {data.moves.map((m: GLMove, i: number) => (
                                 <tr key={i}>
-                                    <td className="px-6 py-3 whitespace-nowrap">{new Date(m.date).toLocaleDateString('en-CA')}</td>
+                                    <td className="px-6 py-3 whitespace-nowrap">{(() => { const d = new Date(m.date); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}</td>
                                     <td className="px-6 py-3 font-mono text-gray-500">{m.ref}</td>
                                     <td className="px-6 py-3 max-w-xs truncate">{m.line_name || m.move_narration}</td>
                                     <td className="px-6 py-3">{m.partner_name || "-"}</td>

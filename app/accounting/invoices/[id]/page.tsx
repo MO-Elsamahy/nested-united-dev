@@ -165,6 +165,14 @@ export default function InvoiceDetailPage() {
     };
 
 
+    const formatDate = (dateStr: string) => {
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     if (loading) {
         return <div className="p-8 text-center">جاري التحميل...</div>;
     }
@@ -368,13 +376,13 @@ export default function InvoiceDetailPage() {
                             <div>
                                 <span className="text-sm text-gray-500">تاريخ الفاتورة:</span>
                                 <span className="font-medium mr-2">
-                                    {new Date(invoice.invoice_date).toLocaleDateString("ar-SA")}
+                                    {formatDate(invoice.invoice_date)}
                                 </span>
                             </div>
                             <div>
                                 <span className="text-sm text-gray-500">تاريخ الاستحقاق:</span>
                                 <span className="font-medium mr-2">
-                                    {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString("ar-SA") : "—"}
+                                    {invoice.due_date ? formatDate(invoice.due_date) : "—"}
                                 </span>
                             </div>
                             {invoice.reference && (
@@ -501,7 +509,7 @@ export default function InvoiceDetailPage() {
                                 <tr key={payment.id}>
                                     <td className="px-4 py-2 font-medium">{payment.payment_number}</td>
                                     <td className="px-4 py-2">
-                                        {payment.payment_date ? new Date(payment.payment_date).toLocaleDateString("ar-SA") : "—"}
+                                        {payment.payment_date ? formatDate(payment.payment_date) : "—"}
                                     </td>
                                     <td className="px-4 py-2">{payment.amount.toLocaleString("ar-SA")} ر.س</td>
                                     <td className="px-4 py-2">{payment.payment_method}</td>

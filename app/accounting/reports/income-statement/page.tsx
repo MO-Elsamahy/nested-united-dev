@@ -64,6 +64,15 @@ export default function IncomeStatementPage() {
         }).format(amount);
     };
 
+    const formatDate = (dateStr: string) => {
+        if (!dateStr) return dateStr;
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -117,7 +126,7 @@ export default function IncomeStatementPage() {
                     <div className="text-center mb-8">
                         <h2 className="text-2xl font-bold text-gray-900">قائمة الدخل</h2>
                         <p className="text-gray-600 mt-1">
-                            من {data.period.from} إلى {data.period.to}
+                            من {formatDate(data.period.from)} إلى {formatDate(data.period.to)}
                         </p>
                     </div>
 

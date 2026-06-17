@@ -117,6 +117,14 @@ export default function PaymentsPage() {
         }
     };
 
+    const formatDate = (dateStr: string) => {
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     const normalizeText = (text: string) => {
         if (!text) return "";
         return text
@@ -265,7 +273,7 @@ export default function PaymentsPage() {
                                     <tr key={p.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 font-mono font-medium">{p.payment_number}</td>
                                         <td className="px-6 py-4 text-gray-500">
-                                            {new Date(p.payment_date).toLocaleDateString("ar-SA")}
+                                            {formatDate(p.payment_date)}
                                         </td>
                                         <td className="px-6 py-4">
                                             {p.payment_type === "inbound" ? (
@@ -337,7 +345,7 @@ export default function PaymentsPage() {
                                 filteredMoves.map((m) => (
                                     <tr key={m.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
-                                            {new Date(m.date).toLocaleDateString("ar-SA")}
+                                            {formatDate(m.date)}
                                         </td>
                                         <td className="px-6 py-4 font-mono text-sm">{m.ref || "—"}</td>
                                         <td className="px-6 py-4">
