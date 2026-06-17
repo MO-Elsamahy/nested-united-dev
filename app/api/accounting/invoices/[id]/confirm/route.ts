@@ -135,6 +135,12 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
                 }
             }
 
+            // Check if VAT account is required (i.e. at least one line has tax)
+            const hasTax = lines.some((l: any) => Number(l.tax_amount) > 0);
+            if (hasTax && (!taxAccounts || taxAccounts.length === 0)) {
+                throw new Error("لم يتم العثور على حساب لضريبة القيمة المضافة. يرجى تهيئة حساب الضريبة (كود يبدأ بـ 22 ونوع liability_current) أولاً.");
+            }
+
             // 6. إنشاء القيد المحاسبي الرئيسي (فاتورة المبيعات / المشتريات)
             const moveRef = `Invoice: ${invoice.invoice_number}`;
 

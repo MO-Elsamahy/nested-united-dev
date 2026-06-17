@@ -67,10 +67,7 @@ export async function GET(request: Request) {
         // (This is a simplified version - in practice you might want to query separately)
         const retained_earnings_result = await query<{ net_income: number }>(`
             SELECT 
-                SUM(CASE 
-                    WHEN a.type = 'income' THEN ml.credit - ml.debit 
-                    WHEN a.type = 'expense' OR a.type = 'cost_of_sales' THEN ml.debit - ml.credit 
-                END) as net_income
+                SUM(ml.credit - ml.debit) as net_income
             FROM accounting_move_lines ml
             JOIN accounting_moves m ON ml.move_id = m.id
             JOIN accounting_accounts a ON ml.account_id = a.id

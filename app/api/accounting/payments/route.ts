@@ -104,18 +104,18 @@ export async function POST(req: NextRequest) {
                 journalId = cashJournals[0].id;
             }
 
-            // 3. حساب الخزينة / البنك — نبحث بالترتيب: asset_bank → أي حساب في الجورنال
-            const [cashAccounts] = await conn.execute(
-                "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL ORDER BY code ASC LIMIT 1"
+            // 3. حساب الخزينة / البنك — نبحث بالترتيب: الحساب الافتراضي للجورنال → أي حساب asset_bank
+            const [journalAccounts] = await conn.execute(
+                "SELECT aa.* FROM accounting_journals j JOIN accounting_accounts aa ON aa.id = j.default_account_id WHERE j.id = ? AND aa.deleted_at IS NULL LIMIT 1",
+                [journalId]
             ) as any[];
-            // fallback: نجلب الحساب المرتبط بالجورنال مباشرة
-            let cashAccount = cashAccounts?.[0] || null;
+            let cashAccount = journalAccounts?.[0] || null;
+
             if (!cashAccount) {
-                const [journalAccounts] = await conn.execute(
-                    "SELECT aa.* FROM accounting_journals j JOIN accounting_accounts aa ON aa.id = j.default_account_id WHERE j.id = ? AND aa.deleted_at IS NULL LIMIT 1",
-                    [journalId]
+                const [cashAccounts] = await conn.execute(
+                    "SELECT * FROM accounting_accounts WHERE type = 'asset_bank' AND deleted_at IS NULL ORDER BY code ASC LIMIT 1"
                 ) as any[];
-                cashAccount = journalAccounts?.[0] || null;
+                cashAccount = cashAccounts?.[0] || null;
             }
             // إذا لم يكن هناك حساب — نكمل بدون قيد محاسبي (السند يُنشأ لكن بدون move)
             const skipJournalEntry = !cashAccount;
