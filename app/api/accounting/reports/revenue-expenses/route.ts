@@ -56,6 +56,11 @@ export async function GET(request: Request) {
                   AND m.deleted_at IS NULL
                   AND m.date BETWEEN ? AND ?
                   AND a.type IN ('income', 'expense', 'cost_of_sales')
+                  AND (m.narration IS NULL OR (
+                    m.narration NOT LIKE '%اقفال%' 
+                    AND m.narration NOT LIKE '%إقفال%'
+                    AND m.narration NOT LIKE '%ملخص الدخل%'
+                  ))
                 GROUP BY ml.cost_center_id, cc.code, cc.name, a.type
                 HAVING amount != 0
                 ORDER BY cc.code ASC, a.type DESC
@@ -132,6 +137,11 @@ export async function GET(request: Request) {
                   AND m.deleted_at IS NULL
                   AND m.date BETWEEN ? AND ?
                   AND a.type IN ('income', 'expense', 'cost_of_sales')
+                  AND (m.narration IS NULL OR (
+                    m.narration NOT LIKE '%اقفال%' 
+                    AND m.narration NOT LIKE '%إقفال%'
+                    AND m.narration NOT LIKE '%ملخص الدخل%'
+                  ))
                 GROUP BY YEAR(m.date), MONTH(m.date), a.type
                 HAVING amount != 0
                 ORDER BY year ASC, month ASC, a.type DESC

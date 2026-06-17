@@ -46,6 +46,11 @@ export async function GET(request: Request) {
               AND m.deleted_at IS NULL
               AND m.date BETWEEN ? AND ?
               AND a.type IN ('income', 'expense', 'cost_of_sales')
+              AND (m.narration IS NULL OR (
+                m.narration NOT LIKE '%اقفال%' 
+                AND m.narration NOT LIKE '%إقفال%'
+                AND m.narration NOT LIKE '%ملخص الدخل%'
+              ))
             GROUP BY a.id, a.code, a.name, a.type
             HAVING amount != 0
             ORDER BY a.type DESC, a.code
