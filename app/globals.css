@@ -91,3 +91,222 @@ body {
 .animate-swing {
   animation: swing 2s infinite ease-in-out;
 }
+
+@page {
+  size: A4 portrait;
+  margin: 10mm 10mm 15mm 10mm;
+}
+
+@media print {
+  /* ── 1. Hide shell chrome (sidebar, header, controls) ── */
+  header,
+  aside,
+  nav,
+  button,
+  input,
+  select,
+  .print\:hidden,
+  [class*="print:hidden"],
+  .no-print,
+  .no-print * {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    width: 0 !important;
+    overflow: hidden !important;
+    position: absolute !important;
+  }
+
+  /* ── 2. Flatten the AppShell wrappers for cross-browser (Edge) compatibility ── */
+  *, html, body {
+    box-sizing: border-box !important;
+  }
+
+  html,
+  body,
+  #app-shell-root,
+  #app-shell-body,
+  main {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    position: static !important;
+    float: none !important;
+    flex: none !important;
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  /* ── 3. Report content wrapper ── */
+  main > div {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+
+  /* ── 4. Clean up report cards & ensure grids don't break Edge ── */
+  .shadow-sm,
+  .rounded-2xl,
+  .rounded-xl,
+  .border,
+  .border-2 {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border-color: #e2e8f0 !important;
+  }
+  
+  /* Edge often breaks with CSS grid in print. If it's a 2-col grid, let it be flex or block */
+  .grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 16px !important;
+    page-break-inside: avoid !important;
+  }
+  .grid > div {
+    flex: 1 1 45% !important; /* Allow side-by-side but wrap if needed */
+    min-width: 0 !important;
+    max-width: 100% !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ── 5. Professional Typography & Colors ── */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+    color: #0f172a !important; /* Very dark slate for crisp text */
+  }
+
+  h1, h2, h3 {
+    color: #000 !important;
+    page-break-after: avoid !important;
+    margin-bottom: 8px !important;
+  }
+
+  .text-green-600, .text-green-700, .bg-green-50 {
+    color: #15803d !important;
+    border-color: #15803d !important;
+  }
+
+  .text-red-600, .text-red-700, .bg-red-50 {
+    color: #b91c1c !important;
+    border-color: #b91c1c !important;
+  }
+
+  .text-blue-600 { color: #1d4ed8 !important; }
+  .text-orange-600 { color: #c2410c !important; }
+  .text-purple-600 { color: #7e22ce !important; }
+  
+  /* Stronger borders for print */
+  .border-b-2 { border-bottom-width: 2px !important; }
+  .border-t-2 { border-top-width: 2px !important; }
+
+  /* ── 6. Professional Tables ── */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed !important; /* Force table to fit in width */
+    margin-top: 12px !important;
+    margin-bottom: 24px !important;
+    page-break-inside: auto !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    page-break-after: auto !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 4px !important;
+    text-align: right !important;
+    font-size: 9pt !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  th {
+    background-color: #f8fafc !important;
+    font-weight: bold !important;
+    color: #334155 !important;
+    border-bottom: 2px solid #94a3b8 !important;
+    font-size: 10pt !important;
+  }
+
+  /* ── 7. Print Headers & Corporate Branding ── */
+  .print-only-header {
+    display: none; /* hidden on screen */
+  }
+}
+
+/* Ensure the print header is ONLY visible during print */
+@media screen {
+  .print-only-header {
+    display: none !important;
+  }
+}
+@media print {
+  .print-only-header {
+    display: flex !important;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+    border-bottom: 3px solid #1e293b !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 24px !important;
+    width: 100% !important;
+  }
+  .print-only-header img {
+    height: 40px !important;
+    width: auto !important;
+  }
+  .print-only-header .company-info {
+    text-align: left;
+    font-size: 9pt !important;
+    color: #64748b !important;
+  }
+  .print-only-header .report-title {
+    text-align: right;
+  }
+  .print-only-header .report-title h1 {
+    font-size: 18pt !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+  }
+  
+  /* Reset some inner paddings for cleaner print */
+  .p-8 { padding: 4px 0 !important; }
+  .p-6 { padding: 4px 0 !important; }
+  
+  /* Print signature line area */
+  .print-signatures {
+    display: flex !important;
+    justify-content: space-around !important;
+    margin-top: 50px !important;
+    page-break-inside: avoid !important;
+  }
+  .print-signature-box {
+    text-align: center;
+    width: 200px;
+  }
+  .print-signature-line {
+    border-top: 1px solid #000;
+    margin-top: 40px;
+    padding-top: 8px;
+    font-size: 9pt;
+  }
+}

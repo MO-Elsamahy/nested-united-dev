@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileBarChart, Calendar } from "lucide-react";
+import { FileBarChart, Calendar, Printer, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 interface IncomeStatementAccount {
     id: string;
@@ -76,9 +77,23 @@ export default function IncomeStatementPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900">قائمة الدخل</h1>
-                <p className="text-gray-500 mt-1">Income Statement - Profit & Loss</p>
+            <div className="flex justify-between items-center print:hidden">
+                <div className="flex items-center gap-4">
+                    <Link href="/accounting/reports" className="p-2 hover:bg-slate-100 rounded-full">
+                        <ArrowRight className="w-5 h-5" />
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">قائمة الدخل</h1>
+                        <p className="text-gray-500 mt-1">Income Statement - Profit & Loss</p>
+                    </div>
+                </div>
+                <button
+                    onClick={() => window.print()}
+                    className="bg-white border text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition"
+                >
+                    <Printer className="w-4 h-4" />
+                    <span>طباعة</span>
+                </button>
             </div>
 
             {/* Date Range Selector */}
@@ -123,7 +138,22 @@ export default function IncomeStatementPage() {
             {/* Report Display */}
             {data && (
                 <div className="bg-white rounded-2xl shadow-sm border p-8">
-                    <div className="text-center mb-8">
+                    {/* Professional Print Header */}
+                    <div className="print-only-header">
+                        <div className="report-title">
+                            <h1>قائمة الدخل</h1>
+                            <p>من {formatDate(data.period.from)} إلى {formatDate(data.period.to)}</p>
+                        </div>
+                        <div className="company-info flex items-center gap-4">
+                            <div className="text-left">
+                                <strong>NESTED UNITED</strong><br/>
+                                <span className="text-gray-500">نظام الإدارة المالية</span>
+                            </div>
+                            <img src="/logo.png" alt="Company Logo" className="h-10 object-contain" />
+                        </div>
+                    </div>
+
+                    <div className="text-center mb-8 print:hidden">
                         <h2 className="text-2xl font-bold text-gray-900">قائمة الدخل</h2>
                         <p className="text-gray-600 mt-1">
                             من {formatDate(data.period.from)} إلى {formatDate(data.period.to)}
@@ -201,6 +231,22 @@ export default function IncomeStatementPage() {
                         <p className="text-sm text-gray-600 mt-2">
                             {data.net_income >= 0 ? '✓ ربح' : '✗ خسارة'}
                         </p>
+                    </div>
+
+                    {/* Print Signatures Block */}
+                    <div className="print-signatures hidden print:flex">
+                        <div className="print-signature-box">
+                            <p className="font-bold">المحاسب</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
+                        <div className="print-signature-box">
+                            <p className="font-bold">المدير المالي</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
+                        <div className="print-signature-box">
+                            <p className="font-bold">المدير العام</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
                     </div>
                 </div>
             )}

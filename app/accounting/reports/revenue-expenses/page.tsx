@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3, Calendar, ArrowRight } from "lucide-react";
+import { BarChart3, Calendar, ArrowRight, Printer } from "lucide-react";
 import Link from "next/link";
 
 interface MonthRow {
@@ -100,19 +100,43 @@ export default function RevenueExpensesPage() {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center gap-4">
-                <Link href="/accounting/reports" className="p-2 hover:bg-slate-100 rounded-full">
-                    <ArrowRight className="w-5 h-5" />
-                </Link>
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">تقرير الإيرادات والتكاليف</h1>
-                    <p className="text-gray-500 mt-1">Revenue & Expenses - Detailed Analysis</p>
+            <div className="flex justify-between items-center print:hidden">
+                <div className="flex items-center gap-4">
+                    <Link href="/accounting/reports" className="p-2 hover:bg-slate-100 rounded-full">
+                        <ArrowRight className="w-5 h-5" />
+                    </Link>
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">تقرير الإيرادات والتكاليف</h1>
+                        <p className="text-gray-500 mt-1">Revenue & Expenses - Detailed Analysis</p>
+                    </div>
                 </div>
+                <button
+                    onClick={() => window.print()}
+                    className="bg-white border text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition"
+                >
+                    <Printer className="w-4 h-4" />
+                    <span>طباعة</span>
+                </button>
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-2xl shadow-sm border p-6">
-                <div className="flex items-center gap-4 flex-wrap">
+            <div className="bg-white rounded-2xl shadow-sm border p-8">
+                {/* Professional Print Header */}
+                <div className="hidden print:flex justify-between mb-8">
+                    <div className="report-title">
+                        <h1 className="text-2xl font-bold">الإيرادات والتكاليف (Revenue & Expenses)</h1>
+                        {data && <p className="text-gray-600">من {formatDate(data.period.from)} إلى {formatDate(data.period.to)}</p>}
+                    </div>
+                    <div className="company-info flex items-center gap-4">
+                        <div className="text-left">
+                            <strong className="block">NESTED UNITED</strong>
+                            <span className="text-gray-500 text-sm">نظام الإدارة المالية</span>
+                        </div>
+                        <img src="/logo.png" alt="Company Logo" className="h-10 object-contain" />
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-4 flex-wrap print:hidden">
                     <div className="flex items-center gap-2">
                         <Calendar className="w-5 h-5 text-gray-400" />
                         <label className="text-gray-700 font-medium">من تاريخ:</label>
@@ -164,7 +188,7 @@ export default function RevenueExpensesPage() {
             {data && (
                 <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
                     {/* Report Header */}
-                    <div className="p-6 pb-4 border-b bg-gray-50 text-center">
+                    <div className="p-6 pb-4 border-b bg-gray-50 text-center print:hidden">
                         <h2 className="text-xl font-bold text-gray-900">تقرير الإيرادات والتكاليف</h2>
                         <p className="text-gray-500 mt-1 text-sm">
                             من {formatDate(data.period.from)} إلى {formatDate(data.period.to)}
@@ -248,6 +272,22 @@ export default function RevenueExpensesPage() {
                             <p className={`text-2xl font-bold ${data.totals.net >= 0 ? "text-violet-700" : "text-orange-700"}`}>
                                 {formatCurrency(Math.abs(data.totals.net))}
                             </p>
+                        </div>
+                    </div>
+
+                    {/* Print Signatures Block */}
+                    <div className="print-signatures hidden print:flex mt-12 mb-8">
+                        <div className="print-signature-box">
+                            <p className="font-bold">المحاسب</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
+                        <div className="print-signature-box">
+                            <p className="font-bold">المدير المالي</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
+                        <div className="print-signature-box">
+                            <p className="font-bold">المدير العام</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
                         </div>
                     </div>
                 </div>

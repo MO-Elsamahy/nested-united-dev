@@ -24,10 +24,10 @@ export function AppShell({ children, sidebar, header }: AppShellProps) {
     }, [children]);
 
     return (
-        <div className="h-screen bg-gray-50 flex flex-col overflow-hidden" dir="rtl">
+        <div id="app-shell-root" className="h-screen bg-gray-50 flex flex-col overflow-hidden print:h-auto print:bg-white print:overflow-visible" dir="rtl">
             {/* Top Accent Bar with Pattern */}
             <div
-                className="h-7 w-full bg-primary/10 border-b border-primary/20 relative"
+                className="h-7 w-full bg-primary/10 border-b border-primary/20 relative print:hidden no-print"
                 style={{
                     backgroundImage: "url('/images/pattern.webp')",
                     backgroundSize: '300px',
@@ -36,17 +36,19 @@ export function AppShell({ children, sidebar, header }: AppShellProps) {
             />
 
             {/* Header Slot */}
-            {header}
+            <div className="print:hidden no-print">
+                {header}
+            </div>
 
             {/* Sidebar Desktop Slot - Fixed width on md+ */}
-            <div className="flex flex-1 min-h-0 overflow-hidden relative">
-                <div className="hidden md:block h-full flex-shrink-0 border-l border-gray-200 bg-white shadow-sm z-20">
+            <div id="app-shell-body" className="flex flex-1 min-h-0 overflow-hidden relative print:block print:overflow-visible">
+                <div className="hidden md:block h-full flex-shrink-0 border-l border-gray-200 bg-white shadow-sm z-20 print:hidden no-print">
                     {sidebar}
                 </div>
 
                 {/* Mobile Sidebar Overlay/Drawer */}
                 {isMobileMenuOpen && (
-                    <div className="fixed inset-0 z-50 md:hidden">
+                    <div className="fixed inset-0 z-50 md:hidden print:hidden">
                         {/* Backdrop */}
                         <div 
                             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -60,7 +62,7 @@ export function AppShell({ children, sidebar, header }: AppShellProps) {
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
                                 >
-                                    <X className="w-5 h-5 text-gray-600" />
+                                    <X className="w-5 h-5" />
                                 </button>
                             </div>
                             <div className="flex-1 overflow-y-auto custom-sidebar-mobile">
@@ -71,8 +73,8 @@ export function AppShell({ children, sidebar, header }: AppShellProps) {
                 )}
 
                 {/* Main Content Area */}
-                <main className="flex-1 min-h-0 min-w-0 bg-gray-50 overflow-y-auto">
-                    <div className="p-4 sm:p-6 lg:p-8">
+                <main className="flex-1 min-h-0 min-w-0 bg-gray-50 overflow-y-auto print:bg-white print:overflow-visible print:p-0">
+                    <div className="p-4 sm:p-6 lg:p-8 print:p-0">
                         {children}
                     </div>
                 </main>

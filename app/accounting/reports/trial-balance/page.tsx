@@ -58,10 +58,25 @@ export default function TrialBalancePage() {
                 <button onClick={fetchReport} className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm hover:bg-blue-700">تحديث</button>
             </div>
 
-            <div className="bg-white border rounded-xl overflow-hidden print:border-none">
-                <div className="p-8 text-center hidden print:block">
-                    <h2 className="text-2xl font-bold">تقرير ميزان المراجعة</h2>
-                    <p className="text-gray-500">من {from || "البداية"} إلى {to || "الآن"}</p>
+            <div className="bg-white rounded-2xl shadow-sm border p-8">
+                {/* Professional Print Header */}
+                <div className="print-only-header">
+                    <div className="report-title">
+                        <h1>ميزان المراجعة</h1>
+                        <p>{from || "بداية"} - {to || "نهاية"}</p>
+                    </div>
+                    <div className="company-info flex items-center gap-4">
+                        <div className="text-left">
+                            <strong>NESTED UNITED</strong><br/>
+                            <span className="text-gray-500">نظام الإدارة المالية</span>
+                        </div>
+                        <img src="/logo.png" alt="Company Logo" className="h-10 object-contain" />
+                    </div>
+                </div>
+
+                <div className="text-center mb-8 print:hidden">
+                    <h2 className="text-xl font-bold">ميزان المراجعة</h2>
+                    <p className="text-sm text-gray-500">{from} - {to}</p>
                 </div>
 
                 {loading ? <div className="p-12 text-center text-gray-400">تحميل...</div> : (
@@ -96,6 +111,22 @@ export default function TrialBalancePage() {
                         </tfoot>
                     </table>
                 )}
+
+                {/* Print Signatures Block */}
+                <div className="print-signatures hidden print:flex mt-12 mb-8">
+                    <div className="print-signature-box">
+                        <p className="font-bold">المحاسب</p>
+                        <div className="print-signature-line">الاسم والتوقيع</div>
+                    </div>
+                    <div className="print-signature-box">
+                        <p className="font-bold">المدير المالي</p>
+                        <div className="print-signature-line">الاسم والتوقيع</div>
+                    </div>
+                    <div className="print-signature-box">
+                        <p className="font-bold">المدير العام</p>
+                        <div className="print-signature-line">الاسم والتوقيع</div>
+                    </div>
+                </div>
             </div>
         </div>
     );

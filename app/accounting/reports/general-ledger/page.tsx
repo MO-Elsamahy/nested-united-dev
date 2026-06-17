@@ -18,6 +18,10 @@ interface GLMove {
 
 interface GLData {
     opening_balance: number;
+    period: {
+        from: string;
+        to: string;
+    };
     moves: GLMove[];
 }
 
@@ -52,6 +56,15 @@ export default function GeneralLedgerPage() {
 
     const selectedAccountName = accounts.find(a => a.id === selectedAccount)?.name || "";
 
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return "";
+        const d = new Date(dateStr);
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center print:hidden">
@@ -59,8 +72,12 @@ export default function GeneralLedgerPage() {
                     <Link href="/accounting/reports" className="p-2 hover:bg-slate-100 rounded-full"><ArrowRight className="w-5 h-5" /></Link>
                     <h1 className="text-2xl font-bold">دفتر الأستاذ (General Ledger)</h1>
                 </div>
-                <button onClick={() => window.print()} className="bg-white border text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50">
+                <button 
+                    onClick={() => window.print()} 
+                    className="bg-white border text-gray-700 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-50 transition"
+                >
                     <Printer className="w-4 h-4" />
+                    <span>طباعة</span>
                 </button>
             </div>
 
@@ -98,49 +115,85 @@ export default function GeneralLedgerPage() {
             </div>
 
             {loading && (
-                <div className="flex justify-center py-12">
+                <div className="flex justify-center py-12 print:hidden">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
             )}
 
-            {data && (
-                <div className="bg-white border rounded-xl overflow-hidden print:border-none">
-                    <div className="p-8 pb-4 text-center hidden print:block">
+            {data && !loading && (
+                <div className="bg-white rounded-2xl shadow-sm border p-8">
+                    {/* Professional Print Header */}
+                    <div className="print-only-header">
+                        <div className="report-title">
+                            <h1>دفتر الأستاذ العام</h1>
+                            <p>الحساب: {selectedAccountName}</p>
+                            {data.period && (
+                                <p className="text-sm font-normal">من {formatDate(data.period.from)} إلى {formatDate(data.period.to)}</p>
+                            )}
+                        </div>
+                        <div className="company-info flex items-center gap-4">
+                            <div className="text-left">
+                                <strong>NESTED UNITED</strong><br/>
+                                <span className="text-gray-500">نظام الإدارة المالية</span>
+                            </div>
+                            <img src="/logo.png" alt="Company Logo" className="h-10 object-contain" />
+                        </div>
+                    </div>
+
+                    <div className="text-center mb-8 print:hidden">
                         <h2 className="text-xl font-bold">دفتر الأستاذ العام</h2>
                         <p>الحساب: {selectedAccountName}</p>
                         <p className="text-sm text-gray-500">{from} - {to}</p>
                     </div>
 
-                    <table className="w-full text-right text-sm">
-                        <thead className="bg-gray-50 border-b font-bold text-gray-700">
-                            <tr>
-                                <th className="px-6 py-3">التاريخ</th>
-                                <th className="px-6 py-3">المرجع</th>
-                                <th className="px-6 py-3">البيان</th>
-                                <th className="px-6 py-3">الشريك</th>
-                                <th className="px-6 py-3">مدين</th>
-                                <th className="px-6 py-3">دائن</th>
-                                <th className="px-6 py-3">الرصيد</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                            <tr className="bg-yellow-50 font-bold">
-                                <td colSpan={6} className="px-6 py-3 text-left">الرصيد الافتتاحي</td>
-                                <td className="px-6 py-3 dir-ltr">{Number(data.opening_balance).toLocaleString()}</td>
-                            </tr>
-                            {data.moves.map((m: GLMove, i: number) => (
-                                <tr key={i}>
-                                    <td className="px-6 py-3 whitespace-nowrap">{(() => { const d = new Date(m.date); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`; })()}</td>
-                                    <td className="px-6 py-3 font-mono text-gray-500">{m.ref}</td>
-                                    <td className="px-6 py-3 max-w-xs truncate">{m.line_name || m.move_narration}</td>
-                                    <td className="px-6 py-3">{m.partner_name || "-"}</td>
-                                    <td className="px-6 py-3 text-gray-600">{Number(m.debit) > 0 ? Number(m.debit).toLocaleString() : "-"}</td>
-                                    <td className="px-6 py-3 text-gray-600">{Number(m.credit) > 0 ? Number(m.credit).toLocaleString() : "-"}</td>
-                                    <td className="px-6 py-3 font-bold dir-ltr">{Number(m.running_balance).toLocaleString()}</td>
+                    <div className="border rounded-xl overflow-hidden">
+                        <table className="w-full text-right text-sm">
+                            <thead className="bg-gray-50 border-b font-bold text-gray-700">
+                                <tr>
+                                    <th className="px-6 py-3">التاريخ</th>
+                                    <th className="px-6 py-3">المرجع</th>
+                                    <th className="px-6 py-3">البيان</th>
+                                    <th className="px-6 py-3">الشريك</th>
+                                    <th className="px-6 py-3">مدين</th>
+                                    <th className="px-6 py-3">دائن</th>
+                                    <th className="px-6 py-3">الرصيد</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y">
+                                <tr className="bg-yellow-50 font-bold">
+                                    <td colSpan={6} className="px-6 py-3 text-left">الرصيد الافتتاحي</td>
+                                    <td className="px-6 py-3 dir-ltr">{Number(data.opening_balance).toLocaleString()}</td>
+                                </tr>
+                                {data.moves.map((m: GLMove, i: number) => (
+                                    <tr key={i}>
+                                        <td className="px-6 py-3 whitespace-nowrap">{formatDate(m.date)}</td>
+                                        <td className="px-6 py-3 font-mono text-gray-500">{m.ref}</td>
+                                        <td className="px-6 py-3 max-w-xs truncate">{m.line_name || m.move_narration}</td>
+                                        <td className="px-6 py-3">{m.partner_name || "-"}</td>
+                                        <td className="px-6 py-3 text-gray-600">{Number(m.debit) > 0 ? Number(m.debit).toLocaleString() : "-"}</td>
+                                        <td className="px-6 py-3 text-gray-600">{Number(m.credit) > 0 ? Number(m.credit).toLocaleString() : "-"}</td>
+                                        <td className="px-6 py-3 font-bold dir-ltr">{Number(m.running_balance).toLocaleString()}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Print Signatures Block */}
+                    <div className="print-signatures hidden print:flex mt-12 mb-8">
+                        <div className="print-signature-box">
+                            <p className="font-bold">المحاسب</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
+                        <div className="print-signature-box">
+                            <p className="font-bold">المدير المالي</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
+                        <div className="print-signature-box">
+                            <p className="font-bold">المدير العام</p>
+                            <div className="print-signature-line">الاسم والتوقيع</div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
