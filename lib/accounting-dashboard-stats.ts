@@ -13,49 +13,49 @@ export type AccountingDashboardStats = {
 };
 
 /**
- * أرصدة الداشبورد — منطق مباشر وبسيط:
+ * أرصدة الداشبورد — تعتمد على القيود المحاسبية (accounting_move_lines):
  *
  * الخزينة والبنك:
- *   - مباشرة من جدول accounting_payments (المبالغ المقبوضة - المدفوعة)
- *   - بدون اعتماد على دليل الحسابات أو account_subtype
- *   - الخزينة = inbound cash, البنك = inbound bank/غيره
+ *   - محسوبة من القيود المرحّلة على حسابات asset_bank
+ *   - account_subtype = 'cash' → خزينة
+ *   - account_subtype = 'bank' → بنك
+ *   - يشمل: سندات القبض/الصرف + القيود المباشرة المسجلة يدوياً
  *
  * مستحقات العملاء والموردين:
- *   - من جدول accounting_invoices (amount_due للفواتير المؤكدة)
+ *   - من جدول accounting_invoices (amount_due للفواتير غير المسددة)
  */
 export async function getAccountingDashboardStats(asOfDate?: string): Promise<AccountingDashboardStats> {
     const as_of_date = asOfDate || new Date().toISOString().split("T")[0];
 
     try {
-        // ─── الخزينة: مجموع الدفعات النقدية (cash) المقبوضة - المصروفة ───
-        const [cashRows] = await Promise.all([
-            query<{ balance: number }>(`
-                SELECT COALESCE(
-                    SUM(CASE WHEN payment_type = 'inbound' THEN amount ELSE -amount END),
-                    0
-                ) AS balance
-                FROM accounting_payments
-                WHERE deleted_at IS NULL
-                  AND state = 'posted'
-                  AND payment_method = 'cash'
-                  AND payment_date <= ?
-            `, [as_of_date])
-        ]);
+        // ─── الخزينة: من القيود المحاسبية على حسابات account_subtype = 'cash' ───
+        // يشمل سندات القبض/الصرف + القيود المباشرة
+        const cashRows = await query<{ balance: number }>(`
+            SELECT COALESCE(SUM(ml.debit - ml.credit), 0) AS balance
+            FROM accounting_move_lines ml
+            JOIN accounting_moves m ON ml.move_id = m.id
+            JOIN accounting_accounts a ON ml.account_id = a.id
+            WHERE m.state = 'posted'
+              AND m.deleted_at IS NULL
+              AND m.date <= ?
+              AND a.deleted_at IS NULL
+              AND a.type = 'asset_bank'
+              AND a.account_subtype = 'cash'
+        `, [as_of_date]);
 
-        // ─── البنك: مجموع الدفعات البنكية ───
-        const [bankRows] = await Promise.all([
-            query<{ balance: number }>(`
-                SELECT COALESCE(
-                    SUM(CASE WHEN payment_type = 'inbound' THEN amount ELSE -amount END),
-                    0
-                ) AS balance
-                FROM accounting_payments
-                WHERE deleted_at IS NULL
-                  AND state = 'posted'
-                  AND payment_method != 'cash'
-                  AND payment_date <= ?
-            `, [as_of_date])
-        ]);
+        // ─── البنك: من القيود المحاسبية على حسابات account_subtype = 'bank' ───
+        const bankRows = await query<{ balance: number }>(`
+            SELECT COALESCE(SUM(ml.debit - ml.credit), 0) AS balance
+            FROM accounting_move_lines ml
+            JOIN accounting_moves m ON ml.move_id = m.id
+            JOIN accounting_accounts a ON ml.account_id = a.id
+            WHERE m.state = 'posted'
+              AND m.deleted_at IS NULL
+              AND m.date <= ?
+              AND a.deleted_at IS NULL
+              AND a.type = 'asset_bank'
+              AND a.account_subtype = 'bank'
+        `, [as_of_date]);
 
         // ─── مستحقات العملاء ───
         const receivablesRows = await query<{ receivables: number }>(`
@@ -79,10 +79,10 @@ export async function getAccountingDashboardStats(asOfDate?: string): Promise<Ac
 
         return {
             as_of_date,
-            cash:        Number(cashRows[0]?.balance)         || 0,
-            bank:        Number(bankRows[0]?.balance)         || 0,
+            cash:        Number(cashRows[0]?.balance)            || 0,
+            bank:        Number(bankRows[0]?.balance)            || 0,
             receivables: Number(receivablesRows[0]?.receivables) || 0,
-            payables:    Number(payablesRows[0]?.payables)    || 0,
+            payables:    Number(payablesRows[0]?.payables)       || 0,
         };
 
     } catch (error) {
