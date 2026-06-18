@@ -104,6 +104,18 @@ export default function DealDetailPage() {
     const [deleting, setDeleting] = useState(false);
     const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
     const [archiving, setArchiving] = useState(false);
+    
+    // Edit Deal State
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editSaving, setEditSaving] = useState(false);
+    const [editForm, setEditForm] = useState({
+        title: "",
+        value: "",
+        expected_close_date: "",
+        unit_id: "",
+        notes: "",
+    });
+    const [units, setUnits] = useState<{ id: string, unit_name: string }[]>([]);
 
     const [noteText, setNoteText] = useState("");
     const [addingNote, setAddingNote] = useState(false);
@@ -200,6 +212,53 @@ export default function DealDetailPage() {
         } finally {
             setDeleting(false);
             setDeleteDialogOpen(false);
+        }
+    };
+
+    const openEditDialog = () => {
+        if (!deal) return;
+        setEditForm({
+            title: deal.title || "",
+            value: deal.value?.toString() || "",
+            expected_close_date: deal.expected_close_date ? deal.expected_close_date.split('T')[0] : "",
+            unit_id: deal.unit_id || "",
+            notes: deal.notes || "",
+        });
+        
+        // Fetch units if not already loaded
+        if (units.length === 0) {
+            fetch('/api/units')
+                .then(res => res.json())
+                .then(data => setUnits(data))
+                .catch(console.error);
+        }
+        
+        setEditDialogOpen(true);
+    };
+
+    const handleEditSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setEditSaving(true);
+        try {
+            const res = await fetch(`/api/crm/deals`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: deal?.id,
+                    ...editForm,
+                }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok) {
+                setEditDialogOpen(false);
+                await loadDeal({ silent: true });
+                return;
+            }
+            await alert((data as { error?: string }).error || "تعذّر حفظ التعديلات");
+        } catch {
+            await alert("حدث خطأ أثناء الحفظ");
+        } finally {
+            setEditSaving(false);
         }
     };
 
@@ -306,6 +365,107 @@ export default function DealDetailPage() {
                 </div>
             )}
 
+            {editDialogOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="edit-deal-title"
+                >
+                    <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 space-y-4">
+                        <div className="flex items-center justify-between border-b pb-3">
+                            <h2 id="edit-deal-title" className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                <Edit3 className="w-5 h-5 text-blue-500" />
+                                تعديل بيانات الصفقة
+                            </h2>
+                            <button onClick={() => setEditDialogOpen(false)} className="text-gray-400 hover:bg-gray-100 p-1 rounded-lg">
+                                <XCircle className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">عنوان الصفقة</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={editForm.title}
+                                    onChange={e => setEditForm(prev => ({ ...prev, title: e.target.value }))}
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+                                />
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">قيمة الصفقة (ر.س)</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={editForm.value}
+                                        onChange={e => setEditForm(prev => ({ ...prev, value: e.target.value }))}
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">تاريخ الإغلاق المتوقع</label>
+                                    <input
+                                        type="date"
+                                        value={editForm.expected_close_date}
+                                        onChange={e => setEditForm(prev => ({ ...prev, expected_close_date: e.target.value }))}
+                                        className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">الوحدة المرتبطة (اختياري)</label>
+                                <select
+                                    value={editForm.unit_id}
+                                    onChange={e => setEditForm(prev => ({ ...prev, unit_id: e.target.value }))}
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+                                >
+                                    <option value="">بدون وحدة</option>
+                                    {units.map(u => (
+                                        <option key={u.id} value={u.id}>{u.unit_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">ملاحظات الصفقة</label>
+                                <textarea
+                                    rows={3}
+                                    value={editForm.notes}
+                                    onChange={e => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                                    className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm px-3 py-2 border"
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end pt-4 border-t">
+                                <button
+                                    type="button"
+                                    disabled={editSaving}
+                                    onClick={() => setEditDialogOpen(false)}
+                                    className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                                >
+                                    إلغاء
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={editSaving}
+                                    className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    {editSaving ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            جاري الحفظ...
+                                        </>
+                                    ) : (
+                                        "حفظ التعديلات"
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex items-start gap-4">
                 <Link href="/crm/deals" className="p-2 hover:bg-gray-100 rounded-lg mt-1 transition">
@@ -326,6 +486,14 @@ export default function DealDetailPage() {
                         )}
                         </div>
                         <div className="flex flex-wrap items-center gap-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={openEditDialog}
+                                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 bg-blue-50/80 text-blue-900 text-sm font-medium hover:bg-blue-100 transition"
+                            >
+                                <Edit3 className="w-4 h-4" />
+                                تعديل بيانات الصفقة
+                            </button>
                             {deal.status === "open" ? (
                                 <button
                                     type="button"

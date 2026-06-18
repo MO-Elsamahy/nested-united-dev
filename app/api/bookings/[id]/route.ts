@@ -109,6 +109,51 @@ export async function PUT(
       [resolvedParams.id]
     );
 
+    // Sync to CRM Deal if exists
+    const linkedDeal = await queryOne<{ id: string, customer_id: string, value: number, title: string, expected_close_date: string, unit_id: string }>(
+      "SELECT id, customer_id, value, title, expected_close_date, unit_id FROM crm_deals WHERE booking_id = ?",
+      [resolvedParams.id]
+    );
+
+    if (linkedDeal) {
+      await execute(
+        `UPDATE crm_deals SET 
+          unit_id = ?, value = ?, expected_close_date = ?, title = ? 
+         WHERE booking_id = ?`,
+        [unit_id, amountVal, checkin_date, guest_name, resolvedParams.id]
+      );
+
+      const changes: string[] = [];
+      
+      const oldVal = Number(linkedDeal.value);
+      const newVal = Number(amountVal);
+      if (!isNaN(newVal) && newVal !== oldVal) {
+          changes.push(`القيمة من ${oldVal} إلى ${newVal}`);
+      }
+      
+      if (linkedDeal.title !== guest_name) {
+          changes.push(`الاسم من "${linkedDeal.title || 'لا يوجد'}" إلى "${guest_name}"`);
+      }
+      
+      const oldDate = linkedDeal.expected_close_date ? new Date(linkedDeal.expected_close_date).toISOString().slice(0, 10) : '';
+      const newDate = checkin_date ? checkin_date.toString().slice(0, 10) : '';
+      if (oldDate !== newDate) {
+          changes.push(`تاريخ الإغلاق/الوصول من ${oldDate || 'غير محدد'} إلى ${newDate || 'غير محدد'}`);
+      }
+      
+      if (linkedDeal.unit_id !== unit_id) {
+          changes.push(`تغيير الوحدة`);
+      }
+
+      if (changes.length > 0) {
+          const actId = require('crypto').randomUUID();
+          await execute(`
+              INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
+              VALUES (?, ?, ?, 'log', 'تحديث تلقائي من الحجوزات', ?, ?)
+          `, [actId, linkedDeal.customer_id, linkedDeal.id, `تم تحديث: ${changes.join('، ')}.`, currentUser.id]);
+      }
+    }
+
     // Log activity
     await logActivityInServer({
       userId: currentUser.id,

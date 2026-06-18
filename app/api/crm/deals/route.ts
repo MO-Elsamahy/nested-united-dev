@@ -125,14 +125,14 @@ export async function PUT(request: Request) {
 
     try {
         const body = await request.json();
-        const { id, stage, status, unit_id } = body;
+        const { id, stage, status, unit_id, title, value, expected_close_date, notes } = body;
 
         if (!id) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        const oldDeal = await queryOne<{ stage: string; status: string; customer_id: string }>(
-            "SELECT stage, status, customer_id FROM crm_deals WHERE id = ?",
+        const oldDeal = await queryOne<{ stage: string; status: string; customer_id: string; title: string; value: number; expected_close_date: string }>(
+            "SELECT stage, status, customer_id, title, value, expected_close_date FROM crm_deals WHERE id = ?",
             [id]
         );
 
@@ -144,7 +144,7 @@ export async function PUT(request: Request) {
         const params: unknown[] = [];
 
         /** المراحل المعتمدة لدورة حياة الصفقة */
-        const VALID_STAGES = ['negotiation', 'partial_payment', 'completed', 'management'];
+        const VALID_STAGES = ['new', 'contacting', 'qualified', 'proposal', 'negotiation', 'won', 'paid', 'completed', 'lost', 'partial_payment', 'management'];
 
         if (stage !== undefined && stage !== null && stage !== "") {
             if (!VALID_STAGES.includes(stage)) {
@@ -165,10 +165,28 @@ export async function PUT(request: Request) {
             updates.push("unit_id = ?");
             params.push(unit_id === "" ? null : unit_id);
         }
+        if (title !== undefined && title !== null && title.trim() !== "") {
+            updates.push("title = ?");
+            params.push(title.trim());
+        }
+        if (value !== undefined && value !== null) {
+            const valueNum = Number(value);
+            updates.push("value = ?");
+            params.push(isNaN(valueNum) ? 0 : valueNum);
+        }
+        if (expected_close_date !== undefined) {
+            const closeDate = expected_close_date && expected_close_date.trim() !== "" ? expected_close_date.trim().slice(0, 10) : null;
+            updates.push("expected_close_date = ?");
+            params.push(closeDate);
+        }
+        if (notes !== undefined) {
+            updates.push("notes = ?");
+            params.push(notes === "" ? null : notes);
+        }
 
         if (updates.length === 0) {
             return NextResponse.json(
-                { error: "Nothing to update: provide stage and/or status" },
+                { error: "Nothing to update" },
                 { status: 400 }
             );
         }
@@ -178,7 +196,7 @@ export async function PUT(request: Request) {
         await execute(`UPDATE crm_deals SET ${updates.join(", ")} WHERE id = ?`, params);
 
         // Log Changes
-        if (stage && oldDeal && oldDeal.stage !== stage) {
+        if (stage && oldDeal.stage !== stage) {
             const actId = uuidv4();
             await execute(`
                 INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
@@ -186,13 +204,26 @@ export async function PUT(request: Request) {
             `, [actId, oldDeal.customer_id, id, `تم تغيير حالة الصفقة من ${oldDeal.stage} إلى ${stage}`, user.id]);
         }
 
-        if (status && oldDeal && oldDeal.status !== status) {
+        if (status && oldDeal.status !== status) {
             const actId = uuidv4();
             const desc = status === 'closed' ? 'تم إغلاق الصفقة' : 'إعادة فتح الصفقة';
             await execute(`
                INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
                VALUES (?, ?, ?, 'status_change', ?, ?, ?)
            `, [actId, oldDeal.customer_id, id, desc, desc, user.id]);
+        }
+
+        // Log value change if occurred
+        if (value !== undefined && value !== null) {
+            const newVal = Number(value);
+            const oldVal = Number(oldDeal.value);
+            if (!isNaN(newVal) && newVal !== oldVal) {
+                const actId = uuidv4();
+                await execute(`
+                   INSERT INTO crm_activities (id, customer_id, deal_id, type, title, description, performed_by)
+                   VALUES (?, ?, ?, 'log', 'تعديل بيانات الصفقة', ?, ?)
+               `, [actId, oldDeal.customer_id, id, `تم تعديل قيمة الصفقة من ${oldVal} إلى ${newVal}`, user.id]);
+            }
         }
 
         return NextResponse.json({ success: true });

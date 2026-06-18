@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
   const exportCsv = searchParams.get("export") === "csv";
   const year = searchParams.get("year");
   const month = searchParams.get("month");
+  const platforms = searchParams.getAll("platform");
 
   try {
     // Calendar view: year + month
@@ -147,6 +148,7 @@ export async function GET(request: NextRequest) {
     // Transform bookings
     const bookings: UnifiedBooking[] = bookingsRows.map((b) => ({
       id: b.id,
+      type: "manual",
       guest_name: b.guest_name,
       phone: b.phone,
       checkin_date: b.checkin_date,
@@ -170,6 +172,7 @@ export async function GET(request: NextRequest) {
     // Transform reservations to look like bookings
     const reservations: UnifiedBooking[] = reservationsRows.map((r) => ({
       id: r.id,
+      type: "ical",
       guest_name: r.summary || "حجز iCal",
       phone: null,
       checkin_date: r.start_date,
@@ -187,8 +190,18 @@ export async function GET(request: NextRequest) {
     // Filter by platform_account_id for reservations if needed
     if (platformAccountIds.length > 0) {
       rows = rows.filter((item) => {
-        const itemAccountId = item.platform_account_id || item.unit_platform_account_id;
+        const itemAccountId = item.platform_account_id;
         return itemAccountId && platformAccountIds.includes(itemAccountId);
+      });
+    }
+
+    // Filter by platform if needed
+    if (platforms.length > 0) {
+      rows = rows.filter((item) => {
+        if (platforms.includes("ical") && item.type === "ical") {
+          return true;
+        }
+        return item.platform && platforms.includes(item.platform);
       });
     }
 
