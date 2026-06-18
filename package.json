@@ -121,7 +121,6 @@
       "icon": "build/icon.ico",
       "signAndEditExecutable": false,
       "artifactName": "${productName}-Setup-v${version}-${arch}.${ext}",
-      "publisherName": "MZ Software & Tech Solutions",
       "legalTrademarks": "MZ Software & Tech Solutions™"
     },
     "nsis": {
