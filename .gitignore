@@ -74,3 +74,7 @@ sync_results.json
 # Scratch files
 /scratch/
 
+
+*.exe
+public/downloads/*.exe
+dist-electron/*.exe
