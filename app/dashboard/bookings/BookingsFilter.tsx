@@ -323,7 +323,12 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
                                             }}
                                             className="w-4 h-4"
                                         />
-                                        <span className="text-sm">{account.account_name}</span>
+                                        <span className="text-sm">
+                                            {account.account_name}
+                                            <span className="text-xs text-gray-400 mr-1">
+                                                ({account.platform === 'airbnb' ? 'Airbnb' : account.platform === 'gathern' ? 'Gathern' : account.platform})
+                                            </span>
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -410,7 +415,7 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
                                 return account ? (
                                     <FilterChip
                                         key={id}
-                                        label={account.account_name}
+                                        label={`${account.account_name} (${account.platform === 'airbnb' ? 'Airbnb' : account.platform === 'gathern' ? 'Gathern' : account.platform})`}
                                         onRemove={() => removeFilter("account", id)}
                                     />
                                 ) : null;

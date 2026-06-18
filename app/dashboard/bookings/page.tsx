@@ -185,6 +185,15 @@ async function getBookings(searchParams?: {
     `;
     const resParams: string[] = [];
 
+    // Platform accounts filter for reservations
+    if (filters.platform_account_id) {
+      const accountIds = Array.isArray(filters.platform_account_id) ? filters.platform_account_id : [filters.platform_account_id];
+      if (accountIds.length > 0) {
+        resSql += ` AND r.platform_account_id IN (${accountIds.map(() => '?').join(',')})`;
+        resParams.push(...accountIds);
+      }
+    }
+
     // Unit filter for reservations
     if (filters.unit_id) {
       const unitIds = Array.isArray(filters.unit_id) ? filters.unit_id : [filters.unit_id];
@@ -197,9 +206,22 @@ async function getBookings(searchParams?: {
     // Platform filter for reservations
     if (filters.platform) {
       const platforms = Array.isArray(filters.platform) ? filters.platform : [filters.platform];
-      if (platforms.includes("ical")) {
-        resSql += ` AND r.source IN (${platforms.filter(p => p === "ical" || p === "airbnb" || p === "gathern").map(() => '?').join(',')})`;
-        resParams.push(...platforms.filter(p => p === "ical" || p === "airbnb" || p === "gathern"));
+      const hasIcal = platforms.includes("ical");
+      const hasAirbnb = platforms.includes("airbnb");
+      const hasGathern = platforms.includes("gathern");
+      const hasManual = platforms.includes("manual");
+
+      if (hasManual && !hasIcal && !hasAirbnb && !hasGathern) {
+        // Only manual bookings wanted, so no reservations
+        resSql += " AND 1=0";
+      } else if (!hasIcal) {
+        const allowedPlatforms = platforms.filter(p => p === "airbnb" || p === "gathern");
+        if (allowedPlatforms.length > 0) {
+          resSql += ` AND r.platform IN (${allowedPlatforms.map(() => '?').join(',')})`;
+          resParams.push(...allowedPlatforms);
+        } else {
+          resSql += " AND 1=0";
+        }
       }
     }
 
