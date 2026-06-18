@@ -51,24 +51,23 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
   }, [canEdit, router]);
 
   useEffect(() => {
-    // Load units and accounts
+    // Load units, accounts, and booking data concurrently
     Promise.all([
-      fetch("/api/units").then((r) => r.json()).then((data) => setUnits(data || [])).catch(() => setUnits([])),
-      fetch("/api/accounts").then((r) => r.json()).then((data) => setAccounts(data || [])).catch(() => setAccounts([])),
-    ]);
-
-    // Load booking data
-    fetch(`/api/bookings/${resolvedParams.id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.error) {
-          setError(data.error);
-        } else {
-          setBooking(data);
-        }
-      })
-      .catch(() => setError("فشل تحميل بيانات الحجز"))
-      .finally(() => setLoading(false));
+      fetch("/api/units").then((r) => r.json()).catch(() => []),
+      fetch("/api/accounts").then((r) => r.json()).catch(() => []),
+      fetch(`/api/bookings/${resolvedParams.id}`).then((r) => r.json()).catch(() => ({ error: "فشل تحميل بيانات الحجز" }))
+    ]).then(([unitsData, accountsData, bookingData]) => {
+      setUnits(unitsData || []);
+      setAccounts(accountsData || []);
+      
+      if (bookingData.error) {
+        setError(bookingData.error);
+      } else {
+        setBooking(bookingData);
+      }
+    }).finally(() => {
+      setLoading(false);
+    });
   }, [resolvedParams.id]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
