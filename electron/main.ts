@@ -286,7 +286,7 @@ function createMainWindow() {
 
   const iconPath = isDev
     ? path.join(__dirname, "../../build/icon.ico") // __dirname = electron/dist/, so ../../ = project root
-    : path.join(process.resourcesPath, "build", "icon.ico");
+    : path.join(process.resourcesPath, "..", "build", "icon.ico"); // extraFiles copies to root of unpacked dir
 
   mainWindow = new BrowserWindow({
     width: 1400,
