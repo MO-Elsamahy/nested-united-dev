@@ -487,6 +487,25 @@ export class PollingService {
           : null;
       } catch { /* not critical */ }
 
+      let finalIsFromMe = opts.isFromMe;
+
+      try {
+        // Deduplicate placeholders: if we have a temporary 'sent-...' message with the exact same text,
+        // it means we sent this message. So we force is_from_me = 1 and delete the placeholder.
+        const [placeholders] = await pool.execute<RowDataPacket[]>(
+          `SELECT id FROM platform_messages 
+           WHERE thread_id = ? AND platform = ? AND message_text = ? AND platform_msg_id LIKE 'sent-%' AND is_from_me = 1`,
+          [opts.threadId, opts.platform, opts.messageText]
+        );
+        if (placeholders && placeholders.length > 0) {
+          finalIsFromMe = 1;
+          await pool.execute(
+            `DELETE FROM platform_messages WHERE id = ?`,
+            [placeholders[0].id]
+          );
+        }
+      } catch (e) { /* ignore cleanup errors */ }
+
       const [result]: [mysql.ResultSetHeader, mysql.FieldPacket[]] = await pool.execute(
         `INSERT INTO platform_messages
            (id, browser_account_id, platform_account_id, platform, thread_id,
@@ -507,13 +526,13 @@ export class PollingService {
           opts.platformMsgId,
           opts.guestName,
           opts.messageText,
-          opts.isFromMe,
+          finalIsFromMe,
           safeDate(opts.sentAt),
           JSON.stringify(opts.raw),
         ]
       );
 
-      return result.affectedRows === 1;
+      return result.affectedRows > 0;
     } catch (err) {
       console.error('[Polling] ❌  saveMessage error:', err instanceof Error ? err.message : err);
       return false;
@@ -795,9 +814,13 @@ export class PollingService {
         lastMsgCandidate?.sender_id ||
         ''
       );
-      const isFromMe = lastMsgCandidate?.role === 'HOST'
-        || (hostAccountId && senderId === hostAccountId)
-        || (account.platformUserId && senderId === account.platformUserId);
+
+      const isFromMeResolved = (
+          lastMsgCandidate?.role === 'HOST'
+          || (hostAccountId && senderId === hostAccountId)
+          || (account.platformUserId && senderId === account.platformUserId)
+          || (lastMsgCandidate?.account?.accountType === 'USER' && lastMsgCandidate?.account?.accountId === hostAccountId)
+      ) ? 1 : 0;
 
       const platformMsgId = String(
         decodeAirbnbGlobalId(lastMsgCandidate?.id) ||
@@ -810,7 +833,7 @@ export class PollingService {
         platform:      'airbnb',
         threadId,
         platformMsgId,
-        isFromMe:      isFromMe ? 1 : 0,
+        isFromMe:      isFromMeResolved,
         guestName,
         messageText,
         sentAt,
@@ -834,7 +857,10 @@ export class PollingService {
         guest_name:     guestName,
       });
 
-      if (isNew) newCount++;
+      const sentTime = sentAtRaw ? new Date(Number(sentAtRaw) > 1e10 ? Number(sentAtRaw) : sentAtRaw).getTime() : Date.now();
+      const isRecent = (Date.now() - sentTime) < 1000 * 60; // 1 minute
+
+      if (isNew && !isFromMeResolved && isRecent) newCount++;
     }
 
     if (newCount > 0) {
@@ -957,25 +983,38 @@ export class PollingService {
       );
       const text = extractAirbnbMessageText(m);
 
+      const isFromMeResolved = (
+          m.role === 'HOST'
+          || m.senderType === 'HOST'
+          || m.senderType === 'COHOST'
+          || (hostAccountId && senderId === hostAccountId)
+          || (account.platformUserId && senderId === account.platformUserId)
+          || (m.account?.accountType === 'USER' && m.account?.accountId === hostAccountId)
+      ) ? 1 : 0;
+
       const isNew = await this.saveMessage({
         accountId,
         platform:       'airbnb',
         threadId:       resolvedThreadId,
         platformMsgId:  String(decodeAirbnbGlobalId(m.id) || m.messageId || ''),
-        isFromMe:       (
-          m.role === 'HOST'
-          || (hostAccountId && senderId === hostAccountId)
-          || (account.platformUserId && senderId === account.platformUserId)
-        ) ? 1 : 0,
-        guestName:      m.author?.firstName || m.sender?.firstName || m.senderName || account.accountName,
+        isFromMe:       isFromMeResolved,
+        guestName:      m.author?.firstName || m.sender?.firstName || m.senderName || 'Guest',
         messageText:    text,
         sentAt:         m.createdAtMs || m.createdAt || m.created_at || m.updatedAtMs || new Date().toISOString(),
         raw:            m,
       });
-      if (isNew) newCount++;
+
+      const sentAtRaw = m.createdAtMs || m.createdAt || m.created_at || m.updatedAtMs;
+      const sentTime = sentAtRaw ? new Date(Number(sentAtRaw) > 1e10 ? Number(sentAtRaw) : sentAtRaw).getTime() : Date.now();
+      const isRecent = (Date.now() - sentTime) < 1000 * 60; // 1 minute
+
+      if (isNew && !isFromMeResolved && isRecent) newCount++;
     }
 
-    this.emitNewMessages(accountId, 'airbnb', account.accountName, newCount);
+    if (newCount > 0) {
+      this.emitNewMessages(accountId, 'airbnb', account.accountName, newCount);
+      console.log(`[CDP][${account.accountName}] 📨  ${newCount} new thread(s) saved`);
+    }
   }
 
   // ── Process Gathern chat snapshot (captured via CDP) ──────────────────────
@@ -1056,20 +1095,30 @@ export class PollingService {
       for (const m of msgs) {
         const senderId = String(m.sender_id || '');
         const stableId = m.id || m.message_id || `s-g2-${threadIdFromMsg}-${senderId}-${m.created_at}`;
+        
+        const isFromMeResolved = ((myUid && senderId === myUid) || m.is_provider) ? 1 : 0;
+        
         const isNew = await this.saveMessage({
           accountId,
           platform:       'gathern',
           threadId:       threadIdFromMsg,
           platformMsgId:  String(stableId),
-          isFromMe:       (myUid && senderId === myUid) || m.is_provider ? 1 : 0,
+          isFromMe:       isFromMeResolved,
           guestName:      m.sender_name || 'Guest',
           messageText:    m.message || m.body || '',
           sentAt:         m.created_at ? new Date(m.created_at * 1000).toISOString() : new Date().toISOString(),
           raw:            m,
         });
-        if (isNew) newCount++;
+
+        const sentTime = m.created_at ? m.created_at * 1000 : Date.now();
+        const isRecent = (Date.now() - sentTime) < 1000 * 60; // 1 minute
+
+        if (isNew && !isFromMeResolved && isRecent) newCount++;
       }
-      this.emitNewMessages(accountId, 'gathern', account.accountName, newCount);
+      
+      if (newCount > 0) {
+        this.emitNewMessages(accountId, 'gathern', account.accountName, newCount);
+      }
     }
   }
 }

@@ -114,15 +114,14 @@ export async function GET(req: NextRequest) {
         pm.platform,
         pm.thread_id,
         pm.platform_msg_id,
-        COALESCE(NULLIF(ptm.guest_name, ''), NULLIF(pm.guest_name, ''), 'Guest') AS guest_name,
+        COALESCE(NULLIF(pm.guest_name, ''), 'Guest') AS guest_name,
         pm.sender_name,
         pm.message_text,
         pm.is_from_me,
         pm.sent_at,
         pm.sent_at             AS received_at,
         pm.raw_data,
-        ba.account_name,
-        pa.account_name        AS platform_account_name
+        ba.account_name
       FROM platform_messages pm
       INNER JOIN (
         SELECT
@@ -137,12 +136,6 @@ export async function GET(req: NextRequest) {
         AND pm.sent_at            = latest.max_sent
       LEFT JOIN browser_accounts ba
         ON ba.id = pm.browser_account_id
-      LEFT JOIN platform_accounts pa
-        ON pa.id = pm.platform_account_id
-      LEFT JOIN platform_thread_metadata ptm
-        ON ptm.browser_account_id = pm.browser_account_id
-       AND ptm.thread_id = pm.thread_id
-       AND ptm.platform = pm.platform
       WHERE ${whereClauses}
       ORDER BY pm.sent_at DESC
       LIMIT ?

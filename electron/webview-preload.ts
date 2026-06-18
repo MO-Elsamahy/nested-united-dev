@@ -37,6 +37,7 @@ if (typeof window !== 'undefined') {
         method: options?.method || 'GET',
       };
       if (options?.body) bridgeOptions.body = options.body;
+      if (options?.headers) bridgeOptions.headers = options.headers;
 
       const response    = await _originalFetch(url, bridgeOptions);
       const contentType = response.headers.get('content-type') || '';

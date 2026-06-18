@@ -2,6 +2,7 @@ import { session, net, BrowserWindow, app } from 'electron';
 import { BrowserAccountSession, SessionHealthResult } from './types';
 import * as path from 'path';
 import * as fs from 'fs';
+import axios from 'axios';
 
 // ─────────────────────────────────────────────
 // Session state
@@ -119,7 +120,18 @@ async function apiCall<T = unknown>(
   // ── Fallback: main-process net.fetch ──────────────────────────────────────
   const currentSession = partition ? session.fromPartition(partition) : null;
 
-  const fetchOptions: RequestInit = { method, headers, body };
+  // Clean headers to avoid Electron net::ERR_INVALID_ARGUMENT
+  const cleanHeaders: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    if (v !== undefined && v !== null && v !== 'undefined' && v !== 'null' && String(v).trim() !== '') {
+      cleanHeaders[k] = String(v);
+    }
+  }
+
+  const fetchOptions: RequestInit = { method, headers: cleanHeaders };
+  if (body !== undefined && body !== null) {
+    fetchOptions.body = body;
+  }
   const response = await (currentSession
     ? currentSession.fetch(url, fetchOptions)
     : net.fetch(url, fetchOptions));
@@ -156,15 +168,24 @@ async function dispatchFetchViaBridge<T = unknown>(account: BrowserAccountSessio
 
   const requestId = `br-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-  // When using the bridge (page context), send ONLY method + body.
-  // The browser already has the correct cookies, CSRF token, and all other
-  // headers from the live session — injecting our own headers causes the
-  // Airbnb GraphQL server to return a ValidationError.
-  const bridgeOptions = {
+  // When using the bridge (page context) for Airbnb, send ONLY method + body.
+  // The browser already has the correct cookies, CSRF token, etc.
+  // For Gathern, we need to pass the Authorization/Content-Type headers because Gathern uses token-based auth.
+  const bridgeOptions: any = {
     method: options.method || 'GET',
     body: options.body || undefined,
-    // No headers — let the browser use the page's own headers
   };
+
+  if (url.includes('gathern.co') && options.headers) {
+    const allowed = ['authorization', 'content-type'];
+    const cleanHeaders: Record<string, string> = {};
+    for (const [k, v] of Object.entries(options.headers)) {
+      if (allowed.includes(k.toLowerCase())) {
+        cleanHeaders[k] = v;
+      }
+    }
+    bridgeOptions.headers = cleanHeaders;
+  }
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -479,7 +500,243 @@ export let _dbPool: DbPool | null = null;
 export function setDbPool(pool: DbPool) { _dbPool = pool; }
 
 // ─────────────────────────────────────────────
-// GATHERN — Send message
+// GATHERN — Ensure window is on chat page (SPA)
+// ─────────────────────────────────────────────
+
+async function ensureGathernChatPage(win: BrowserWindow): Promise<void> {
+  const currentUrl = win.webContents.getURL() || '';
+
+  // Already on the chat page — don't navigate
+  if (currentUrl.includes('business.gathern.co/app/chat')) return;
+
+  // Navigate to the base chat page (Gathern is an SPA, threads are selected inside the app)
+  const chatUrl = 'https://business.gathern.co/app/chat';
+
+  await new Promise<void>((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      try { win.webContents.removeListener('did-finish-load', onLoad); } catch { }
+      resolve();
+    };
+    const onLoad = () => finish();
+    win.webContents.once('did-finish-load', onLoad);
+    win.webContents.loadURL(chatUrl).catch(() => finish());
+    setTimeout(finish, 10_000);
+  });
+
+  // Wait for SPA to render
+  await new Promise(r => setTimeout(r, 1000));
+}
+
+// ─────────────────────────────────────────────
+// GATHERN — Send message via UI composer injection
+// ─────────────────────────────────────────────
+
+async function sendGathernMessageViaComposer(
+  account: BrowserAccountSession,
+  threadId: string,
+  message: string
+): Promise<boolean> {
+  if (!account.window || account.window.isDestroyed()) {
+    throw new Error('Gathern window is not open — please open it first');
+  }
+
+  await ensureGathernChatPage(account.window);
+
+  // The injected script:
+  // 1. Finds the chat thread in the sidebar by matching chat_uid / data attributes / text
+  // 2. Clicks it and waits for the composer to appear
+  // 3. Types the message and clicks send
+  const script = `
+    (async () => {
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      const msg = ${JSON.stringify(message.trim())};
+      const threadId = ${JSON.stringify(threadId)};
+      const isVisible = (el) => {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        const st = window.getComputedStyle(el);
+        return !!(r.width > 5 && r.height > 5 && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0');
+      };
+      const collect = (selectors) => {
+        const out = [];
+        for (const s of selectors) {
+          try { out.push(...Array.from(document.querySelectorAll(s))); } catch {}
+        }
+        return out.filter(isVisible);
+      };
+
+      // ── Step 1: Find and click the correct chat thread ──
+      // Gathern SPA renders a chat list. We search for any element containing our threadId.
+      const findAndClickThread = async () => {
+        // Try to find any element whose text, href, data-*, or onclick contains the threadId
+        const allElements = document.querySelectorAll('*');
+        for (const el of allElements) {
+          // Check data attributes
+          for (const attr of el.attributes || []) {
+            if (attr.value && typeof attr.value === 'string' && attr.value.includes(threadId)) {
+              // Found an element referencing our thread — click the nearest clickable ancestor
+              const clickable = el.closest('a, button, [role="button"], li, div[class*="chat"], div[class*="item"], div[class*="conversation"]') || el;
+              if (isVisible(clickable)) {
+                clickable.click();
+                return true;
+              }
+            }
+          }
+          // Check href safely (SVG elements have href as an object, not a string)
+          if (el.href && typeof el.href === 'string' && el.href.includes(threadId)) {
+            el.click();
+            return true;
+          }
+        }
+        // Fallback: look for Angular/React rendered elements via innerHTML scan
+        // This is expensive but thorough
+        const containers = document.querySelectorAll('[class*="chat"], [class*="conversation"], [class*="contact"], [class*="thread"], li, .list-group-item');
+        for (const c of containers) {
+          if (c.innerHTML && typeof c.innerHTML === 'string' && c.innerHTML.includes(threadId) && isVisible(c)) {
+            c.click();
+            return true;
+          }
+        }
+        return false;
+      };
+
+      let threadClicked = false;
+      for (let attempt = 0; attempt < 20; attempt++) {
+        threadClicked = await findAndClickThread();
+        if (threadClicked) break;
+        await sleep(100);
+      }
+
+      // Wait for the chat to load after clicking
+      if (threadClicked) {
+        await sleep(300);
+      }
+
+      // ── Step 2: Find the composer ──
+      const findComposer = () => {
+        const selectors = [
+          'textarea[placeholder*="اكتب" i]',
+          'textarea[placeholder*="رسالة" i]',
+          'textarea[placeholder*="message" i]',
+          'textarea[placeholder*="write" i]',
+          'textarea[placeholder*="reply" i]',
+          'textarea[placeholder*="type" i]',
+          'input[placeholder*="اكتب" i]',
+          'input[placeholder*="رسالة" i]',
+          'input[placeholder*="message" i]',
+          'textarea',
+          '[role="textbox"]',
+          '[contenteditable="true"]',
+        ];
+        const candidates = collect(selectors);
+        if (candidates.length === 0) return null;
+        // Prefer lower (composer is near bottom) and larger inputs
+        candidates.sort((a, b) => {
+          const ar = a.getBoundingClientRect();
+          const br = b.getBoundingClientRect();
+          return (br.bottom - ar.bottom) || ((br.width * br.height) - (ar.width * ar.height));
+        });
+        return candidates[0];
+      };
+
+      // ── Step 3: Find the send button ──
+      const findSendButton = () => {
+        const allBtns = collect(['button', '[role="button"]']);
+        for (const btn of allBtns) {
+          const img = btn.querySelector('img');
+          if (img && (img.alt.includes('إرسال') || img.src.includes('send.svg'))) {
+            return btn;
+          }
+        }
+        return null;
+      };
+
+      // ── Step 4: Type and send ──
+      const setComposerValue = async (composer, value) => {
+        composer.focus();
+        
+        // 1. Clear existing text
+        const proto = window.HTMLTextAreaElement.prototype;
+        const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+        if (setter) setter.call(composer, '');
+        else composer.value = '';
+        composer.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        await sleep(50);
+        
+        // 2. Insert text via execCommand (this is the most reliable way to trick React into updating state)
+        document.execCommand('insertText', false, value);
+        
+        // 3. Dispatch manual events as backup
+        composer.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, data: value, inputType: 'insertText' }));
+        composer.dispatchEvent(new Event('input', { bubbles: true }));
+        composer.dispatchEvent(new Event('change', { bubbles: true }));
+      };
+
+      for (let i = 0; i < 30; i++) {
+        let composer = findComposer();
+        if (!composer) {
+          await sleep(100);
+          continue;
+        }
+
+        await setComposerValue(composer, msg);
+        
+        // Wait for React to update the state and enable the send button
+        let sendBtn = null;
+        for (let j = 0; j < 20; j++) {
+          await sleep(50);
+          sendBtn = findSendButton();
+          if (sendBtn && !sendBtn.disabled && sendBtn.getAttribute('aria-disabled') !== 'true') {
+            break; // Button is now enabled!
+          }
+        }
+
+        if (sendBtn && !sendBtn.disabled) {
+          sendBtn.click();
+          return { ok: true, via: 'composer-button', threadClicked };
+        }
+
+        // Fallback: press Enter key if button still disabled or not found
+        composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+        composer.dispatchEvent(new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true }));
+        return { ok: true, via: 'composer-enter', threadClicked };
+      }
+
+      // Diagnostics
+      const textareas = collect(['textarea']).length;
+      const inputs = collect(['input']).length;
+      const editables = collect(['[contenteditable="true"]', '[role="textbox"]']).length;
+      const buttons = collect(['button']).length;
+      
+      return { 
+        ok: false, 
+        error: 'gathern_composer_not_found_or_button_disabled', 
+        debug: { textareas, inputs, editables, buttons, url: location.href, threadClicked },
+      };
+    })();
+  `;
+
+  const result = await account.window.webContents.executeJavaScript(script, true) as { 
+    ok: boolean; 
+    via?: string; 
+    error?: string; 
+    debug?: Record<string, unknown>; 
+    threadClicked?: boolean;
+  };
+  if (!result?.ok) {
+    const dbg = result?.debug ? ` | debug=${JSON.stringify(result.debug)}` : '';
+    throw new Error((result?.error || 'Failed to send via Gathern composer') + dbg);
+  }
+  console.log(`[Gathern] ✅ Message sent via composer (${result.via}, threadClicked=${result.threadClicked})`);
+  return true;
+}
+
+// ─────────────────────────────────────────────
+// GATHERN — Send message (primary: UI composer, fallback: API)
 // ─────────────────────────────────────────────
 
 export async function sendGathernMessage(
@@ -487,8 +744,19 @@ export async function sendGathernMessage(
   threadId: string,
   message: string
 ): Promise<boolean> {
+
+  // ── Primary: UI composer injection (most reliable) ──
+  if (account.window && !account.window.isDestroyed()) {
+    try {
+      return await sendGathernMessageViaComposer(account, threadId, message);
+    } catch (composerErr) {
+      console.warn('[Gathern] Composer send failed:', composerErr instanceof Error ? composerErr.message : composerErr);
+    }
+  }
+
+  // ── Fallback: direct API calls ──
   const chatToken = account.chatAuthToken || account.authToken;
-  if (!chatToken) throw new Error('Chat token not found — please open Gathern window first');
+  if (!chatToken) throw new Error('Chat token not found and window not open — please open Gathern window first');
 
   // Get unit_id from thread metadata
   const meta = _dbPool
@@ -503,47 +771,39 @@ export async function sendGathernMessage(
     );
   }
 
-  const url = 'https://chatapi-prod.gathern.co/v1/business/message/send';
-  const payload = {
-    chat_uid: threadId,
-    message,
-    type: 'text',
-    chat_type: 2,
-    unit_id: unitId,
-    chalet_id: chaletId || unitId,
-    unitId: unitId,
-  };
+  // Try multiple known endpoints
+  const endpoints = [
+    'https://chatapi-prod.gathern.co/v1/business/message/send',
+    'https://chatapi-prod.gathern.co/v1/business/chats/messages',
+  ];
 
-  const fetchOptions = {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${chatToken}`,
-      'Content-Type': 'application/json',
-      'Origin': 'https://business.gathern.co',
-      'Referer': `https://business.gathern.co/app/chat/${threadId}`,
-      'sec-fetch-dest': 'empty',
-      'sec-fetch-mode': 'cors',
-      'sec-fetch-site': 'same-site',
-    },
-    body: JSON.stringify(payload),
-  };
+  const payloads = [
+    { chat_uid: threadId, message, type: 'text', chat_type: 2, unit_id: Number(unitId), chalet_id: Number(chaletId || unitId), unitId: Number(unitId) },
+    { chat_id: threadId, type: 'owner_text', content: message, unit_id: Number(unitId) },
+  ];
 
-  // Prefer bridge (page-context) for Gathern because the API validates referrer
-  let res: unknown;
-  if (account.window && !account.window.isDestroyed()) {
-    res = await dispatchFetchViaBridge(account, url, fetchOptions);
-  } else {
-    const cookies = await getCookiesForAccount(account);
-    res = await apiCall(url, cookies, {}, {
-      method: 'POST',
-      body: JSON.stringify(payload),
-      partition: account.partition,
-      account,
-    });
+  for (let i = 0; i < endpoints.length; i++) {
+    try {
+      const response = await axios.post(endpoints[i], payloads[i], {
+        headers: {
+          'Authorization': `Bearer ${chatToken}`,
+          'Content-Type': 'application/json',
+          'User-Agent': UA,
+          'Origin': 'https://business.gathern.co',
+          'Referer': `https://business.gathern.co/app/chat/${threadId}`,
+        },
+        timeout: 10000,
+      });
+      if (response.status === 200 || response.status === 201) {
+        console.log(`[Gathern] Send (API endpoint ${i + 1}) success:`, JSON.stringify(response.data).substring(0, 200));
+        return true;
+      }
+    } catch (err: any) {
+      console.warn(`[Gathern] API endpoint ${i + 1} failed:`, err.message);
+    }
   }
 
-  console.log('[Gathern] Send response:', JSON.stringify(res).substring(0, 200));
-  return true;
+  throw new Error('Failed to send Gathern message: all methods failed. Please open the Gathern chat window and try again.');
 }
 
 // ─────────────────────────────────────────────

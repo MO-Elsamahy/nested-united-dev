@@ -30,6 +30,58 @@ app.commandLine.appendSwitch("disable-backgrounding-occluded-windows", "true");
 
 let nextServerProcess: ChildProcess | null = null;
 
+// Save cookies to DB so server-side polling service can use them
+async function persistCookiesToDB(accountId: string, account: BrowserAccountSession) {
+  if (!account.window) return;
+  try {
+    const cookies = await account.window.webContents.session.cookies.get({});
+    if (!cookies || cookies.length < 5) return; // ignore empty or nearly empty sessions
+    
+    // convert to format usable by fetch/axios (name=value; name2=value2)
+    const cookieString = cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    
+    let platformUserId: string | null = null;
+    if (account.platform === 'airbnb') {
+      const idCookie = cookies.find(c => c.name === 'a12_uid' || c.name === 'userId' || c.name === 'USER_ID' || c.name.includes('uid') || c.name === '_user_attributes');
+      if (idCookie) {
+        if (idCookie.name === '_user_attributes') {
+          try {
+            const parsed = typeof idCookie.value === 'string' ? JSON.parse(decodeURIComponent(idCookie.value)) : idCookie.value;
+            platformUserId = parsed.id_str || String(parsed.id);
+          } catch(e) {}
+        } else {
+          platformUserId = idCookie.value;
+        }
+      }
+    }
+
+    const conn = await mysql.createConnection({
+      host: "127.0.0.1",
+      user: "root",
+      password: "",
+      database: "rentals_dashboard",
+    });
+
+    if (platformUserId) {
+      await conn.execute(
+        'UPDATE browser_accounts SET cookies_json = ?, platform_user_id = ?, last_connected_at = NOW() WHERE id = ?',
+        [cookieString, platformUserId, accountId]
+      );
+      account.platformUserId = platformUserId;
+    } else {
+      await conn.execute(
+        'UPDATE browser_accounts SET cookies_json = ?, last_connected_at = NOW() WHERE id = ?',
+        [cookieString, accountId]
+      );
+    }
+
+    await conn.end();
+    console.log(`\x1b[35m[Cookie Persistence] 🍪 Saved cookies for ${account.accountName}${platformUserId ? ` (platform_user_id: ${platformUserId})` : ''}\x1b[0m`);
+  } catch (err) {
+    // non-critical
+  }
+}
+
 // Start Next.js standalone server
 async function startNextServer(): Promise<number> {
   return new Promise((resolve, _reject) => {
@@ -360,12 +412,43 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     // Gathern Token Sniffing (from Authorization header)
     const authHeader = details.requestHeaders['Authorization'] || details.requestHeaders['authorization'];
     if (authHeader && authHeader.toString().startsWith('Bearer ')) {
-       const token = authHeader.toString().substring(7);
-       const sessionObj = browserSessions.get(accountSession.id);
-       if (sessionObj && sessionObj.authToken !== token) {
-         console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Gathern Bearer Token: ${token.substring(0, 10)}...\x1b[0m`);
-         sessionObj.authToken = token;
-         saveSessions(); 
+       const token = authHeader.toString().substring(7).trim();
+       if (token.length > 8) {
+         const sessionObj = browserSessions.get(accountSession.id);
+         if (sessionObj) {
+           const isChatToken = details.url.includes('chatapi-prod.gathern.co');
+           const field = isChatToken ? 'chatAuthToken' : 'authToken';
+           
+           let extractedUserId: string | null = null;
+           if (isChatToken && token.includes('|')) {
+             extractedUserId = token.split('|')[0];
+           }
+
+           const acctRecord = sessionObj as unknown as Record<string, unknown>;
+           let updated = false;
+
+           if (acctRecord[field] !== token) {
+             acctRecord[field] = token;
+             updated = true;
+           }
+           if (extractedUserId && sessionObj.platformUserId !== extractedUserId) {
+             sessionObj.platformUserId = extractedUserId;
+             updated = true;
+           }
+
+           if (updated) {
+             saveSessions();
+             getMainDbConnection().then(async (conn) => {
+               const col = isChatToken ? 'chat_auth_token' : 'auth_token';
+               await conn.execute(
+                 `UPDATE browser_accounts SET ${col} = ?, platform_user_id = COALESCE(?, platform_user_id) WHERE id = ?`,
+                 [token, extractedUserId, accountSession.id]
+               );
+               await conn.end();
+               console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Gathern ${field}\x1b[0m`);
+             }).catch(() => {});
+           }
+         }
        }
     }
     callback({ requestHeaders: details.requestHeaders });
@@ -585,11 +668,26 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     cdpHandles.delete(accountSession.id);
     const account = browserSessions.get(accountSession.id);
     if (account) {
+      void persistCookiesToDB(accountSession.id, account);
       account.window = undefined;
     }
     // Notify dashboard about tab change
     notifyTabsChanged();
   });
+
+  browserWindow.webContents.on('did-finish-load', () => {
+    const account = browserSessions.get(accountSession.id);
+    if (account) void persistCookiesToDB(accountSession.id, account);
+  });
+
+  const cookieInterval = setInterval(() => {
+    if (browserWindow.isDestroyed()) {
+      clearInterval(cookieInterval);
+      return;
+    }
+    const account = browserSessions.get(accountSession.id);
+    if (account) void persistCookiesToDB(accountSession.id, account);
+  }, 5 * 60_000);
 
   // Handle window focus/blur to update tab state
   browserWindow.on("focus", () => {
@@ -1283,6 +1381,46 @@ ipcMain.handle("send-message", async (_event, payload: { accountId: string; plat
       new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('Send timed out after 60s')), 60_000)),
     ]);
     console.log(`[IPC send-message] ✅ account=${payload.accountId} thread=${payload.threadId}`);
+    
+    if (ok) {
+      try {
+        const conn = await mysql.createConnection({
+          host: "127.0.0.1",
+          user: "root",
+          password: "",
+          database: "rentals_dashboard",
+        });
+        // Race condition mitigation: check if the real message already arrived via CDP interceptor
+        const [existing]: any = await conn.execute(
+          `SELECT id FROM platform_messages 
+           WHERE thread_id = ? AND platform = ? AND message_text = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MINUTE)`,
+          [payload.threadId, payload.platform, payload.text]
+        );
+
+        if (existing && existing.length > 0) {
+          await conn.execute(
+            `UPDATE platform_messages SET is_from_me = 1 WHERE id = ?`,
+            [existing[0].id]
+          );
+        } else {
+          await conn.execute(
+            `INSERT INTO platform_messages 
+               (id, browser_account_id, platform, thread_id, platform_msg_id, 
+                guest_name, message_text, is_from_me, sent_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
+             ON DUPLICATE KEY UPDATE message_text = VALUES(message_text)`,
+            [require('crypto').randomUUID(), payload.accountId, payload.platform, 
+             payload.threadId, `sent-${Date.now()}`, 'Guest', payload.text]
+          );
+        }
+        await conn.end();
+        mainWindow?.webContents.send('platform-messages-updated', 
+          { accountId: payload.accountId, newCount: 1 });
+      } catch (dbErr) {
+        console.error(`[IPC send-message] DB Save Error:`, dbErr);
+      }
+    }
+    
     return { success: ok };
   } catch(e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e);

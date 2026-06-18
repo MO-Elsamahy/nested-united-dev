@@ -55,6 +55,7 @@ export interface AirbnbMessage {
         firstName?: string;
     };
     role?: string;
+    senderType?: string;
     hydratedContent?: {
         plainText?: string;
         content?: {

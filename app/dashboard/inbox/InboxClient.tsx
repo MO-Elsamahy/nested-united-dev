@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   MessageSquare, RefreshCw, Send, Search,
   CheckCircle2, X, Wifi, WifiOff, AlertCircle,
@@ -23,6 +23,7 @@ interface Message {
   sent_at:            string;
   received_at:        string;
   account_name?:      string;
+  browser_account_id?: string;
   raw_data?:          string;
 }
 
@@ -104,9 +105,10 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
   const [isSending,        setIsSending]        = useState(false);
   const [isLoadingThreads, setIsLoadingThreads] = useState(true);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [lastFetch,        setLastFetch]        = useState<Date>(new Date());
+  const [lastFetch,        setLastFetch]        = useState<Date | null>(null);
   const [healthMap,        setHealthMap]        = useState<Map<string, SessionHealth['status']>>(new Map());
   const [sendError,        setSendError]        = useState<string | null>(null);
+  const [pollingStatus,    setPollingStatus]    = useState<Record<string, any>>({});
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
@@ -130,6 +132,27 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       if (showLoader) setIsLoadingThreads(false);
     }
   }, [filterAccount, filterPlatform]);
+
+  const visibleHistory = useMemo(() => {
+    const finalHistory = [...history].map(m => ({ ...m, _hidden: false }));
+    const placeholders = finalHistory.filter(m => m.platform_msg_id?.startsWith('sent-'));
+    
+    placeholders.forEach(ph => {
+      const realMsg = finalHistory.find(m => 
+        m.id !== ph.id && 
+        !m.platform_msg_id?.startsWith('sent-') && 
+        m.message_text === ph.message_text
+      );
+      if (realMsg) {
+        // Force real message to be 'sent' (blue) since we know we sent the placeholder
+        realMsg.is_from_me = 1;
+        // Hide the placeholder
+        ph._hidden = true;
+      }
+    });
+
+    return finalHistory.filter(m => !m._hidden);
+  }, [history]);
 
   const fetchHistory = useCallback(async (tid: string) => {
     setIsLoadingHistory(true);
@@ -157,19 +180,31 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
     } catch { /* silent */ }
   }, []);
 
+  const fetchPollingStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/polling-status');
+      const data = await res.json();
+      if (data.success) {
+        setPollingStatus(data.data);
+      }
+    } catch { /* silent */ }
+  }, []);
+
   // Initial load
   useEffect(() => {
     fetchThreads(true);
     fetchHealth();
-  }, [fetchThreads, fetchHealth]);
+    fetchPollingStatus();
+  }, [fetchThreads, fetchHealth, fetchPollingStatus]);
 
   // Auto-refresh threads every 5 seconds
   useEffect(() => {
     pollRef.current = setInterval(() => {
       fetchThreads(false);
+      fetchPollingStatus();
     }, 5_000);
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchThreads]);
+  }, [fetchThreads, fetchPollingStatus]);
 
   // Refresh health every 30 seconds
   useEffect(() => {
@@ -197,13 +232,13 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
 
   // Listen for Electron new-messages push event
   useEffect(() => {
-    const api = (window as unknown as { electronAPI?: { onPlatformMessagesUpdated?: (h: () => void) => void; offPlatformMessagesUpdated?: (h: () => void) => void } }).electronAPI;
+    const api = (window as unknown as { electronAPI?: { onPlatformMessagesUpdated?: (cb: () => void) => any; offPlatformMessagesUpdated?: (h: any) => void } }).electronAPI;
     if (!api) return;
-    const handler = () => {
+    const callback = () => {
       fetchThreads(false);
       if (activeThreadId) void fetchHistory(activeThreadId);
     };
-    api.onPlatformMessagesUpdated?.(handler);
+    const handler = api.onPlatformMessagesUpdated?.(callback);
     return () => api.offPlatformMessagesUpdated?.(handler);
   }, [fetchThreads, fetchHistory, activeThreadId]);
 
@@ -264,7 +299,6 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
   const handleReply = async () => {
     if (!selectedThread || !replyText.trim()) return;
     const api = (window as unknown as { electronAPI?: { sendMessage: (p: { accountId: string; platform: string; threadId: string; text: string; metadata: Record<string, unknown> }) => Promise<{ success: boolean; error?: string }> } }).electronAPI;
-    if (!api) return await alert('الرجاء التشغيل عبر تطبيق Electron');
 
     setSendError(null);
 
@@ -280,15 +314,49 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       } catch { /* ignore */ }
     }
 
+    const payload = {
+      accountId: selectedThread.platform_account_id || selectedThread.browser_account_id || "",
+      platform:  selectedThread.platform,
+      threadId:  selectedThread.thread_id,
+      text:      replyText.trim(),
+      metadata,
+    };
+
+    const tmpId = `sent-${Date.now()}`;
+    const tmpMsg = {
+      id: tmpId,
+      browser_account_id: payload.accountId,
+      platform_account_id: selectedThread.platform_account_id,
+      platform: payload.platform,
+      thread_id: payload.threadId,
+      platform_msg_id: tmpId,
+      guest_name: selectedThread.guest_name,
+      message_text: payload.text,
+      is_from_me: 1,
+      sent_at: new Date().toISOString(),
+      _hidden: false
+    };
+    
+    // Optimistic update
+    setHistory(prev => [...prev, tmpMsg as any]);
+    setReplyText('');
+
     setIsSending(true);
     try {
-      const res = await api.sendMessage({
-        accountId: selectedThread.platform_account_id,
-        platform:  selectedThread.platform,
-        threadId:  selectedThread.thread_id,
-        text:      replyText.trim(),
-        metadata,
-      });
+      let res: { success: boolean; error?: string };
+      
+      if (api) {
+        res = await api.sendMessage(payload);
+      } else {
+        // Fallback to web API
+        const webRes = await fetch('/api/messages/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await webRes.json();
+        res = data;
+      }
 
       if (res.success) {
         setReplyText('');
@@ -365,9 +433,11 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
             <div className="flex flex-wrap gap-2">
               {accounts.map(a => {
                 const status = healthMap.get(a.id) || 'unknown';
+                const pStatus = pollingStatus[a.id];
+                const titleStr = pStatus ? `آخر سحب: ${pStatus.lastPollAt ? new Date(pStatus.lastPollAt).toLocaleString('ar-SA') : 'لم يتم'} ${pStatus.error ? '| خطأ: ' + pStatus.error : ''}` : '';
                 return (
-                  <div key={a.id} className="flex items-center gap-1 text-[10px] text-gray-500">
-                    <HealthDot status={status} />
+                  <div key={a.id} className="flex items-center gap-1 text-[10px] text-gray-500" title={titleStr}>
+                    <HealthDot status={pStatus?.error ? 'error' : status} />
                     <span className="truncate max-w-[80px]">{a.account_name}</span>
                   </div>
                 );
@@ -437,7 +507,7 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
               <MessageSquare className="w-12 h-12 opacity-20" />
             </div>
             <p className="font-medium">اختر محادثة لبدء المراسلة</p>
-            <p className="text-xs text-gray-300">آخر تحديث: {lastFetch.toLocaleTimeString('ar-SA')}</p>
+            {lastFetch && <p className="text-xs text-gray-300">آخر تحديث: {lastFetch.toLocaleTimeString('ar-SA')}</p>}
           </div>
         ) : (
           <>
@@ -486,19 +556,19 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
 
             {/* Chat Area */}
             <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50/30 custom-scrollbar">
-              {isLoadingHistory && history.length === 0 ? (
+              {isLoadingHistory && visibleHistory.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400">
                   جاري تحميل الرسائل...
                 </div>
-              ) : history.length === 0 ? (
+              ) : visibleHistory.length === 0 ? (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">
                   لا توجد رسائل محفوظة لهذه المحادثة بعد
                 </div>
               ) : (
-                history.map((m, idx) => {
+                visibleHistory.map((m: any, idx) => {
                   const isMe  = m.is_from_me === 1;
                   const showDate = idx === 0 ||
-                    new Date(m.sent_at).toDateString() !== new Date(history[idx - 1].sent_at).toDateString();
+                    new Date(m.sent_at).toDateString() !== new Date(visibleHistory[idx - 1].sent_at).toDateString();
 
                   return (
                     <div key={m.id} className="space-y-4">

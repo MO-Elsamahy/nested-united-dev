@@ -55,10 +55,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   // New event: polling service found new messages
   onPlatformMessagesUpdated: (callback: (data: { accountId: string; newCount: number }) => void) => {
-    ipcRenderer.on('platform-messages-updated', (_, data) => callback(data));
+    const handler = (_event: Electron.IpcRendererEvent, data: { accountId: string; newCount: number }) => callback(data);
+    ipcRenderer.on('platform-messages-updated', handler);
+    return handler;
   },
-  offPlatformMessagesUpdated: (callback: (data: { accountId: string; newCount: number }) => void) => {
-    ipcRenderer.removeListener('platform-messages-updated', (_event: Electron.IpcRendererEvent, data: { accountId: string; newCount: number }) => callback(data));
+  offPlatformMessagesUpdated: (handler: (...args: any[]) => void) => {
+    ipcRenderer.removeListener('platform-messages-updated', handler);
   },
   sendDatabaseNotification: (data: { title: string; body: string; id: string }) => {
     ipcRenderer.send("database-notification", data);
@@ -99,9 +101,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Session health change event (pushed by polling service)
   onSessionHealthChanged: (callback: (data: { accountId: string; healthy: boolean; reason: string }) => void) => {
-    ipcRenderer.on('session-health-changed', (_, data) => callback(data));
+    const handler = (_event: Electron.IpcRendererEvent, data: { accountId: string; healthy: boolean; reason: string }) => callback(data);
+    ipcRenderer.on('session-health-changed', handler);
+    return handler;
   },
-  offSessionHealthChanged: (callback: (data: { accountId: string; healthy: boolean; reason: string }) => void) => {
-    ipcRenderer.removeListener('session-health-changed', (_event: Electron.IpcRendererEvent, data: { accountId: string; healthy: boolean; reason: string }) => callback(data));
+  offSessionHealthChanged: (handler: (...args: any[]) => void) => {
+    ipcRenderer.removeListener('session-health-changed', handler);
   },
 });
