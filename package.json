@@ -1,6 +1,6 @@
 {
   "name": "rentals-dashboard",
-  "version": "1.0.1",
+  "version": "3.0.1",
   "description": "لوحة تحكم لإدارة الوحدات السكنية والإيجارات",
   "author": "Mohamed Amir Elsamahy <https://samahy.tech/>",
   "private": true,

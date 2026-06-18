@@ -11,7 +11,7 @@ export default function DownloadPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-white px-4">
       <div className="w-full max-w-md">
         <div className="bg-white rounded-lg shadow-xl p-8 space-y-6">
-          
+
           {/* Header & Logo (Matches Login Page) */}
           <div className="text-center space-y-4">
             <div className="flex justify-center">
@@ -51,7 +51,7 @@ export default function DownloadPage() {
             </div>
 
             <a
-              href="/downloads/NestedUnited-Setup-v1.0.1.exe"
+              href="/downloads/NestedUnited-Setup-v3.0.1.exe"
               download
               className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition"
             >
