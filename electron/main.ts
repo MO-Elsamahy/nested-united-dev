@@ -13,7 +13,6 @@ import {
 import * as path from "path";
 import * as fs from "fs";
 import { spawn, ChildProcess } from "child_process";
-import mysql from "mysql2/promise";
 import { PollingService } from "./polling-service";
 import { sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, resolveBridgeResponse } from "./platform-api";
 import { BrowserAccountSession } from "./types";
@@ -22,6 +21,22 @@ import { attachCdpInterceptor, CdpInterceptorHandle } from "./cdp-interceptor";
 // Track active CDP interceptors per account so we can detach/reattach on
 // DevTools open/close and on window destruction without leaking handles.
 const cdpHandles = new Map<string, CdpInterceptorHandle>();
+
+const PROD_APP_URL = "https://go.nestedunited.com";
+const getApiUrl = () => app.isPackaged ? PROD_APP_URL : (process.env.DEV_SERVER_URL || "http://localhost:3000");
+
+async function updateBrowserAccountTokens(accountId: string, updates: { auth_token?: string, chat_auth_token?: string, platform_user_id?: string | null, cookies_json?: string }) {
+  try {
+    const res = await net.fetch(`${getApiUrl()}/api/browser-accounts/${accountId}/sync`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    if (!res.ok) console.error(`[Sync] Failed to sync tokens for ${accountId}`, await res.text());
+  } catch (err) {
+    console.error(`[Sync] Failed to sync tokens for ${accountId}`, err);
+  }
+}
 
 // Mitigate Chromium/Electron freezing or dropping keystrokes in inputs when the window
 // loses focus, is occluded, or the renderer is background-throttled (common on Windows).
@@ -55,103 +70,22 @@ async function persistCookiesToDB(accountId: string, account: BrowserAccountSess
       }
     }
 
-    const conn = await mysql.createConnection({
-      host: "127.0.0.1",
-      user: "root",
-      password: "",
-      database: "rentals_dashboard",
+    await updateBrowserAccountTokens(accountId, { 
+      cookies_json: cookieString, 
+      platform_user_id: platformUserId 
     });
 
     if (platformUserId) {
-      await conn.execute(
-        'UPDATE browser_accounts SET cookies_json = ?, platform_user_id = ?, last_connected_at = NOW() WHERE id = ?',
-        [cookieString, platformUserId, accountId]
-      );
       account.platformUserId = platformUserId;
-    } else {
-      await conn.execute(
-        'UPDATE browser_accounts SET cookies_json = ?, last_connected_at = NOW() WHERE id = ?',
-        [cookieString, accountId]
-      );
     }
 
-    await conn.end();
     console.log(`\x1b[35m[Cookie Persistence] 🍪 Saved cookies for ${account.accountName}${platformUserId ? ` (platform_user_id: ${platformUserId})` : ''}\x1b[0m`);
   } catch (err) {
     // non-critical
   }
 }
 
-// Start Next.js standalone server
-async function startNextServer(): Promise<number> {
-  return new Promise((resolve, _reject) => {
-    const port = 3456;
-
-    let serverPath: string;
-    let cwd: string;
-
-    if (app.isPackaged) {
-      const resourcesPath = path.join(process.resourcesPath, "app.asar.unpacked");
-      serverPath = path.join(resourcesPath, ".next/standalone/server.js");
-      cwd = path.join(resourcesPath, ".next/standalone");
-
-      if (!fs.existsSync(serverPath)) {
-        const asarPath = path.join(process.resourcesPath, "app.asar");
-        serverPath = path.join(asarPath, ".next/standalone/server.js");
-        cwd = path.join(asarPath, ".next/standalone");
-      }
-    } else {
-      serverPath = path.join(__dirname, "../.next/standalone/server.js");
-      cwd = path.join(__dirname, "../.next/standalone");
-    }
-
-    console.log("Starting Next.js server from:", serverPath);
-
-    if (!fs.existsSync(serverPath)) {
-      console.error("Server file not found:", serverPath);
-      resolve(port);
-      return;
-    }
-
-    const env = {
-      ...process.env,
-      PORT: String(port),
-      HOSTNAME: "localhost",
-      NODE_ENV: "production",
-    };
-
-    nextServerProcess = spawn("node", [serverPath], {
-      env,
-      cwd,
-      shell: true,
-    });
-
-    nextServerProcess.stdout?.on("data", (data) => {
-      console.log(`Next.js: ${data}`);
-      if (data.toString().includes("Ready") || data.toString().includes("started") || data.toString().includes("Listening")) {
-        resolve(port);
-      }
-    });
-
-    nextServerProcess.stderr?.on("data", (data) => {
-      console.error(`Next.js error: ${data}`);
-    });
-
-    nextServerProcess.on("error", (err) => {
-      console.error("Failed to start Next.js server:", err);
-      resolve(port);
-    });
-
-    setTimeout(() => resolve(port), 5000);
-  });
-}
-
-function stopNextServer() {
-  if (nextServerProcess) {
-    nextServerProcess.kill();
-    nextServerProcess = null;
-  }
-}
+// Local Next.js server removed for production. Using API instead.
 
 // Store for browser accounts sessions
 // BrowserAccountSession is now imported from ./platform-api
@@ -223,17 +157,15 @@ function createMainWindow() {
               if (acctUpdated) {
                 updated = true;
                 try {
-                  const conn = await getMainDbConnection();
-                  const col = isChatToken ? 'chat_auth_token' : 'auth_token';
-                  await conn.execute(
-                    `UPDATE browser_accounts SET ${col} = ?, platform_user_id = COALESCE(?, platform_user_id) WHERE id = ?`,
-                    [token, extractedUserId, id]
-                  );
-                  await conn.end();
+                  const updates: any = {};
+                  if (isChatToken) updates.chat_auth_token = token;
+                  else updates.auth_token = token;
+                  if (extractedUserId) updates.platform_user_id = extractedUserId;
+                  await updateBrowserAccountTokens(id, updates);
                   console.log(`[Token Sniffer] ✅ Gathern ${field} & userId saved for ${id}`);
                 } catch (e: unknown) { 
                   const errorMessage = e instanceof Error ? e.message : String(e);
-                  console.error(`[Token Sniffer] DB Error:`, errorMessage); 
+                  console.error(`[Token Sniffer] API Sync Error:`, errorMessage); 
                 }
               }
             }
@@ -251,9 +183,7 @@ function createMainWindow() {
                  acct.platformUserId = airbnbUserId;
                  updated = true;
                  try {
-                   const conn = await getMainDbConnection();
-                   await conn.execute(`UPDATE browser_accounts SET platform_user_id = ? WHERE id = ?`, [airbnbUserId, id]);
-                   await conn.end();
+                   await updateBrowserAccountTokens(id, { platform_user_id: airbnbUserId });
                    console.log(`[Token Sniffer] ✅ Airbnb userId (${airbnbUserId}) saved for ${id}`);
                  } catch { /* silent */ }
                }
@@ -310,10 +240,7 @@ function createMainWindow() {
     mainWindow.loadURL(devUrl);
     // DevTools will open manually with F12 if needed
   } else {
-    // في الإنتاج: تم تحويل التطبيق ليعتمد على الخادم المحلي (Localhost) بدلاً من Netlify
-    // mainWindow.loadURL(PROD_APP_URL);
-    
-    startNextServer().then((port) => mainWindow?.loadURL(`http://localhost:${port}`));
+    mainWindow.loadURL(PROD_APP_URL);
   }
 
   mainWindow.on("closed", () => {
@@ -438,15 +365,12 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
 
            if (updated) {
              saveSessions();
-             getMainDbConnection().then(async (conn) => {
-               const col = isChatToken ? 'chat_auth_token' : 'auth_token';
-               await conn.execute(
-                 `UPDATE browser_accounts SET ${col} = ?, platform_user_id = COALESCE(?, platform_user_id) WHERE id = ?`,
-                 [token, extractedUserId, accountSession.id]
-               );
-               await conn.end();
-               console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Gathern ${field}\x1b[0m`);
-             }).catch(() => {});
+             const updates: any = {};
+             if (isChatToken) updates.chat_auth_token = token;
+             else updates.auth_token = token;
+             if (extractedUserId) updates.platform_user_id = extractedUserId;
+             updateBrowserAccountTokens(accountSession.id, updates);
+             console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Gathern ${field}\x1b[0m`);
            }
          }
        }

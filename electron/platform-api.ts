@@ -470,34 +470,24 @@ interface GathernThreadMeta {
   chalet_id: string | null;
 }
 
-interface DbPool {
-  execute: (sql: string, params: unknown[]) => Promise<[unknown[], unknown]>;
-}
+const PROD_APP_URL = "https://go.nestedunited.com";
+const getApiUrl = () => app.isPackaged ? PROD_APP_URL : (process.env.DEV_SERVER_URL || "http://localhost:3000");
 
 async function getGathernThreadMeta(
   accountId: string,
-  threadId: string,
-  pool: DbPool
+  threadId: string
 ): Promise<GathernThreadMeta> {
   try {
-    const [rows] = await pool.execute(
-      `SELECT unit_id, chalet_id FROM platform_thread_metadata
-       WHERE browser_account_id = ? AND thread_id = ?
-       LIMIT 1`,
-      [accountId, threadId]
-    ) as [GathernThreadMeta[], unknown];
-    if (rows?.length && (rows[0].unit_id || rows[0].chalet_id)) {
-      return { unit_id: rows[0].unit_id, chalet_id: rows[0].chalet_id || rows[0].unit_id };
+    const res = await net.fetch(`${getApiUrl()}/api/browser-accounts/${accountId}/thread-meta?threadId=${threadId}`);
+    if (res.ok) {
+      const data = await res.json() as GathernThreadMeta;
+      return { unit_id: data.unit_id ? String(data.unit_id) : null, chalet_id: data.chalet_id ? String(data.chalet_id) : null };
     }
-  } catch { /* DB not always available from here */ }
-
-  // Fallback: try to extract from last message's raw_data for this thread in memory
+  } catch (err) {
+    console.warn('[API] getGathernThreadMeta failed:', err);
+  }
   return { unit_id: null, chalet_id: null };
 }
-
-// Exported so polling-service can pass the pool
-export let _dbPool: DbPool | null = null;
-export function setDbPool(pool: DbPool) { _dbPool = pool; }
 
 // ─────────────────────────────────────────────
 // GATHERN — Ensure window is on chat page (SPA)
@@ -759,9 +749,7 @@ export async function sendGathernMessage(
   if (!chatToken) throw new Error('Chat token not found and window not open — please open Gathern window first');
 
   // Get unit_id from thread metadata
-  const meta = _dbPool
-    ? await getGathernThreadMeta(account.id, threadId, _dbPool)
-    : { unit_id: null, chalet_id: null };
+  const meta = await getGathernThreadMeta(account.id, threadId);
   const unitId = meta.unit_id ? Number(meta.unit_id) : null;
   const chaletId = meta.chalet_id ? Number(meta.chalet_id) : null;
 
