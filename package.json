@@ -13,9 +13,9 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:start\"",
+    "electron:dev": "npm run electron:start",
     "electron:start": "tsc -p electron/tsconfig.json && electron . --no-sandbox",
-    "electron:build": "npm run build && npm run electron:compile && electron-builder",
+    "electron:build": "npm run electron:compile && electron-builder",
     "electron:compile": "tsc -p electron/tsconfig.json",
     "postinstall": "electron-builder install-app-deps"
   },
@@ -85,28 +85,7 @@
     "icon": "build/icon.ico",
     "files": [
       "electron/dist/**/*",
-      ".next/standalone/**/*",
-      ".next/static/**/*",
-      "public/**/*",
-      "node_modules/**/*",
-      "!node_modules/@img/sharp-darwin-*/**/*",
-      "!node_modules/@img/sharp-linux-*/**/*",
-      "!node_modules/@img/sharp-darwin-arm64/**/*",
-      "!node_modules/@emnapi/**/*"
-    ],
-    "extraFiles": [
-      {
-        "from": ".next/static",
-        "to": ".next/standalone/.next/static"
-      },
-      {
-        "from": "public",
-        "to": ".next/standalone/public"
-      },
-      {
-        "from": "build/icon.ico",
-        "to": "build/icon.ico"
-      }
+      "package.json"
     ],
     "asar": true,
     "win": {
