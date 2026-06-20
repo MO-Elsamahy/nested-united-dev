@@ -1,0 +1,27 @@
+=====================================================
+NestedUnited - End User License Agreement
+=====================================================
+
+This software application "NestedUnited" is developed and 
+owned by MZ Software & Tech Solutions.
+
+1. LICENSE GRANT
+MZ Software & Tech Solutions grants you a personal, non-exclusive, 
+non-transferable license to use the NestedUnited software.
+
+2. OWNERSHIP
+MZ Software & Tech Solutions retains all rights, title, 
+and interest in and to the Software.
+
+3. RESTRICTIONS
+You may not:
+- Reverse engineer, decompile, or disassemble the Software.
+- Modify or create derivative works of the Software.
+- Remove any proprietary notices or labels.
+
+4. SUPPORT
+Professional support is provided by MZ Software & Tech Solutions 
+at https://nestedunited.com
+
+© 2025 MZ Software & Tech Solutions. All rights reserved.
+=====================================================

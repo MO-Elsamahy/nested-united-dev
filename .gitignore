@@ -13,8 +13,7 @@
 /.next/
 /out/
 
-# production
-/build
+# production - allow build assets (icons etc) but exclude compiled output
 /dist-electron
 /electron/dist
 
@@ -73,7 +72,6 @@ sync_results.json
 
 # Scratch files
 /scratch/
-
 
 *.exe
 public/downloads/*.exe
