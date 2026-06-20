@@ -9,6 +9,7 @@ import {
   nativeImage,
   shell,
   dialog,
+  net,
 } from "electron";
 import * as path from "path";
 import * as fs from "fs";
