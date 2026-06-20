@@ -14,14 +14,9 @@ import {
 import * as path from "path";
 import * as fs from "fs";
 import { spawn, ChildProcess } from "child_process";
-import { PollingService } from "./polling-service";
 import { sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, resolveBridgeResponse } from "./platform-api";
 import { BrowserAccountSession } from "./types";
-import { attachCdpInterceptor, CdpInterceptorHandle } from "./cdp-interceptor";
 
-// Track active CDP interceptors per account so we can detach/reattach on
-// DevTools open/close and on window destruction without leaking handles.
-const cdpHandles = new Map<string, CdpInterceptorHandle>();
 
 const PROD_APP_URL = "https://go.nestedunited.com";
 const getApiUrl = () => app.isPackaged ? PROD_APP_URL : (process.env.DEV_SERVER_URL || "http://localhost:3000");
@@ -93,7 +88,6 @@ async function persistCookiesToDB(accountId: string, account: BrowserAccountSess
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
-let pollingService: PollingService | null = null;
 const isDev = !app.isPackaged;
 let isAppQuitting = false;
 const APP_USER_MODEL_ID = "com.rentals.dashboard";
@@ -471,37 +465,8 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     }
   });
 
-  // ──────────────────────────────────────────────────────────────────────────
-  // CHROME DEVTOOLS PROTOCOL NETWORK INTERCEPTOR
-  // Sits at the network layer, so it captures every Airbnb / Gathern API
-  // response regardless of whether the page used fetch, XHR, WebSocket or a
-  // service worker. The captured JSON is routed to the polling service.
-  //
-  // Only one CDP client can attach at a time, so we detach when the user
-  // opens Chromium DevTools and re-attach when they close it.
-  // ──────────────────────────────────────────────────────────────────────────
-  const attachCdp = () => {
-    if (accountSession.platform !== 'airbnb' && accountSession.platform !== 'gathern') return;
-    // Avoid stacking: detach any existing handle first.
-    cdpHandles.get(accountSession.id)?.detach();
-    const handle = attachCdpInterceptor(
-      browserWindow.webContents,
-      (url, json) => {
-        if (!pollingService) return;
-        pollingService
-          .processSnapshot(accountSession.id, url, json)
-          .catch(err => console.warn(`[CDP][${accountSession.accountName}] process error:`, err?.message));
-      },
-      { label: accountSession.accountName }
-    );
-    cdpHandles.set(accountSession.id, handle);
-  };
-
-  // Attach as early as possible — dom-ready fires before the SPA's first API
-  // calls, ensuring we don't miss the initial inbox payload.
   browserWindow.webContents.on('dom-ready', () => {
     console.log("[Browser Window] DOM ready");
-    attachCdp();
   });
 
   browserWindow.webContents.on('did-finish-load', () => {
@@ -511,33 +476,10 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     `);
   });
 
-  browserWindow.webContents.on("did-navigate-in-page", () => {
-    // Same WebContents, same CDP session — nothing to do.
-  });
 
-  browserWindow.webContents.on("did-navigate", () => {
-    // Full navigation keeps the same WebContents too; CDP stays attached.
-    // No-op unless we ever need to reset pending-request state.
-  });
-
-  // DevTools can't coexist with our CDP client. Swap cleanly on user request.
-  browserWindow.webContents.on('devtools-opened', () => {
-    const h = cdpHandles.get(accountSession.id);
-    if (h) {
-      console.log(`[CDP][${accountSession.accountName}] detaching for DevTools`);
-      h.detach();
-      cdpHandles.delete(accountSession.id);
-    }
-  });
-
-  browserWindow.webContents.on('devtools-closed', () => {
-    console.log(`[CDP][${accountSession.accountName}] re-attaching after DevTools`);
-    attachCdp();
-  });
 
   browserWindow.webContents.on('destroyed', () => {
-    cdpHandles.get(accountSession.id)?.detach();
-    cdpHandles.delete(accountSession.id);
+    // cleanup if needed
   });
 
   // Handle page title updates
@@ -589,8 +531,6 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
 
   // Handle window close
   browserWindow.on("closed", () => {
-    cdpHandles.get(accountSession.id)?.detach();
-    cdpHandles.delete(accountSession.id);
     const account = browserSessions.get(accountSession.id);
     if (account) {
       void persistCookiesToDB(accountSession.id, account);
@@ -906,9 +846,6 @@ ipcMain.handle("add-browser-account", (_, account: Omit<BrowserAccountSession, "
 });
 
 ipcMain.handle("remove-browser-account", (_, accountId: string) => {
-  if (pollingService) {
-    pollingService.stopPolling(accountId);
-  }
   const account = browserSessions.get(accountId);
   if (account?.window && !account.window.isDestroyed()) {
     account.window.close();
@@ -965,11 +902,7 @@ ipcMain.handle("open-browser-account", (_, accountData: unknown) => {
   resolvedAccount.window = createBrowserWindow(resolvedAccount);
   notifyTabsChanged();
 
-  // STAGE 2: Start health polling for API platforms (reads flow via CDP).
-  if (pollingService && (resolvedAccount.platform === 'airbnb' || resolvedAccount.platform === 'gathern')) {
-    console.log(`[Main Process] 🚀 Starting health polling for ${resolvedAccount.accountName} (${resolvedAccount.platform})`);
-    pollingService.startHealthPolling(resolvedAccount.id);
-  }
+
 
   return { success: true };
 });
@@ -1026,32 +959,7 @@ ipcMain.handle("open-auth-window", async (_, { platform, accountId, partition })
   return { success: true };
 });
 
-// Phase 1.3: Data Retrieval IPC Handlers (Local DB based)
-// Shared DB connection helper for main.ts IPC handlers
-// __dirname = electron/dist/ → ../../ = project root
-async function getMainDbConnection() {
-  const envPath = path.join(__dirname, '../../.env');
-  const env: Record<string, string> = {};
-  if (fs.existsSync(envPath)) {
-    const content = fs.readFileSync(envPath, 'utf8');
-    content.split('\n').forEach(line => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) return;
-      const eqIdx = trimmed.indexOf('=');
-      if (eqIdx > 0) env[trimmed.substring(0, eqIdx).trim()] = trimmed.substring(eqIdx + 1).trim();
-    });
-  } else {
-    console.warn(`[Main DB] .env not found at ${envPath}`);
-  }
-  return mysql.createConnection({
-    host: env['DB_HOST'] || '127.0.0.1',
-    port: parseInt(env['DB_PORT'] || '3306'),
-    user: env['DB_USER'] || 'root',
-    password: env['DB_PASSWORD'] || '',
-    database: env['DB_NAME'] || 'rentals_dashboard',
-    connectTimeout: 10000,
-  });
-}
+// Phase 1.3: Data Retrieval IPC Handlers (API based)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hidden warm-up windows
@@ -1092,24 +1000,8 @@ function warmUpMissingTokens() {
     win.loadURL('https://business.gathern.co/app/chat');
     account.window = win;
 
-    // Attach CDP so any chats the Gathern page fetches during warm-up flow
-    // into the unified inbox alongside the Bearer-token sniffing.
-    let warmHandle: CdpInterceptorHandle | null = null;
-    win.webContents.once('dom-ready', () => {
-      warmHandle = attachCdpInterceptor(
-        win.webContents,
-        (url, json) => {
-          if (!pollingService) return;
-          pollingService
-            .processSnapshot(account.id, url, json)
-            .catch(() => { /* silent during warm-up */ });
-        },
-        { label: `warm:${account.accountName}` }
-      );
-    });
 
     setTimeout(() => {
-      try { warmHandle?.detach(); } catch { /* ignore */ }
       if (!win.isDestroyed()) {
         win.close();
       }
@@ -1123,72 +1015,6 @@ function warmUpMissingTokens() {
     console.log(`[WarmUp] 🌐  Opened warm-up window for ${account.accountName}`);
   }
 }
-
-ipcMain.handle("get-platform-messages", async (_event, { accountId, limit = 50 }: { accountId?: string; limit?: number }) => {
-    console.log(`[Main] Fetching messages from DB for ${accountId || 'all accounts'}`);
-    const connection = await getMainDbConnection();
-    try {
-        let sql = "SELECT * FROM platform_messages";
-        const params: (string | number)[] = [];
-        if (accountId) {
-            sql += " WHERE platform_account_id = ?";
-            params.push(accountId);
-        }
-        sql += " ORDER BY sent_at DESC LIMIT ?";
-        params.push(limit);
-        const [rows] = await connection.execute(sql, params);
-        return { success: true, messages: rows };
-    } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        console.error("[Main] Failed to fetch messages:", errorMessage);
-        return { success: false, error: errorMessage };
-    } finally {
-        await connection.end();
-    }
-});
-
-ipcMain.handle("get-session-health-status", async () => {
-    const connection = await getMainDbConnection();
-    try {
-        const [rows] = await connection.execute(
-            `SELECT browser_account_id as id, status, last_check_at, error_message 
-             FROM session_health_logs 
-             WHERE id IN (
-                 SELECT MAX(id) FROM session_health_logs GROUP BY browser_account_id
-             )`
-        );
-        return rows;
-    } catch (err: unknown) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        console.error("[Main] Failed to fetch health status:", errorMessage);
-        return [];
-    } finally {
-        await connection.end();
-    }
-});
-
-// Session health — latest log per browser account
-ipcMain.handle("get-session-health", async () => {
-  const connection = await getMainDbConnection();
-  try {
-    const [rows] = await connection.execute(`
-      SELECT shl.browser_account_id, shl.platform, shl.status, shl.error_message, shl.checked_at,
-             ba.account_name
-      FROM session_health_logs shl
-      INNER JOIN (
-        SELECT browser_account_id, MAX(checked_at) AS latest
-        FROM session_health_logs GROUP BY browser_account_id
-      ) lk ON shl.browser_account_id = lk.browser_account_id AND shl.checked_at = lk.latest
-      LEFT JOIN browser_accounts ba ON ba.id = shl.browser_account_id
-    `);
-    return { success: true, health: rows };
-  } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    return { success: false, error: errorMessage };
-  } finally {
-    await connection.end();
-  }
-});
 
 // Browser window controls
 ipcMain.handle("browser-go-back", (_, accountId: string) => {
@@ -1271,13 +1097,7 @@ ipcMain.handle("test-notification", (_event, data: { accountId: string; accountN
   return { success: true };
 });
 
-ipcMain.handle("force-platform-sync", async (_, accountId: string) => {
-  if (pollingService) {
-    await pollingService.syncAccount(accountId);
-    return { success: true };
-  }
-  return { success: false, error: "PollingService not found" };
-});
+// Force sync handler removed since polling service is on the server
 
 // Get all open tabs (browser windows)
 ipcMain.handle("get-open-tabs", () => {
@@ -1308,42 +1128,9 @@ ipcMain.handle("send-message", async (_event, payload: { accountId: string; plat
     console.log(`[IPC send-message] ✅ account=${payload.accountId} thread=${payload.threadId}`);
     
     if (ok) {
-      try {
-        const conn = await mysql.createConnection({
-          host: "127.0.0.1",
-          user: "root",
-          password: "",
-          database: "rentals_dashboard",
-        });
-        // Race condition mitigation: check if the real message already arrived via CDP interceptor
-        const [existing]: any = await conn.execute(
-          `SELECT id FROM platform_messages 
-           WHERE thread_id = ? AND platform = ? AND message_text = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 1 MINUTE)`,
-          [payload.threadId, payload.platform, payload.text]
-        );
-
-        if (existing && existing.length > 0) {
-          await conn.execute(
-            `UPDATE platform_messages SET is_from_me = 1 WHERE id = ?`,
-            [existing[0].id]
-          );
-        } else {
-          await conn.execute(
-            `INSERT INTO platform_messages 
-               (id, browser_account_id, platform, thread_id, platform_msg_id, 
-                guest_name, message_text, is_from_me, sent_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
-             ON DUPLICATE KEY UPDATE message_text = VALUES(message_text)`,
-            [require('crypto').randomUUID(), payload.accountId, payload.platform, 
-             payload.threadId, `sent-${Date.now()}`, 'Guest', payload.text]
-          );
-        }
-        await conn.end();
-        mainWindow?.webContents.send('platform-messages-updated', 
-          { accountId: payload.accountId, newCount: 1 });
-      } catch (dbErr) {
-        console.error(`[IPC send-message] DB Save Error:`, dbErr);
-      }
+      return { success: true };
+    } else {
+      return { success: false, error: "فشل إرسال الرسالة، ربما النافذة مغلقة أو غير مسجل الدخول." };
     }
     
     return { success: ok };
@@ -1378,21 +1165,12 @@ app.whenReady().then(() => {
   createTray();
 
   if (mainWindow) {
-    pollingService = new PollingService(mainWindow);
-    
-    // START POLLING FROM DATABASE (All active accounts)
-    console.log(`[Main Process] 📦 Initializing background sync for all database accounts...`);
-    pollingService.startPollingFromDB().then(() => {
-      // Warm-up: open a hidden window for Gathern accounts that have no Bearer token
-      // so the token sniffer can capture it automatically
-      warmUpMissingTokens();
-    }).catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error("[Main Process] ❌ Failed to start DB polling:", msg);
-    });
+    // Warm-up: open a hidden window for Gathern accounts that have no Bearer token
+    // so the token sniffer can capture it automatically
+    warmUpMissingTokens();
 
     setInterval(() => {
-      console.log(`[Polling Heartbeat] Service alive. Monitoring ${browserSessions.size} total sessions.`);
+      console.log(`[Heartbeat] App alive. Monitoring ${browserSessions.size} total sessions.`);
     }, 60000);
   }
 
@@ -1408,14 +1186,12 @@ app.on("window-all-closed", () => {
   // On Windows/Linux, quit the app when all windows are closed
   if (process.platform !== "darwin") {
     isAppQuitting = true;
-    stopNextServer();
     app.quit();
   }
 });
 
 app.on("before-quit", async (_event) => {
   isAppQuitting = true;
-  stopNextServer();
 
   // Flush all cookies to disk before quitting
   try {
