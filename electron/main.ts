@@ -18,6 +18,14 @@ import { sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, 
 import { BrowserAccountSession } from "./types";
 import { liveMessageEmitter, LiveMessageEvent, attachCdpInterceptor } from "./cdp-interceptor";
 
+// Disable console logging in production to prevent exposing backend operations
+if (app.isPackaged) {
+  console.log = () => {};
+  console.info = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+  console.debug = () => {};
+}
 
 const PROD_APP_URL = "https://go.nestedunited.com";
 const getApiUrl = () => app.isPackaged ? PROD_APP_URL : (process.env.DEV_SERVER_URL || "http://localhost:3000");
@@ -206,6 +214,7 @@ function createMainWindow() {
       nodeIntegration: false,
       webviewTag: true,
       backgroundThrottling: false,
+      devTools: !app.isPackaged,
     },
   });
 

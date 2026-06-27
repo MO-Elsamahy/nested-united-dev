@@ -79,7 +79,7 @@
     "appId": "com.mzsoftware.nestedunited",
     "productName": "NestedUnited",
     "copyright": "Copyright © 2025 MZ Software & Tech Solutions. All rights reserved.",
-    "buildVersion": "3.0.1",
+    "buildVersion": "3.2.0",
     "directories": {
       "output": "dist-electron",
       "buildResources": "build"
