@@ -9,6 +9,8 @@ export interface BrowserAccountSession {
     authToken?: string;
     chatAuthToken?: string;
     platformUserId?: string;
+    airbnbInboxHash?: string;
+    airbnbThreadHash?: string;
     window?: BrowserWindow; // Reference to the actual BrowserWindow if open
 }
 

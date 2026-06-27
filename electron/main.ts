@@ -16,12 +16,13 @@ import * as fs from "fs";
 import { spawn, ChildProcess } from "child_process";
 import { sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, resolveBridgeResponse } from "./platform-api";
 import { BrowserAccountSession } from "./types";
+import { liveMessageEmitter, LiveMessageEvent, attachCdpInterceptor } from "./cdp-interceptor";
 
 
 const PROD_APP_URL = "https://go.nestedunited.com";
 const getApiUrl = () => app.isPackaged ? PROD_APP_URL : (process.env.DEV_SERVER_URL || "http://localhost:3000");
 
-async function updateBrowserAccountTokens(accountId: string, updates: { auth_token?: string, chat_auth_token?: string, platform_user_id?: string | null, cookies_json?: string }) {
+async function updateBrowserAccountTokens(accountId: string, updates: { auth_token?: string, chat_auth_token?: string, platform_user_id?: string | null, cookies_json?: string, airbnb_inbox_hash?: string | null, airbnb_thread_hash?: string | null }) {
   try {
     const res = await net.fetch(`${getApiUrl()}/api/browser-accounts/${accountId}/sync`, {
       method: "POST",
@@ -53,22 +54,20 @@ async function persistCookiesToDB(accountId: string, account: BrowserAccountSess
     
     let platformUserId: string | null = null;
     if (account.platform === 'airbnb') {
-      const idCookie = cookies.find(c => c.name === 'a12_uid' || c.name === 'userId' || c.name === 'USER_ID' || c.name.includes('uid') || c.name === '_user_attributes');
+      const idCookie = cookies.find(c => c.name === '_user_attributes');
       if (idCookie) {
-        if (idCookie.name === '_user_attributes') {
-          try {
-            const parsed = typeof idCookie.value === 'string' ? JSON.parse(decodeURIComponent(idCookie.value)) : idCookie.value;
-            platformUserId = parsed.id_str || String(parsed.id);
-          } catch(e) {}
-        } else {
-          platformUserId = idCookie.value;
-        }
+        try {
+          const parsed = typeof idCookie.value === 'string' ? JSON.parse(decodeURIComponent(idCookie.value)) : idCookie.value;
+          platformUserId = parsed.id_str || String(parsed.id);
+        } catch(e) {}
       }
     }
 
     await updateBrowserAccountTokens(accountId, { 
       cookies_json: cookieString, 
-      platform_user_id: platformUserId 
+      platform_user_id: platformUserId,
+      airbnb_inbox_hash: account.airbnbInboxHash,
+      airbnb_thread_hash: account.airbnbThreadHash
     });
 
     if (platformUserId) {
@@ -110,8 +109,7 @@ function createMainWindow() {
   dashboardSession.webRequest.onBeforeSendHeaders(
     { urls: [
         '*://chatapi-prod.gathern.co/*',  // Chat API — contains chatAuthToken
-        '*://api.gathern.co/*',           // Profile API — contains authToken
-        '*://www.airbnb.com/api/v3/ViaductInboxData/*', // Airbnb Inbox
+        '*://api.gathern.co/*'            // Profile API — contains authToken
       ]
     },
     async (details, callback) => {
@@ -166,25 +164,6 @@ function createMainWindow() {
             }
           }
           if (updated) saveSessions();
-        }
-
-        // --- AIRBNB USER ID SNIFFING ---
-        if (details.url.includes('airbnb.com')) {
-          const airbnbUserId = headers['x-airbnb-authenticated-user-id']?.toString();
-          if (airbnbUserId) {
-             let updated = false;
-             for (const [id, acct] of browserSessions.entries()) {
-               if (acct.platform === 'airbnb' && acct.platformUserId !== airbnbUserId) {
-                 acct.platformUserId = airbnbUserId;
-                 updated = true;
-                 try {
-                   await updateBrowserAccountTokens(id, { platform_user_id: airbnbUserId });
-                   console.log(`[Token Sniffer] ✅ Airbnb userId (${airbnbUserId}) saved for ${id}`);
-                 } catch { /* silent */ }
-               }
-             }
-             if (updated) saveSessions();
-          }
         }
 
       } catch (_e: unknown) { /* silent error */ }
@@ -392,15 +371,49 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
         }
       }
 
-      // Sniff Airbnb UserID (Base64)
-      if (details.url.includes('ViaductInboxData') || details.url.includes('UserId')) {
+      // ── AMSF: Adaptive hash & schema capture ─────────────────────────────
+      // Replaces the old hardcoded ViaductInboxData / ViaductGetThreadAndDataQuery sniffer.
+      // Now captures ANY GraphQL operation from any platform automatically.
+      if (details.url.includes('/api/v3/') || details.url.includes('chatapi-prod.gathern') || details.url.includes('business.gathern.co/api/')) {
+        // Extract hash from URL for quick local update (no DB needed)
+        const hashMatch = details.url.match(/\/([a-f0-9]{64})(?:\/|\?|$)/);
+        const inboxHashMatch = details.url.match(/ViaductInboxData\/([a-f0-9]{64})/);
+        const threadHashMatch = details.url.match(/ViaductGetThreadAndDataQuery\/([a-f0-9]{64})/);
+
+        let sessionUpdated = false;
+
+        if (inboxHashMatch?.[1] && sessionObj.airbnbInboxHash !== inboxHashMatch[1]) {
+          sessionObj.airbnbInboxHash = inboxHashMatch[1];
+          sessionUpdated = true;
+          console.log(`\x1b[32m[AMSF][${accountSession.id}] 🔑 Inbox hash → ${inboxHashMatch[1].substring(0,12)}...\x1b[0m`);
+        }
+        if (threadHashMatch?.[1] && sessionObj.airbnbThreadHash !== threadHashMatch[1]) {
+          sessionObj.airbnbThreadHash = threadHashMatch[1];
+          sessionUpdated = true;
+          console.log(`\x1b[32m[AMSF][${accountSession.id}] 🔑 Thread hash → ${threadHashMatch[1].substring(0,12)}...\x1b[0m`);
+        }
+
+        // Extract userId from URL variables
         const userIdMatch = details.url.match(/userId%22%3A%22([^%]+)%22/);
-        if (userIdMatch && userIdMatch[1]) {
-            const userId = decodeURIComponent(userIdMatch[1]);
-            if (sessionObj.platformUserId !== userId) {
-                console.log(`\x1b[32m[Sniffer][${accountSession.id}] 🕵️ Captured Airbnb UserID: ${userId}\x1b[0m`);
-                sessionObj.platformUserId = userId;
+        if (userIdMatch?.[1]) {
+          try {
+            const decoded = Buffer.from(decodeURIComponent(userIdMatch[1]), 'base64').toString('utf8');
+            const numericId = decoded.split(':')[1];
+            if (numericId && numericId !== 'undefined' && sessionObj.platformUserId !== numericId) {
+              sessionObj.platformUserId = numericId;
+              sessionUpdated = true;
+              console.log(`\x1b[32m[AMSF][${accountSession.id}] 🆔 UserID → ${numericId}\x1b[0m`);
             }
+          } catch {}
+        }
+
+        if (sessionUpdated) {
+          saveSessions();
+          updateBrowserAccountTokens(accountSession.id, {
+            airbnb_inbox_hash: sessionObj.airbnbInboxHash,
+            airbnb_thread_hash: sessionObj.airbnbThreadHash,
+            platform_user_id: sessionObj.platformUserId,
+          });
         }
       }
     }
@@ -545,6 +558,20 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     if (account) void persistCookiesToDB(accountSession.id, account);
   });
 
+  // For Airbnb: also persist on navigation events to catch session cookie updates
+  if (accountSession.platform === 'airbnb') {
+    browserWindow.webContents.on('did-navigate', () => {
+      const account = browserSessions.get(accountSession.id);
+      if (account) void persistCookiesToDB(accountSession.id, account);
+    });
+    browserWindow.webContents.on('dom-ready', () => {
+      const account = browserSessions.get(accountSession.id);
+      if (account) void persistCookiesToDB(accountSession.id, account);
+    });
+  }
+
+
+  const cookieIntervalMs = accountSession.platform === 'airbnb' ? 30_000 : 5 * 60_000;
   const cookieInterval = setInterval(() => {
     if (browserWindow.isDestroyed()) {
       clearInterval(cookieInterval);
@@ -552,7 +579,7 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     }
     const account = browserSessions.get(accountSession.id);
     if (account) void persistCookiesToDB(accountSession.id, account);
-  }, 5 * 60_000);
+  }, cookieIntervalMs);
 
   // Handle window focus/blur to update tab state
   browserWindow.on("focus", () => {
@@ -568,6 +595,34 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
     notifyTabsChanged();
   });
 
+  // ── Attach CDP Interceptor for real-time live message events ────────────────────
+  // Only Airbnb & Gathern use the CDP pipeline; WhatsApp doesn't need it.
+  if (accountSession.platform === 'airbnb' || accountSession.platform === 'gathern') {
+    let cdpHandle = attachCdpInterceptor(
+      browserWindow.webContents,
+      () => { /* raw snapshot handler — AMSF still runs via webRequest */ },
+      { label: accountSession.accountName, browserAccountId: accountSession.id }
+    );
+
+    // Re-attach after DevTools is closed (DevTools steals the CDP debugger)
+    browserWindow.webContents.on('devtools-closed', () => {
+      if (!browserWindow.isDestroyed() && !cdpHandle.isAttached()) {
+        setTimeout(() => {
+          if (browserWindow.isDestroyed()) return;
+          cdpHandle = attachCdpInterceptor(
+            browserWindow.webContents,
+            () => {},
+            { label: accountSession.accountName, browserAccountId: accountSession.id }
+          );
+        }, 500);
+      }
+    });
+
+    browserWindow.on('closed', () => {
+      cdpHandle.detach();
+    });
+  }
+
   return browserWindow;
 }
 
@@ -577,6 +632,84 @@ function notifyTabsChanged() {
     mainWindow.webContents.send("tabs-changed");
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Real-Time Live Events Pipeline
+//
+// liveMessageEmitter fires for every incoming/outgoing message captured by the
+// CDP interceptor. We:
+//   1. Push the normalized event to the React UI immediately (zero lag)
+//   2. Fire a targeted background sync so the DB stays consistent
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Deduplicate rapid consecutive events for the same (threadId, msgId)
+// to avoid spamming the UI on inbox sweeps.
+const _recentLiveEventKeys = new Map<string, number>();
+const LIVE_EVENT_DEDUP_MS = 3000;
+
+function shouldEmitLiveEvent(evt: LiveMessageEvent): boolean {
+  // Always emit outgoing acks since there may be no msgId
+  if (evt.source === 'cdp-http-outgoing') return true;
+  const key = `${evt.browserAccountId}:${evt.threadId}:${evt.platformMsgId ?? evt.preview.slice(0, 20)}`;
+  const now = Date.now();
+  const last = _recentLiveEventKeys.get(key) ?? 0;
+  if (now - last < LIVE_EVENT_DEDUP_MS) return false;
+  _recentLiveEventKeys.set(key, now);
+  // Prune old keys to avoid memory leak
+  if (_recentLiveEventKeys.size > 500) {
+    const cutoff = now - LIVE_EVENT_DEDUP_MS * 2;
+    for (const [k, ts] of _recentLiveEventKeys) {
+      if (ts < cutoff) _recentLiveEventKeys.delete(k);
+    }
+  }
+  return true;
+}
+
+liveMessageEmitter.on('live-message', (evt: LiveMessageEvent) => {
+  if (!shouldEmitLiveEvent(evt)) return;
+
+  // 1. Push to UI immediately
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('new-platform-message', evt);
+    console.log(`\x1b[36m[LivePipeline] 📡 Pushed to UI: ${evt.platform} thread=${evt.threadId} dir=${evt.direction} preview="${evt.preview.substring(0, 40)}"\x1b[0m`);
+  }
+
+  // 2. Sound + System notification for INCOMING messages only
+  if (evt.direction === 'incoming' && evt.messageText) {
+    const platformName = evt.platform === 'airbnb' ? 'Airbnb' : 'Gathern';
+    const preview = evt.preview || evt.messageText.substring(0, 80);
+
+    // Play the notification sound (sends IPC to renderer which plays the audio)
+    playNotificationSound();
+
+    // Show OS system notification
+    showSystemNotification(
+      `رسالة جديدة — ${evt.guestName} (${platformName})`,
+      preview
+    );
+  }
+
+  // 3. Background sync — for both incoming and outgoing messages
+  // to ensure DB reconciles immediately even if sent from the webview.
+  if (evt.threadId) {
+    const triggerUrl = `${getApiUrl()}/api/sync/trigger`;
+    net.fetch(triggerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accountId: evt.browserAccountId,
+        threadId:  evt.threadId,
+        platform:  evt.platform,
+      }),
+    }).then(res => {
+      if (!res.ok) res.text().then(b => console.warn(`[LivePipeline] ⚠️ bg sync returned ${res.status}: ${b.substring(0, 80)}`)).catch(() => {});
+      else console.log(`[LivePipeline] ✅ bg sync triggered for thread ${evt.threadId}`);
+    }).catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[LivePipeline] ⚠️ bg sync request failed: ${msg}`);
+    });
+  }
+});
 
 // Inject script to monitor notifications
 function _injectNotificationMonitor(browserWindow: BrowserWindow, account: BrowserAccountSession) {
@@ -1050,7 +1183,63 @@ ipcMain.handle("browser-go-home", (_, accountId: string) => {
   }
 });
 
-// Log from Webview to Terminal
+// Navigate a browser account window to a specific platform thread URL
+ipcMain.handle("navigate-to-thread", async (_, { accountId, threadId, platform }: { accountId: string; threadId: string; platform: string }) => {
+  let account = browserSessions.get(accountId);
+
+  // Open the window if not already open
+  if (!account?.window || account.window.isDestroyed()) {
+    if (!account) return { success: false, error: "Account not found" };
+    account.window = createBrowserWindow(account);
+  } else {
+    account.window.focus();
+  }
+
+  // Build the platform-specific thread URL
+  let threadUrl = '';
+  if (platform === 'airbnb') {
+    threadUrl = `https://www.airbnb.com/hosting/messages/${threadId}`;
+  } else if (platform === 'gathern') {
+    threadUrl = `https://business.gathern.co/app/chat/${threadId}`;
+  }
+
+  if (threadUrl) {
+    account.window.webContents.loadURL(threadUrl);
+    console.log(`\x1b[36m[Navigate] 🔗 ${account.accountName} → ${threadUrl}\x1b[0m`);
+  }
+
+  notifyTabsChanged();
+  return { success: true };
+});
+
+// Force-refresh cookies from all open browser windows into DB immediately
+ipcMain.handle("refresh-all-cookies", async () => {
+  const results: { accountId: string; accountName: string; ok: boolean }[] = [];
+  for (const [id, account] of browserSessions.entries()) {
+    if (account.window && !account.window.isDestroyed()) {
+      try {
+        await persistCookiesToDB(id, account);
+        results.push({ accountId: id, accountName: account.accountName, ok: true });
+        console.log(`\x1b[32m[Cookie Refresh] ✅ ${account.accountName}\x1b[0m`);
+      } catch (e) {
+        results.push({ accountId: id, accountName: account.accountName, ok: false });
+      }
+    }
+  }
+  return { success: true, results };
+});
+
+// Also expose a per-account cookie refresh
+ipcMain.handle("refresh-account-cookies", async (_, accountId: string) => {
+  const account = browserSessions.get(accountId);
+  if (!account?.window || account.window.isDestroyed()) {
+    return { success: false, error: "Window not open" };
+  }
+  await persistCookiesToDB(accountId, account);
+  return { success: true };
+});
+
+
 ipcMain.on("webview-log", (event, { msg, type, url }) => {
   const accountId = (Array.from(browserSessions.entries()) as [string, BrowserAccountSession][])
     .find(([, s]) => s.window?.webContents === event.sender)?.[0] || 'Unknown';
@@ -1128,12 +1317,37 @@ ipcMain.handle("send-message", async (_event, payload: { accountId: string; plat
     console.log(`[IPC send-message] ✅ account=${payload.accountId} thread=${payload.threadId}`);
     
     if (ok) {
+      // ── Outgoing sync trigger ────────────────────────────────────────────
+      // Fire-and-forget: tell the server-side sync engine to immediately
+      // re-fetch this thread so the sent message appears in the DB/UI
+      // without waiting for the next 30-second poll cycle.
+      const triggerUrl = `${getApiUrl()}/api/sync/trigger`;
+      net.fetch(triggerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: payload.accountId,
+          threadId:  payload.threadId,
+          platform:  payload.platform,
+        }),
+      }).then(res => {
+        if (!res.ok) {
+          res.text().then(body => {
+            console.warn(`[OutgoingSync] ⚠️ Trigger returned ${res.status}: ${body.substring(0, 120)}`);
+          }).catch(() => {});
+        } else {
+          console.log(`[OutgoingSync] ✅ Trigger accepted for thread ${payload.threadId}`);
+        }
+      }).catch((err: unknown) => {
+        // Non-critical — normal poll cycle is the safety net
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[OutgoingSync] ⚠️ Trigger request failed (will rely on poll cycle): ${msg}`);
+      });
+
       return { success: true };
     } else {
       return { success: false, error: "فشل إرسال الرسالة، ربما النافذة مغلقة أو غير مسجل الدخول." };
     }
-    
-    return { success: ok };
   } catch(e: unknown) {
     const errorMessage = e instanceof Error ? e.message : String(e);
     console.error(`[IPC send-message] ❌ Error:`, errorMessage);

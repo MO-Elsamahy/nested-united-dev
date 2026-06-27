@@ -1,6 +1,6 @@
 {
   "name": "rentals-dashboard",
-  "version": "3.0.1",
+  "version": "3.2.0",
   "description": "لوحة تحكم لإدارة الوحدات السكنية والإيجارات",
   "author": "Mohamed Amir Elsamahy <https://samahy.tech/>",
   "private": true,
@@ -13,11 +13,13 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:run": "vitest run",
-    "electron:dev": "npm run electron:start",
+    "electron:dev": "concurrently -k \"npm run dev\" \"npm run start-polling\" \"wait-on tcp:3000 && npm run electron:start\"",
     "electron:start": "tsc -p electron/tsconfig.json && electron . --no-sandbox",
     "electron:build": "npm run electron:compile && electron-builder",
     "electron:compile": "tsc -p electron/tsconfig.json",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "start-polling": "ts-node --project scripts/tsconfig.json --transpile-only scripts/inbox-sync-service.ts",
+    "start-sync": "ts-node --project scripts/tsconfig.json --transpile-only scripts/inbox-sync-service.ts"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",

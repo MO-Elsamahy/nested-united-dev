@@ -51,7 +51,7 @@ export default function DownloadPage() {
             </div>
 
             <a
-              href="/downloads/NestedUnited-Setup-v3.0.1.exe"
+              href="/downloads/NestedUnited-Setup-v3.2.0.exe"
               download
               className="w-full flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition"
             >
