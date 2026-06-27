@@ -42,7 +42,19 @@ export async function GET(
             [id]
         );
 
-        return NextResponse.json({ move, lines });
+        // Check for linked invoice
+        const linkedInvoice = await queryOne<{ id: string, invoice_number: string }>(
+            "SELECT id, invoice_number FROM accounting_invoices WHERE accounting_move_id = ? AND deleted_at IS NULL",
+            [id]
+        );
+
+        // Check for linked payment
+        const linkedPayment = move.ref?.startsWith("Payment: ") ? await queryOne<{ id: string, payment_number: string }>(
+            "SELECT id, payment_number FROM accounting_payments WHERE payment_number = SUBSTRING(?, 10) AND deleted_at IS NULL",
+            [move.ref]
+        ) : null;
+
+        return NextResponse.json({ move, lines, linkedInvoice, linkedPayment });
     } catch (error: unknown) {
         return NextResponse.json({ error: error instanceof Error ? error.message : "Internal Server Error" }, { status: 500 });
     }

@@ -2,12 +2,17 @@
 
 import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { ArrowRight, FileText, Loader2 } from "lucide-react";
+import { ArrowRight, FileText, Loader2, Edit3, AlertCircle } from "lucide-react";
 import { AccountingMove, AccountingMoveLine } from "@/lib/types/accounting";
 
 export default function MoveDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const [data, setData] = useState<{ move: AccountingMove; lines: AccountingMoveLine[] } | null>(null);
+    const [data, setData] = useState<{ 
+        move: AccountingMove; 
+        lines: AccountingMoveLine[];
+        linkedInvoice?: { id: string, invoice_number: string };
+        linkedPayment?: { id: string, payment_number: string };
+    } | null>(null);
     const [loading, setLoading] = useState(true);
     const [err, setErr] = useState<string | null>(null);
 
@@ -21,7 +26,12 @@ export default function MoveDetailPage({ params }: { params: Promise<{ id: strin
                     if (!cancelled) setErr(json.error || "تعذر التحميل");
                     return;
                 }
-                if (!cancelled) setData({ move: json.move, lines: json.lines || [] });
+                if (!cancelled) setData({ 
+                    move: json.move, 
+                    lines: json.lines || [],
+                    linkedInvoice: json.linkedInvoice,
+                    linkedPayment: json.linkedPayment
+                });
             } catch (error: unknown) {
                 if (!cancelled) setErr(error instanceof Error ? error.message : "فشل الاتصال");
             } finally {
@@ -81,7 +91,41 @@ export default function MoveDetailPage({ params }: { params: Promise<{ id: strin
                         </p>
                     </div>
                 </div>
+                <div>
+                    {!data.linkedInvoice && !data.linkedPayment && (
+                        <Link href={`/accounting/moves/${move.id}/edit`} className="inline-flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition">
+                            <Edit3 className="w-4 h-4" />
+                            تعديل القيد
+                        </Link>
+                    )}
+                </div>
             </div>
+
+            {data.linkedInvoice && (
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                        <h3 className="font-semibold text-blue-900">هذا القيد مرتبط بفاتورة</h3>
+                        <p className="text-blue-700 text-sm mt-1">لا يمكن تعديل هذا القيد بشكل مباشر لأنه ناتج عن فاتورة. لتعديل المبالغ أو الحسابات، يجب تعديل الفاتورة نفسها.</p>
+                        <Link href={`/accounting/invoices/${data.linkedInvoice.id}`} className="inline-block mt-3 text-sm bg-blue-600 text-white px-4 py-1.5 rounded-lg hover:bg-blue-700 font-medium">
+                            تعديل الفاتورة رقم {data.linkedInvoice.invoice_number}
+                        </Link>
+                    </div>
+                </div>
+            )}
+
+            {data.linkedPayment && (
+                <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 flex items-start gap-3">
+                    <AlertCircle className="w-5 h-5 text-purple-600 shrink-0 mt-0.5" />
+                    <div>
+                        <h3 className="font-semibold text-purple-900">هذا القيد مرتبط بسند سداد</h3>
+                        <p className="text-purple-700 text-sm mt-1">لا يمكن تعديل هذا القيد بشكل مباشر لأنه ناتج عن سند مالي. يجب تعديل السند لتحديث القيد تلقائياً.</p>
+                        <Link href={`/accounting/payments`} className="inline-block mt-3 text-sm bg-purple-600 text-white px-4 py-1.5 rounded-lg hover:bg-purple-700 font-medium">
+                            انتقل إلى السندات
+                        </Link>
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white border rounded-xl shadow-sm p-6 space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, ArrowRight, AlertCircle, Paperclip, UploadCloud } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 interface JournalLine {
     id: string;
@@ -197,10 +198,13 @@ export default function CreateEntry() {
                             {lines.map(l => (
                                 <tr key={l.id} className="hover:bg-slate-50">
                                     <td className="p-2 align-top">
-                                        <select value={l.account_id} onChange={e => updateLine(l.id, "account_id", e.target.value)} className="w-full border rounded p-1.5 text-sm" required>
-                                            <option value="">اختر الحساب...</option>
-                                            {accounts.map(a => <option key={a.id} value={a.id}>{a.code} - {a.name}</option>)}
-                                        </select>
+                                        <SearchableSelect
+                                            value={l.account_id}
+                                            onChange={(val) => updateLine(l.id, "account_id", val)}
+                                            options={accounts.map(a => ({ id: a.id, label: `${a.code} - ${a.name}` }))}
+                                            placeholder="اختر الحساب..."
+                                            required
+                                        />
                                     </td>
                                     <td className="p-2 align-top">
                                         <select value={l.cost_center_id} onChange={e => updateLine(l.id, "cost_center_id", e.target.value)} className="w-full border rounded p-1.5 text-sm">
