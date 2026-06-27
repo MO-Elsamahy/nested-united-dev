@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query, execute } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 // ─────────────────────────────────────────────
 // GET /api/messages
 //   ?limit=50               → inbox list (one latest message per thread)
@@ -95,12 +97,12 @@ export async function GET(req: NextRequest) {
     let whereClauses = '1=1';
 
     if (accountId && accountId !== 'all') {
-      whereClauses += ' AND pm.browser_account_id = ?';
+      whereClauses += ' AND ptm.browser_account_id = ?';
       params.push(accountId);
     }
 
     if (platform && platform !== 'all') {
-      whereClauses += ' AND pm.platform = ?';
+      whereClauses += ' AND ptm.platform = ?';
       params.push(platform);
     }
 
@@ -108,40 +110,63 @@ export async function GET(req: NextRequest) {
     params.push(limit);
 
     const sql = `
+      WITH RankedMessages AS (
+        SELECT 
+          *,
+          ROW_NUMBER() OVER(PARTITION BY browser_account_id, thread_id ORDER BY COALESCE(NULLIF(sent_at, '0000-00-00 00:00:00'), created_at) DESC, id DESC) as rn
+        FROM platform_messages
+      )
       SELECT
-        pm.id,
-        pm.browser_account_id  AS platform_account_id,
-        pm.platform,
-        pm.thread_id,
+        COALESCE(pm.id, ptm.id) AS id,
+        ptm.browser_account_id  AS platform_account_id,
+        ptm.platform,
+        ptm.thread_id,
         pm.platform_msg_id,
-        COALESCE(NULLIF(pm.guest_name, ''), 'Guest') AS guest_name,
+        COALESCE(NULLIF(ptm.guest_name, ''), NULLIF(pm.guest_name, ''), 'Guest') AS guest_name,
         pm.sender_name,
         pm.message_text,
         pm.is_from_me,
-        pm.sent_at,
-        pm.sent_at             AS received_at,
+        COALESCE(
+          NULLIF(ptm.last_message_timestamp, '0000-00-00 00:00:00'), 
+          NULLIF(pm.sent_at, '0000-00-00 00:00:00'), 
+          pm.created_at,
+          ptm.updated_at
+        ) AS sent_at,
+        COALESCE(
+          NULLIF(ptm.last_message_timestamp, '0000-00-00 00:00:00'), 
+          NULLIF(pm.sent_at, '0000-00-00 00:00:00'), 
+          pm.created_at,
+          ptm.updated_at
+        ) AS received_at,
         pm.raw_data,
         ba.account_name
-      FROM platform_messages pm
-      INNER JOIN (
-        SELECT
-          browser_account_id,
-          thread_id,
-          MAX(sent_at) AS max_sent
-        FROM platform_messages
-        GROUP BY browser_account_id, thread_id
-      ) latest
-        ON  pm.browser_account_id = latest.browser_account_id
-        AND pm.thread_id          = latest.thread_id
-        AND pm.sent_at            = latest.max_sent
+      FROM platform_thread_metadata ptm
       LEFT JOIN browser_accounts ba
-        ON ba.id = pm.browser_account_id
-      WHERE ${whereClauses}
-      ORDER BY pm.sent_at DESC
+        ON ba.id = ptm.browser_account_id
+      LEFT JOIN RankedMessages pm
+        ON  pm.browser_account_id = ptm.browser_account_id
+        AND pm.thread_id = ptm.thread_id
+        AND pm.platform = ptm.platform
+        AND pm.rn = 1
+      WHERE (${whereClauses})
+      ORDER BY COALESCE(
+          NULLIF(ptm.last_message_timestamp, '0000-00-00 00:00:00'), 
+          NULLIF(pm.sent_at, '0000-00-00 00:00:00'), 
+          pm.created_at,
+          ptm.updated_at
+        ) DESC
       LIMIT ?
     `;
 
     const messages = await query<MessageRow>(sql, params);
+    
+    console.log(`\n\x1b[32m=== DEBUG STAGE 5 (API) ===\x1b[0m`);
+    console.log(`[DEBUG 5] Final SQL: \n${sql}`);
+    console.log(`[DEBUG 5] Returned threads count: ${messages.length}`);
+    const last20 = messages.slice(0, 20);
+    console.log(`[DEBUG 5] Last 20 Thread IDs: ${last20.map(m => m.thread_id).join(', ')}`);
+    console.log(`[DEBUG 5] Last Message Date per Thread (Top 5):`, last20.slice(0, 5).map(m => ({ thread_id: m.thread_id, date: m.sent_at })));
+
     return NextResponse.json({ success: true, messages });
 
   } catch (err: unknown) {

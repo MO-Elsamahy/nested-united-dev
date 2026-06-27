@@ -36,6 +36,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   browserGoHome: (accountId: string) =>
     ipcRenderer.invoke("browser-go-home", accountId),
 
+  // Navigate a browser window directly to a specific thread
+  navigateToThread: (data: { accountId: string; threadId: string; platform: string }) =>
+    ipcRenderer.invoke("navigate-to-thread", data),
+
+  // Force-refresh cookies from all open browser windows into DB
+  refreshAllCookies: () => ipcRenderer.invoke("refresh-all-cookies"),
+  refreshAccountCookies: (accountId: string) => ipcRenderer.invoke("refresh-account-cookies", accountId),
+
   // Notification handling
   onBrowserNotification: (callback: (data: unknown) => void) => {
     ipcRenderer.on("browser-notification", (_, data) => callback(data));

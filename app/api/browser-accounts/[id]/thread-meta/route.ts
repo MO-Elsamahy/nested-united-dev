@@ -14,16 +14,20 @@ export async function GET(
   }
 
   try {
-    const row = await queryOne<{ unit_id: number | null; chalet_id: number | null }>(
-      `SELECT unit_id, chalet_id FROM platform_thread_metadata
+    const row = await queryOne<{ unit_id: number | null; chalet_id: number | null; guest_name: string | null }>(
+      `SELECT unit_id, chalet_id, guest_name FROM platform_thread_metadata
        WHERE browser_account_id = ? AND thread_id = ? LIMIT 1`,
       [id, threadId]
     );
 
-    if (row && (row.unit_id || row.chalet_id)) {
-      return NextResponse.json({ unit_id: row.unit_id, chalet_id: row.chalet_id || row.unit_id });
+    if (row) {
+      return NextResponse.json({
+        unit_id: row.unit_id || null,
+        chalet_id: row.chalet_id || row.unit_id || null,
+        guest_name: row.guest_name || null,
+      });
     }
-    return NextResponse.json({ unit_id: null, chalet_id: null });
+    return NextResponse.json({ unit_id: null, chalet_id: null, guest_name: null });
   } catch (err: unknown) {
     return NextResponse.json({ error: err instanceof Error ? err.message : "Server Error" }, { status: 500 });
   }

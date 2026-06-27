@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   MessageSquare, RefreshCw, Send, Search,
-  CheckCircle2, X, Wifi, WifiOff, AlertCircle,
+  CheckCircle2, X, Wifi, WifiOff, AlertCircle, ExternalLink,
 } from 'lucide-react';
 import { useDialog } from "@/components/accounting/DialogProvider";
 
@@ -25,6 +25,20 @@ interface Message {
   account_name?:      string;
   browser_account_id?: string;
   raw_data?:          string;
+}
+
+// Normalized live event pushed from Electron main via CDP interceptor
+interface LiveMessageEvent {
+  platform: 'airbnb' | 'gathern';
+  browserAccountId: string;
+  threadId: string;
+  guestName: string;
+  platformMsgId: string | null;
+  direction: 'incoming' | 'outgoing';
+  messageText: string;
+  sentAt: string;
+  preview: string;
+  source: string;
 }
 
 interface Account {
@@ -93,6 +107,44 @@ function HealthDot({ status }: { status: SessionHealth['status'] }) {
 // Main Component
 // ─────────────────────────────────────────────
 
+// ─────────────────────────────────────────────
+// Notification sound (Web Audio API — no external file needed)
+// ─────────────────────────────────────────────
+
+function playNotificationSound() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const audioContext = new AudioContextClass();
+
+    // First beep (higher pitch)
+    const oscillator1 = audioContext.createOscillator();
+    const gainNode1 = audioContext.createGain();
+    oscillator1.connect(gainNode1);
+    gainNode1.connect(audioContext.destination);
+    oscillator1.frequency.value = 800;
+    oscillator1.type = 'sine';
+    gainNode1.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode1.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+    oscillator1.start(audioContext.currentTime);
+    oscillator1.stop(audioContext.currentTime + 0.1);
+
+    // Second beep (lower pitch) - delayed
+    const oscillator2 = audioContext.createOscillator();
+    const gainNode2 = audioContext.createGain();
+    oscillator2.connect(gainNode2);
+    gainNode2.connect(audioContext.destination);
+    oscillator2.frequency.value = 600;
+    oscillator2.type = 'sine';
+    gainNode2.gain.setValueAtTime(0.3, audioContext.currentTime + 0.15);
+    gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    oscillator2.start(audioContext.currentTime + 0.15);
+    oscillator2.stop(audioContext.currentTime + 0.3);
+  } catch (error) {
+    console.error("Failed to play notification sound:", error);
+  }
+}
+
 export default function InboxClient({ accounts }: { accounts: Account[] }) {
   const { alert } = useDialog();
   const [threads,          setThreads]          = useState<Message[]>([]);
@@ -109,9 +161,25 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
   const [healthMap,        setHealthMap]        = useState<Map<string, SessionHealth['status']>>(new Map());
   const [sendError,        setSendError]        = useState<string | null>(null);
   const [pollingStatus,    setPollingStatus]    = useState<Record<string, any>>({});
+  const [unreadMap,        setUnreadMap]        = useState<Record<string, number>>({});
+
+
+  const [isRefreshingCookies, setIsRefreshingCookies] = useState(false);
+  const [cookieRefreshResult, setCookieRefreshResult] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const pollRef   = useRef<NodeJS.Timeout | null>(null);
+
+  // ── Notification sound listener (Electron IPC) ─────────────────────
+  // main.ts calls playNotificationSound() → sends 'play-notification-sound'
+  // to the renderer → we intercept it here and trigger Web Audio.
+  useEffect(() => {
+    const electronAPI = (window as any).electronAPI as {
+      onPlayNotificationSound?: (cb: () => void) => void;
+    } | undefined;
+    if (!electronAPI?.onPlayNotificationSound) return;
+    electronAPI.onPlayNotificationSound(() => playNotificationSound());
+  }, []);
 
   // ── Data fetching ──────────────────────────────────────────────────────────
 
@@ -122,10 +190,55 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       if (filterAccount !== 'all')  params.set('accountId', filterAccount);
       if (filterPlatform !== 'all') params.set('platform',  filterPlatform);
 
-      const res  = await fetch(`/api/messages?${params}`);
+      const res  = await fetch(`/api/messages?${params}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success) {
-        setThreads(data.messages);
+        console.log(`\n%c=== DEBUG STAGE 6 (React Inbox) ===`, 'color: #8b5cf6; font-weight: bold;');
+        console.log(`[DEBUG 6] Received threads count from API: ${data.messages.length}`);
+        if (data.messages.length > 0) {
+          console.log(`[DEBUG 6] First Thread ID: ${data.messages[0].thread_id}`);
+          console.log(`[DEBUG 6] Last Thread ID: ${data.messages[data.messages.length - 1].thread_id}`);
+        }
+        console.log(`[DEBUG 6] Filter/Sort/Dedup done by UI? NO. Rendered exactly as received from API.`);
+        setThreads(prev => {
+          // Detect new messages (incoming or outgoing)
+          if (prev.length > 0) {
+            const prevIds = new Set(prev.map(t => t.platform_msg_id));
+            let hasNewMessage = false;
+            for (const newMsg of data.messages) {
+              if (newMsg.platform_msg_id && !prevIds.has(newMsg.platform_msg_id)) {
+                hasNewMessage = true;
+                break;
+              }
+            }
+            if (hasNewMessage) {
+              playNotificationSound();
+              // Show an OS notification using the standard Web API
+              const newest = data.messages.find((m: any) => m.platform_msg_id && !prevIds.has(m.platform_msg_id));
+              if (newest && 'Notification' in window) {
+                const title = newest.is_from_me === 1 
+                  ? `تم إرسال رسالة لـ ${newest.guest_name || 'الضيف'}` 
+                  : `رسالة جديدة من ${newest.guest_name || 'ضيف'}`;
+                
+                if (Notification.permission === 'granted') {
+                  new Notification(title, {
+                    body: newest.message_text || 'رسالة جديدة'
+                  });
+                } else if (Notification.permission !== 'denied') {
+                  Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                      new Notification(title, {
+                        body: newest.message_text || 'رسالة جديدة'
+                      });
+                    }
+                  });
+                }
+              }
+            }
+          }
+          return data.messages;
+        });
+        
         setLastFetch(new Date());
       }
     } catch { /* silent */ } finally {
@@ -160,7 +273,7 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       const params: Record<string, string> = { threadId: tid };
       if (filterAccount !== 'all') params.accountId = filterAccount;
 
-      const res  = await fetch(`/api/messages?${new URLSearchParams(params)}`);
+      const res  = await fetch(`/api/messages?${new URLSearchParams(params)}`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success) setHistory(data.messages);
     } catch { /* silent */ } finally {
@@ -202,9 +315,17 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
     pollRef.current = setInterval(() => {
       fetchThreads(false);
       fetchPollingStatus();
+      
+      // If a thread is currently open, fetch its history to show new messages
+      if (activeThreadId) {
+        fetchHistory(activeThreadId);
+      }
     }, 5_000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
-  }, [fetchThreads, fetchPollingStatus]);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [fetchThreads, fetchPollingStatus, activeThreadId, fetchHistory]);
 
   // Refresh health every 30 seconds
   useEffect(() => {
@@ -230,7 +351,138 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
     return () => clearInterval(t);
   }, [activeThreadId, fetchHistory]);
 
-  // Listen for Electron new-messages push event
+  // ── Real-Time Live Events (CDP → Electron IPC → React) ────────────────
+  //
+  // When Electron pushes a new-platform-message event, we immediately:
+  //   1. Upsert / create the inbox row for this thread (reorder to top)
+  //   2. Append the message to the open chat history (if the thread is open)
+  //   3. Increment the unread badge (if the thread is NOT open + direction=incoming)
+  //
+  // The DB sync happens separately in the background — this is purely optimistic.
+  useEffect(() => {
+    const electronAPI = (window as any).electronAPI as {
+      onNewPlatformMessage?: (cb: (data: LiveMessageEvent) => void) => void;
+    } | undefined;
+    if (!electronAPI?.onNewPlatformMessage) return;
+
+    const handleLiveMessage = (evt: LiveMessageEvent) => {
+      if (!evt?.threadId) return;
+      const now = evt.sentAt || new Date().toISOString();
+      
+      playNotificationSound();
+      
+      if ('Notification' in window) {
+        const title = evt.direction === 'outgoing'
+          ? `تم إرسال رسالة لـ ${evt.guestName || 'الضيف'}`
+          : `رسالة جديدة من ${evt.guestName || 'ضيف'}`;
+
+        if (Notification.permission === 'granted') {
+          new Notification(title, {
+            body: evt.preview || evt.messageText || 'رسالة جديدة'
+          });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(permission => {
+            if (permission === 'granted') {
+              new Notification(title, {
+                body: evt.preview || evt.messageText || 'رسالة جديدة'
+              });
+            }
+          });
+        }
+      }
+
+      // ── 1. Upsert / reorder inbox row ───────────────────────────
+      setThreads(prev => {
+        const existingIdx = prev.findIndex(t => t.thread_id === evt.threadId);
+        let updatedThread: Message;
+
+        if (existingIdx !== -1) {
+          // Update existing thread row
+          updatedThread = {
+            ...prev[existingIdx],
+            message_text: evt.preview || evt.messageText || prev[existingIdx].message_text,
+            sent_at:      now,
+            received_at:  now,
+            is_from_me:   evt.direction === 'outgoing' ? 1 : 0,
+            guest_name:   evt.guestName || prev[existingIdx].guest_name,
+          };
+          // Remove from old position, splice at top
+          const rest = prev.filter((_, i) => i !== existingIdx);
+          return [updatedThread, ...rest];
+        } else {
+          // Brand-new thread — create a temporary row immediately
+          updatedThread = {
+            id:                  `live-${evt.threadId}-${Date.now()}`,
+            platform_account_id: evt.browserAccountId,
+            platform:            evt.platform,
+            thread_id:           evt.threadId,
+            platform_msg_id:     evt.platformMsgId || '',
+            guest_name:          evt.guestName || 'Guest',
+            message_text:        evt.preview || evt.messageText,
+            is_from_me:          evt.direction === 'outgoing' ? 1 : 0,
+            sent_at:             now,
+            received_at:         now,
+            account_name:        undefined,
+          };
+          return [updatedThread, ...prev];
+        }
+      });
+
+      // ── 2. Append to open chat history ────────────────────────
+      if (activeThreadId === evt.threadId && evt.messageText) {
+        const liveMsg: Message = {
+          id:                  `live-msg-${evt.platformMsgId ?? Date.now()}`,
+          platform_account_id: evt.browserAccountId,
+          platform:            evt.platform,
+          thread_id:           evt.threadId,
+          platform_msg_id:     evt.platformMsgId || `live-${Date.now()}`,
+          guest_name:          evt.guestName || 'Guest',
+          message_text:        evt.messageText,
+          is_from_me:          evt.direction === 'outgoing' ? 1 : 0,
+          sent_at:             now,
+          received_at:         now,
+        };
+        setHistory(prev => {
+          // Avoid duplicate if we already have this msgId
+          if (evt.platformMsgId && prev.some(m => m.platform_msg_id === evt.platformMsgId)) return prev;
+          return [...prev, liveMsg];
+        });
+      }
+
+      // ── 3. Unread badge for incoming from guest ────────────────
+      if (evt.direction === 'incoming' && activeThreadId !== evt.threadId) {
+        setUnreadMap(prev => ({
+          ...prev,
+          [evt.threadId]: (prev[evt.threadId] || 0) + 1,
+        }));
+        // Show OS notification for incoming message
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          new Notification(`رسالة جديدة — ${evt.guestName}`, {
+            body: evt.preview || evt.messageText,
+            tag: `thread-${evt.threadId}`,
+          });
+        }
+      }
+    };
+
+    electronAPI.onNewPlatformMessage(handleLiveMessage);
+    // Note: IPC listeners from preload are not easily removable (no off API)
+    // but the closure captures the correct state via setState callbacks.
+  }, [activeThreadId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear unread count when thread is opened
+  useEffect(() => {
+    if (activeThreadId) {
+      setUnreadMap(prev => {
+        if (!prev[activeThreadId]) return prev;
+        const next = { ...prev };
+        delete next[activeThreadId];
+        return next;
+      });
+    }
+  }, [activeThreadId]);
+
+  // Listen for Electron new-messages push event (legacy platform-messages-updated)
   useEffect(() => {
     const api = (window as unknown as { electronAPI?: { onPlatformMessagesUpdated?: (cb: () => void) => any; offPlatformMessagesUpdated?: (h: any) => void } }).electronAPI;
     if (!api) return;
@@ -319,6 +571,7 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       platform:  selectedThread.platform,
       threadId:  selectedThread.thread_id,
       text:      replyText.trim(),
+      guestName: selectedThread.guest_name,
       metadata,
     };
 
@@ -347,6 +600,17 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       
       if (api) {
         res = await api.sendMessage(payload);
+        if (res.success) {
+          try {
+            await fetch('/api/messages/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...payload, placeholderOnly: true, guestName: selectedThread.guest_name })
+            });
+          } catch (dbErr) {
+            console.warn('[Inbox] Failed to write placeholder:', dbErr);
+          }
+        }
       } else {
         // Fallback to web API
         const webRes = await fetch('/api/messages/send', {
@@ -373,7 +637,45 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // ── Force refresh cookies from open browser windows ──────────────────────
+  const handleRefreshCookies = async () => {
+    const api = (window as any).electronAPI;
+    if (!api?.refreshAllCookies) {
+      setCookieRefreshResult('⚠️ هذه الميزة تعمل فقط في Electron');
+      setTimeout(() => setCookieRefreshResult(null), 3000);
+      return;
+    }
+    setIsRefreshingCookies(true);
+    setCookieRefreshResult(null);
+    try {
+      const res = await api.refreshAllCookies();
+      const count = res.results?.filter((r: any) => r.ok).length ?? 0;
+      setCookieRefreshResult(`✅ تم تحديث كوكيز ${count} حساب`);
+    } catch {
+      setCookieRefreshResult('❌ فشل تحديث الكوكيز');
+    } finally {
+      setIsRefreshingCookies(false);
+      setTimeout(() => setCookieRefreshResult(null), 4000);
+    }
+  };
+
+
+  const openInBrowser = async (thread: Message, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const api = (window as any).electronAPI;
+    if (!api?.navigateToThread) {
+      // Fallback: open in system browser if not in Electron
+      const url = thread.platform === 'airbnb'
+        ? `https://www.airbnb.com/hosting/messages/${thread.thread_id}`
+        : `https://business.gathern.co/app/chat/${thread.thread_id}`;
+      window.open(url, '_blank');
+      return;
+    }
+    const accountId = thread.browser_account_id || thread.platform_account_id || '';
+    await api.navigateToThread({ accountId, threadId: thread.thread_id, platform: thread.platform });
+  };
+
+
 
   return (
     <div className="flex h-[calc(100vh-140px)] bg-white rounded-3xl border border-gray-100 shadow-2xl overflow-hidden">
@@ -385,14 +687,31 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
         <div className="p-5 space-y-4 bg-white border-b border-gray-50">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-900">المحادثات</h2>
-            <button
-              onClick={() => { fetchThreads(true); fetchHealth(); }}
-              className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-blue-600"
-              title="تحديث"
-            >
-              <RefreshCw className={`w-5 h-5 ${isLoadingThreads ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Cookie refresh button */}
+              <button
+                onClick={handleRefreshCookies}
+                disabled={isRefreshingCookies}
+                title="تحديث كوكيز الجلسات من النوافذ المفتوحة"
+                className="p-2 hover:bg-amber-50 rounded-xl transition-colors text-gray-400 hover:text-amber-600 disabled:opacity-40"
+              >
+                <span className={`text-base ${isRefreshingCookies ? 'animate-spin inline-block' : ''}`}>🍪</span>
+              </button>
+              <button
+                onClick={() => { fetchThreads(true); fetchHealth(); }}
+                className="p-2 hover:bg-gray-100 rounded-xl transition-colors text-gray-400 hover:text-blue-600"
+                title="تحديث"
+              >
+                <RefreshCw className={`w-5 h-5 ${isLoadingThreads ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
+          {/* Cookie refresh result message */}
+          {cookieRefreshResult && (
+            <div className="text-[11px] text-center py-1.5 px-3 bg-amber-50 text-amber-700 rounded-xl border border-amber-100">
+              {cookieRefreshResult}
+            </div>
+          )}
 
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -465,34 +784,55 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
               const p = PLATFORM_COLORS[t.platform] || PLATFORM_COLORS.airbnb;
               const isActive = activeThreadId === t.thread_id;
               const acctHealth = healthMap.get(t.platform_account_id) || 'unknown';
+              const unreadCount = unreadMap[t.thread_id] || 0;
 
               return (
-                <button
+                <div
                   key={t.id}
                   onClick={() => setActiveThreadId(t.thread_id)}
-                  className={`w-full text-right p-4 transition-all border-b border-gray-50/50 hover:bg-white flex items-start gap-3 ${isActive ? 'bg-white shadow-sm ring-1 ring-black/5 z-10' : ''}`}
+                  className={`group cursor-pointer w-full text-right p-4 transition-all border-b border-gray-50/50 hover:bg-white flex items-start gap-3 ${isActive ? 'bg-white shadow-sm ring-1 ring-black/5 z-10' : ''}`}
                 >
                   <div className={`relative w-12 h-12 rounded-2xl shrink-0 flex items-center justify-center font-bold text-lg ${p.bg} ${p.text}`}>
                     {(t.guest_name || 'G')[0]}
                     {acctHealth !== 'healthy' && acctHealth !== 'unknown' && (
                       <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-red-400 border-2 border-white" />
                     )}
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 border-2 border-white text-white text-[9px] font-bold flex items-center justify-center animate-bounce">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-gray-900 truncate text-sm">{t.guest_name}</span>
-                      <span className="text-[10px] text-gray-400">{ago(t.sent_at)}</span>
+                      <span className={`font-bold truncate text-sm ${unreadCount > 0 ? 'text-gray-900' : 'text-gray-900'}`}>{t.guest_name}</span>
+                      <div className="flex items-center gap-1.5">
+                        {unreadCount > 0 && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        )}
+                        <span className="text-[10px] text-gray-400">{ago(t.sent_at)}</span>
+                      </div>
                     </div>
-                    <p className={`text-xs truncate ${isActive ? 'text-gray-600' : 'text-gray-400'}`}>
+                    <p className={`text-xs truncate ${unreadCount > 0 ? 'text-gray-700 font-semibold' : isActive ? 'text-gray-600' : 'text-gray-400'}`}>
                       {t.is_from_me ? <span className="text-blue-500 font-medium">أنا: </span> : ''}
                       {t.message_text}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-2">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${p.bg} ${p.text}`}>{p.label}</span>
-                      <span className="text-[10px] text-gray-400 truncate">{t.account_name}</span>
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${p.bg} ${p.text}`}>{p.label}</span>
+                        <span className="text-[10px] text-gray-400 truncate">{t.account_name}</span>
+                      </div>
+                      {/* Open in browser button */}
+                      <button
+                        onClick={(e) => openInBrowser(t, e)}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-all"
+                        title="افتح في المتصفح"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })
           )}
@@ -538,6 +878,15 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
                 </div>
               </div>
               <div className="flex gap-2">
+                {/* Open in browser button */}
+                <button
+                  onClick={() => selectedThread && openInBrowser(selectedThread)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                  title={`افتح في ${selectedThread?.platform === 'airbnb' ? 'Airbnb' : 'جاذر إن'}`}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  افتح في المتصفح
+                </button>
                 <button
                   onClick={() => fetchHistory(activeThreadId)}
                   className="p-2 hover:bg-gray-100 rounded-xl transition-colors"

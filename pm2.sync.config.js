@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'amsf-polling',  // Renamed: Adaptive Messaging Sync Framework
+    name: 'amsf-sync',  // New Enterprise Sync Engine with WebSocket Priority
     script: 'node_modules/ts-node/dist/bin.js',
     args: '--project scripts/tsconfig.json --transpile-only scripts/inbox-sync-service.ts',
     cwd: 'C:\\inetpub\\wwwroot\\nested-united',

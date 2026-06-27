@@ -8,7 +8,7 @@ export async function POST(
   const { id } = await params;
   try {
     const body = await request.json();
-    const { cookies_json, platform_user_id, auth_token, chat_auth_token } = body;
+    const { cookies_json, platform_user_id, auth_token, chat_auth_token, airbnb_inbox_hash, airbnb_thread_hash } = body;
 
     const account = await queryOne("SELECT id FROM browser_accounts WHERE id = ?", [id]);
     if (!account) {
@@ -35,6 +35,14 @@ export async function POST(
     if (chat_auth_token !== undefined) {
       updates.push("chat_auth_token = ?");
       values.push(chat_auth_token);
+    }
+    if (airbnb_inbox_hash !== undefined) {
+      updates.push("airbnb_inbox_hash = ?");
+      values.push(airbnb_inbox_hash);
+    }
+    if (airbnb_thread_hash !== undefined) {
+      updates.push("airbnb_thread_hash = ?");
+      values.push(airbnb_thread_hash);
     }
 
     updates.push("last_connected_at = NOW()");

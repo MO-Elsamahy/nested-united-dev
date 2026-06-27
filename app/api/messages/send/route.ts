@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "غير مصرح" }, { status: 401 });
     }
 
-    const { accountId, platform, threadId, text, metadata } = await req.json();
+    const { accountId, platform, threadId, text, metadata, placeholderOnly, guestName } = await req.json();
     
     if (!accountId || !platform || !threadId || !text) {
       return NextResponse.json({ success: false, error: "معلومات مفقودة" }, { status: 400 });
@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
     const account = accounts[0];
     let ok = false;
 
-    if (platform === "gathern") {
+    if (placeholderOnly) {
+      ok = true;
+    } else if (platform === "gathern") {
       if (!account.chat_auth_token) {
         await conn.end();
         return NextResponse.json({ success: false, error: "لا يوجد توكن متاح لجاذر إن، يرجى فتح المتصفح أولاً" }, { status: 400 });
@@ -119,27 +121,44 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: "لا يوجد كوكيز متاحة لـ Airbnb، يرجى فتح المتصفح أولاً" }, { status: 400 });
       }
 
-      const res = await fetch('https://www.airbnb.com/api/v3/ThreadSendMessageMutation/404d7e63b65593ec219fdf7dd65fccfa0303b6baec05007f3531b4028303f260', {
+      // ── Look up the send mutation hash from the registry (adaptive) ─
+      let sendHash = "94ac2c4bd07edace539dbf2b9665d9030b6dee479db345ba8a8bbc234b3bbfa3"; // fallback
+      try {
+        const [regRows]: any = await conn.execute(
+          `SELECT sha256_hash FROM graphql_operations 
+           WHERE platform='airbnb' AND operation_name='CreateBulkMessagesMutation' AND is_active=1
+           ORDER BY last_seen_at DESC LIMIT 1`
+        );
+        if (regRows?.length > 0) sendHash = regRows[0].sha256_hash;
+        else {
+          // Also try the older single-thread send mutation name
+          const [regRows2]: any = await conn.execute(
+            `SELECT sha256_hash FROM graphql_operations 
+             WHERE platform='airbnb' AND (operation_name LIKE '%SendMessage%' OR operation_name LIKE '%ThreadSend%') AND is_active=1
+             ORDER BY last_seen_at DESC LIMIT 1`
+          );
+          if (regRows2?.length > 0) sendHash = regRows2[0].sha256_hash;
+        }
+      } catch { /* fallback already set */ }
+
+      const res = await fetch(`https://www.airbnb.com/api/v3/CreateBulkMessagesMutation/${sendHash}?operationName=CreateBulkMessagesMutation&locale=en&currency=SAR`, {
         method: 'POST',
         headers: {
           'Cookie': account.cookies_json,
           'x-airbnb-api-key': 'd306zoyjsyarp7ifhu67rjxn52tv0t20',
           'Content-Type': 'application/json',
           'Origin': 'https://www.airbnb.com',
-          'Referer': 'https://www.airbnb.com/hosting/inbox',
+          'Referer': `https://www.airbnb.com/hosting/messages/${threadId}`,
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0.0.0 Safari/537.36'
         },
         body: JSON.stringify({
-          operationName: "ThreadSendMessageMutation",
+          operationName: "CreateBulkMessagesMutation",
           variables: {
-            threadId: Number(threadId),
-            message: text
+            message: text,
+            messageThreadIds: [Number(threadId)],
           },
           extensions: {
-            persistedQuery: {
-              version: 1,
-              sha256Hash: "404d7e63b65593ec219fdf7dd65fccfa0303b6baec05007f3531b4028303f260"
-            }
+            persistedQuery: { version: 1, sha256Hash: sendHash }
           }
         })
       });
@@ -150,6 +169,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: `فشل إرسال Airbnb: ${res.status} - ${errorText}` }, { status: 500 });
       }
       ok = true;
+
 
     } else {
       await conn.end();
@@ -171,15 +191,18 @@ export async function POST(req: NextRequest) {
           [existing[0].id]
         );
       } else {
-        // Insert placeholder
+        // Insert placeholder — use provided guestName if available, NOT hardcoded 'Guest'
+        const resolvedGuestName = guestName || 'Guest';
         await conn.execute(
           `INSERT INTO platform_messages 
              (id, browser_account_id, platform, thread_id, platform_msg_id, 
               guest_name, message_text, is_from_me, sent_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, 1, NOW())
-           ON DUPLICATE KEY UPDATE message_text = VALUES(message_text)`,
+           ON DUPLICATE KEY UPDATE 
+             message_text = VALUES(message_text),
+             guest_name = IF(VALUES(guest_name) != 'Guest' AND VALUES(guest_name) != '', VALUES(guest_name), guest_name)`,
           [crypto.randomUUID(), accountId, platform, 
-           threadId, `sent-${Date.now()}`, 'Guest', text]
+           threadId, `sent-${Date.now()}`, resolvedGuestName, text]
         );
       }
     }
