@@ -159,9 +159,9 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/dashboard/bookings" className="p-2 hover:bg-gray-100 rounded-lg">
+        <button type="button" onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-lg">
           <ArrowRight className="w-5 h-5" />
-        </Link>
+        </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">تحويل وتعديل حجز من iCal</h1>
           <p className="text-gray-600 text-sm">تحويل حجز iCal إلى حجز يدوي مع إضافة البيانات الناقصة</p>
@@ -285,9 +285,9 @@ export default function ConvertReservationPage({ params }: { params: Promise<{ i
                 </>
               )}
             </button>
-            <Link href="/dashboard/bookings" className="px-4 py-2 border rounded hover:bg-gray-50">
+            <button type="button" onClick={() => router.back()} className="px-4 py-2 border rounded hover:bg-gray-50">
               إلغاء
-            </Link>
+            </button>
           </div>
         </form>
       </div>

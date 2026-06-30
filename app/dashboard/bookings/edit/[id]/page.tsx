@@ -148,9 +148,9 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <Link href="/dashboard/bookings" className="p-2 hover:bg-gray-100 rounded-lg">
+        <button type="button" onClick={() => router.back()} className="p-2 hover:bg-gray-100 rounded-lg">
           <ArrowRight className="w-5 h-5" />
-        </Link>
+        </button>
         <div>
           <h1 className="text-2xl font-bold text-gray-900">تعديل الحجز</h1>
           <p className="text-gray-600 text-sm">تعديل بيانات الحجز</p>
@@ -264,9 +264,9 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
                 </>
               )}
             </button>
-            <Link href="/dashboard/bookings" className="px-4 py-2 border rounded hover:bg-gray-50">
+            <button type="button" onClick={() => router.back()} className="px-4 py-2 border rounded hover:bg-gray-50">
               إلغاء
-            </Link>
+            </button>
           </div>
         </form>
       </div>
