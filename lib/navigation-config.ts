@@ -260,6 +260,7 @@ export const SYSTEM_PAGES: Record<string, { path: string; label: string }[]> = {
         { path: "/dashboard/inbox", label: "صندوق الوارد" },
         { path: "/dashboard/units", label: "الوحدات" },
         { path: "/dashboard/bookings", label: "الحجوزات" },
+        { path: "/dashboard/bookings/amounts", label: "عرض المبالغ المالية للحجوزات" },
         { path: "/dashboard/accounts", label: "حسابات المستثمرين" },
         { path: "/dashboard/maintenance", label: "الصيانة" },
         { path: "/dashboard/browser-accounts", label: "حسابات المتصفح" },

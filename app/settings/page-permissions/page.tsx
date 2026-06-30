@@ -128,9 +128,12 @@ export default function PagePermissionsPage() {
                             <div className="p-4">
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                                     {data.pages.map((page) => {
+                                        let defaultView = true;
+                                        if (page.path === "/dashboard/bookings/amounts") defaultView = false;
+                                        
                                         const canView = user.permissions[page.path] !== undefined
                                             ? user.permissions[page.path].can_view
-                                            : true;
+                                            : defaultView;
                                         const isSaving = saving === `${user.id}-${page.path}`;
 
                                         return (
