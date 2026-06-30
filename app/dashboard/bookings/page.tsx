@@ -404,6 +404,12 @@ export default async function BookingsPage({
   const currentUser = session?.user?.id ? await queryOne<{ role: string }>("SELECT role FROM users WHERE id = ?", [session.user.id]) : null;
   const isSuperAdmin = currentUser?.role === "super_admin";
 
+  // Check Amount Viewing Permission
+  const hasPerm = session?.user?.id 
+    ? await checkUserPermission(session.user.id, "/dashboard/bookings/amounts", "view")
+    : false;
+  const canViewAmounts = isSuperAdmin || hasPerm;
+
   const platformAccountIds = resolvedParams.platform_account_id
     ? (Array.isArray(resolvedParams.platform_account_id)
       ? resolvedParams.platform_account_id
@@ -553,8 +559,8 @@ export default async function BookingsPage({
           <p className="text-xs sm:text-sm text-gray-500">من iCal</p>
           <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{icalBookings}</p>
         </div>
-        {/* Hide total amount for non-super-admins */}
-        {isSuperAdmin && (
+        {/* Hide total amount for users without permission */}
+        {canViewAmounts && (
           <div className="bg-white border border-gray-200 rounded-lg p-3 sm:p-4">
             <p className="text-xs sm:text-sm text-gray-500">إجمالي المبالغ</p>
             <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{totalAmount.toFixed(2)} SAR</p>
@@ -564,7 +570,7 @@ export default async function BookingsPage({
 
       {/* Bookings View (List/Grid/Table) */}
       {/* Pass showAmount prop to control visibility of amounts in the list */}
-      <BookingsView bookings={bookings} canEdit={canEdit} showAmount={isSuperAdmin} />
+      <BookingsView bookings={bookings} canEdit={canEdit} showAmount={canViewAmounts} />
     </div >
   );
 }

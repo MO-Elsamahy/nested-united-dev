@@ -1,25 +1,12 @@
 import { queryOne, execute, generateUUID } from "@/lib/db";
 import type { UserRole } from "@/lib/types/database";
 
-// Server-side cache for permissions (in-memory, resets on server restart)
-const serverPermissionCache = new Map<string, { result: boolean; timestamp: number }>();
-const SERVER_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes
+import { cache } from "react";
 
-// Clear cache for a specific user (called when permissions are updated)
-export function clearPermissionCacheForUser(userId: string) {
-  const keysToDelete: string[] = [];
-  for (const key of serverPermissionCache.keys()) {
-    if (key.startsWith(`${userId}:`)) {
-      keysToDelete.push(key);
-    }
-  }
-  keysToDelete.forEach((key) => serverPermissionCache.delete(key));
-}
-
-// Clear all cached permissions (called when role system permissions are updated)
-export function clearEntirePermissionCache() {
-  serverPermissionCache.clear();
-}
+// Use React cache to deduplicate database queries during a single render request,
+// instead of a global Map which causes state desync between API routes and Server Components in Next.js.
+export const clearPermissionCacheForUser = (userId: string) => {};
+export const clearEntirePermissionCache = () => {};
 
 interface UserPermission {
   id: string;
@@ -51,34 +38,21 @@ function getSystemForPath(pagePath: string): string | null {
   return null;
 }
 
-export async function checkUserPermission(
+export const checkUserPermission = cache(async (
   userId: string,
   pagePath: string,
-  action: "view" | "edit"
-): Promise<boolean> {
-  // Check server-side cache first
-  const cacheKey = `${userId}:${pagePath}:${action}`;
-  const cached = serverPermissionCache.get(cacheKey);
-  const now = Date.now();
-
-  if (cached && (now - cached.timestamp) < SERVER_CACHE_DURATION) {
-    return cached.result;
-  }
-
-  // Get user role
-  const user = await queryOne<UserWithRole>(
-    "SELECT id, role FROM users WHERE id = ?",
-    [userId]
-  );
+  action: "view" | "edit" = "view"
+): Promise<boolean> => {
+  const user = await queryOne<UserWithRole>("SELECT id, role FROM users WHERE id = ?", [
+    userId,
+  ]);
 
   if (!user) {
-    serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
     return false;
   }
 
   // Super admins have all permissions - can do everything
   if (user.role === "super_admin") {
-    serverPermissionCache.set(cacheKey, { result: true, timestamp: now });
     return true;
   }
 
@@ -100,35 +74,35 @@ export async function checkUserPermission(
       result = canEdit && canView;
     }
 
-    serverPermissionCache.set(cacheKey, { result, timestamp: now });
     return result;
   }
 
   // No explicit user permission — check role-level system access from DB
   const system = getSystemForPath(pagePath);
 
+  // Special case: Viewing financial amounts requires explicit permission
+  if (pagePath === "/dashboard/bookings/amounts") {
+    return false;
+  }
+
   // Employee portal is always accessible (self-service)
   if (system === "employee") {
-    serverPermissionCache.set(cacheKey, { result: true, timestamp: now });
     return true;
   }
 
   // Settings is super_admin only (already handled above, deny for everyone else)
   if (system === "settings") {
-    serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
     return false;
   }
 
   if (system) {
     const hasAccess = await hasSystemAccess(user.role, system);
-    serverPermissionCache.set(cacheKey, { result: hasAccess, timestamp: now });
     return hasAccess;
   }
 
   // Unknown path — deny by default
-  serverPermissionCache.set(cacheKey, { result: false, timestamp: now });
   return false;
-}
+});
 
 // Only log important actions, not page views
 const IMPORTANT_ACTIONS = ["create", "update", "delete", "export"];
