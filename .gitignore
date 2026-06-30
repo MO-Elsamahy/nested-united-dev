@@ -76,3 +76,8 @@ sync_results.json
 *.exe
 public/downloads/*.exe
 dist-electron/*.exe
+
+# AI Context
+.ai/
+*KNOWLEDGE_BASE*.md
+PROJECT_MEMORY.md

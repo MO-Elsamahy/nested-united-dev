@@ -16,7 +16,7 @@ import * as fs from "fs";
 import { spawn, ChildProcess } from "child_process";
 import { sendPlatformMessage, browserSessions, loadSavedSessions, saveSessions, resolveBridgeResponse } from "./platform-api";
 import { BrowserAccountSession } from "./types";
-import { liveMessageEmitter, LiveMessageEvent, attachCdpInterceptor } from "./cdp-interceptor";
+import { attachCdpInterceptor } from "./cdp-interceptor";
 
 // Disable console logging in production to prevent exposing backend operations
 if (app.isPackaged) {
@@ -609,8 +609,7 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
   if (accountSession.platform === 'airbnb' || accountSession.platform === 'gathern') {
     let cdpHandle = attachCdpInterceptor(
       browserWindow.webContents,
-      () => { /* raw snapshot handler — AMSF still runs via webRequest */ },
-      { label: accountSession.accountName, browserAccountId: accountSession.id }
+      { platform: accountSession.platform as 'airbnb' | 'gathern', browserAccountId: accountSession.id }
     );
 
     // Re-attach after DevTools is closed (DevTools steals the CDP debugger)
@@ -620,8 +619,7 @@ function createBrowserWindow(accountSession: BrowserAccountSession): BrowserWind
           if (browserWindow.isDestroyed()) return;
           cdpHandle = attachCdpInterceptor(
             browserWindow.webContents,
-            () => {},
-            { label: accountSession.accountName, browserAccountId: accountSession.id }
+            { platform: accountSession.platform as 'airbnb' | 'gathern', browserAccountId: accountSession.id }
           );
         }, 500);
       }
@@ -651,74 +649,7 @@ function notifyTabsChanged() {
 //   2. Fire a targeted background sync so the DB stays consistent
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Deduplicate rapid consecutive events for the same (threadId, msgId)
-// to avoid spamming the UI on inbox sweeps.
-const _recentLiveEventKeys = new Map<string, number>();
-const LIVE_EVENT_DEDUP_MS = 3000;
-
-function shouldEmitLiveEvent(evt: LiveMessageEvent): boolean {
-  // Always emit outgoing acks since there may be no msgId
-  if (evt.source === 'cdp-http-outgoing') return true;
-  const key = `${evt.browserAccountId}:${evt.threadId}:${evt.platformMsgId ?? evt.preview.slice(0, 20)}`;
-  const now = Date.now();
-  const last = _recentLiveEventKeys.get(key) ?? 0;
-  if (now - last < LIVE_EVENT_DEDUP_MS) return false;
-  _recentLiveEventKeys.set(key, now);
-  // Prune old keys to avoid memory leak
-  if (_recentLiveEventKeys.size > 500) {
-    const cutoff = now - LIVE_EVENT_DEDUP_MS * 2;
-    for (const [k, ts] of _recentLiveEventKeys) {
-      if (ts < cutoff) _recentLiveEventKeys.delete(k);
-    }
-  }
-  return true;
-}
-
-liveMessageEmitter.on('live-message', (evt: LiveMessageEvent) => {
-  if (!shouldEmitLiveEvent(evt)) return;
-
-  // 1. Push to UI immediately
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('new-platform-message', evt);
-    console.log(`\x1b[36m[LivePipeline] 📡 Pushed to UI: ${evt.platform} thread=${evt.threadId} dir=${evt.direction} preview="${evt.preview.substring(0, 40)}"\x1b[0m`);
-  }
-
-  // 2. Sound + System notification for INCOMING messages only
-  if (evt.direction === 'incoming' && evt.messageText) {
-    const platformName = evt.platform === 'airbnb' ? 'Airbnb' : 'Gathern';
-    const preview = evt.preview || evt.messageText.substring(0, 80);
-
-    // Play the notification sound (sends IPC to renderer which plays the audio)
-    playNotificationSound();
-
-    // Show OS system notification
-    showSystemNotification(
-      `رسالة جديدة — ${evt.guestName} (${platformName})`,
-      preview
-    );
-  }
-
-  // 3. Background sync — for both incoming and outgoing messages
-  // to ensure DB reconciles immediately even if sent from the webview.
-  if (evt.threadId) {
-    const triggerUrl = `${getApiUrl()}/api/sync/trigger`;
-    net.fetch(triggerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accountId: evt.browserAccountId,
-        threadId:  evt.threadId,
-        platform:  evt.platform,
-      }),
-    }).then(res => {
-      if (!res.ok) res.text().then(b => console.warn(`[LivePipeline] ⚠️ bg sync returned ${res.status}: ${b.substring(0, 80)}`)).catch(() => {});
-      else console.log(`[LivePipeline] ✅ bg sync triggered for thread ${evt.threadId}`);
-    }).catch((err: unknown) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[LivePipeline] ⚠️ bg sync request failed: ${msg}`);
-    });
-  }
-});
+/* liveMessageEmitter removed */
 
 // Inject script to monitor notifications
 function _injectNotificationMonitor(browserWindow: BrowserWindow, account: BrowserAccountSession) {
@@ -1193,10 +1124,9 @@ ipcMain.handle("browser-go-home", (_, accountId: string) => {
 });
 
 // Navigate a browser account window to a specific platform thread URL
-ipcMain.handle("navigate-to-thread", async (_, { accountId, threadId, platform }: { accountId: string; threadId: string; platform: string }) => {
+ipcMain.handle("navigate-to-thread", async (_, { accountId, threadId, platform, guestName }: { accountId: string; threadId: string; platform: string; guestName?: string }) => {
   let account = browserSessions.get(accountId);
 
-  // Open the window if not already open
   if (!account?.window || account.window.isDestroyed()) {
     if (!account) return { success: false, error: "Account not found" };
     account.window = createBrowserWindow(account);
@@ -1204,17 +1134,81 @@ ipcMain.handle("navigate-to-thread", async (_, { accountId, threadId, platform }
     account.window.focus();
   }
 
-  // Build the platform-specific thread URL
+  const currentUrl = account.window.webContents.getURL() || '';
   let threadUrl = '';
+  let needsNavigation = true;
+
   if (platform === 'airbnb') {
     threadUrl = `https://www.airbnb.com/hosting/messages/${threadId}`;
+    needsNavigation = !currentUrl.includes(`/hosting/messages/${threadId}`);
   } else if (platform === 'gathern') {
-    threadUrl = `https://business.gathern.co/app/chat/${threadId}`;
+    threadUrl = `https://business.gathern.co/app/chat`;
+    needsNavigation = !currentUrl.includes('business.gathern.co/app/chat');
   }
 
-  if (threadUrl) {
+  if (threadUrl && needsNavigation) {
     account.window.webContents.loadURL(threadUrl);
     console.log(`\x1b[36m[Navigate] 🔗 ${account.accountName} → ${threadUrl}\x1b[0m`);
+  }
+
+  if (platform === 'gathern' && threadId) {
+    const firstWord = guestName ? guestName.trim().split(/\s+/)[0] : '';
+    const script = `
+      (async () => {
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        const isVisible = (el) => {
+          if (!el) return false;
+          const r = el.getBoundingClientRect();
+          const st = window.getComputedStyle(el);
+          return !!(r.width > 5 && r.height > 5 && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0');
+        };
+        const firstWord = ${JSON.stringify(firstWord)};
+        const uid = ${JSON.stringify(threadId)};
+        
+        await sleep(1500);
+        let clickCount = 0;
+        for (let i = 0; i < 50; i++) {
+          await sleep(500);
+          if (uid) {
+            const elementsWithId = Array.from(document.querySelectorAll('[id*="' + uid + '"], [href*="' + uid + '"], [data-id*="' + uid + '"]'));
+            for (const el of elementsWithId) {
+              if (isVisible(el)) {
+                el.click();
+                clickCount++;
+                if (clickCount >= 2) return true;
+              }
+            }
+          }
+          if (clickCount > 0) continue;
+          if (firstWord) {
+            const guestParagraphs = Array.from(document.querySelectorAll('p[class*="m7rq5m"]'));
+            for (const p of guestParagraphs) {
+              const rawText = p.textContent || '';
+              const nameAfterSlash = rawText.split('/').pop()?.trim() || rawText;
+              if (nameAfterSlash.includes(firstWord) || rawText.includes(firstWord)) {
+                const row = p.closest('[class*="1jp6cc4"]') || p.closest('[class*="84yphb"]') || p.parentElement?.parentElement?.parentElement || p.parentElement;
+                if (row && isVisible(row)) {
+                  row.click();
+                  clickCount++;
+                  if (clickCount >= 2) return true;
+                }
+              }
+            }
+          }
+        }
+        return false;
+      })();
+    `;
+    const executeClick = () => {
+      if (account && account.window && !account.window.isDestroyed()) {
+        account.window.webContents.executeJavaScript(script).catch(() => {});
+      }
+    };
+    if (needsNavigation) {
+      setTimeout(executeClick, 4000);
+    } else {
+      executeClick();
+    }
   }
 
   notifyTabsChanged();

@@ -37,7 +37,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("browser-go-home", accountId),
 
   // Navigate a browser window directly to a specific thread
-  navigateToThread: (data: { accountId: string; threadId: string; platform: string }) =>
+  navigateToThread: (data: { accountId: string; threadId: string; platform: string; guestName?: string }) =>
     ipcRenderer.invoke("navigate-to-thread", data),
 
   // Force-refresh cookies from all open browser windows into DB

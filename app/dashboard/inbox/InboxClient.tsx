@@ -667,12 +667,12 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       // Fallback: open in system browser if not in Electron
       const url = thread.platform === 'airbnb'
         ? `https://www.airbnb.com/hosting/messages/${thread.thread_id}`
-        : `https://business.gathern.co/app/chat/${thread.thread_id}`;
+        : `https://business.gathern.co/app/chat`;
       window.open(url, '_blank');
       return;
     }
     const accountId = thread.browser_account_id || thread.platform_account_id || '';
-    await api.navigateToThread({ accountId, threadId: thread.thread_id, platform: thread.platform });
+    await api.navigateToThread({ accountId, threadId: thread.thread_id, platform: thread.platform, guestName: thread.guest_name });
   };
 
 

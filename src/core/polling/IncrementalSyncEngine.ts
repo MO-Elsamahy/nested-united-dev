@@ -68,6 +68,11 @@ export class IncrementalSyncEngine {
     console.log(`[Engine] Found ${accounts.length} active browser accounts`);
 
     for (const account of accounts) {
+      if (account.platform === 'airbnb') {
+        console.log(`[Engine] ⏭️ Skipping polling for Airbnb account ${account.id} (Now Event-Driven)`);
+        continue;
+      }
+
       const strategy = this.strategies.get(account.platform);
       if (!strategy) {
         console.warn(`[Engine] ⚠️  No synchronization strategy registered for platform: ${account.platform}`);

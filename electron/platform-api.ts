@@ -241,12 +241,14 @@ async function sendAirbnbMessageViaComposer(
     (async () => {
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
       const msg = ${JSON.stringify(message.trim())};
+      
       const isVisible = (el) => {
         if (!el) return false;
         const r = el.getBoundingClientRect();
         const st = window.getComputedStyle(el);
         return !!(r.width > 10 && r.height > 10 && st.display !== 'none' && st.visibility !== 'hidden' && st.opacity !== '0');
       };
+      
       const allRoots = () => {
         const roots = [document];
         const walk = (node) => {
@@ -255,15 +257,14 @@ async function sendAirbnbMessageViaComposer(
           for (const el of all) {
             if (el.shadowRoot) roots.push(el.shadowRoot);
             if (el.tagName === 'IFRAME') {
-              try {
-                if (el.contentDocument) roots.push(el.contentDocument);
-              } catch {}
+              try { if (el.contentDocument) roots.push(el.contentDocument); } catch {}
             }
           }
         };
         for (let i = 0; i < roots.length; i++) walk(roots[i]);
         return roots;
       };
+      
       const collect = (selectors) => {
         const out = [];
         for (const root of allRoots()) {
@@ -273,6 +274,7 @@ async function sendAirbnbMessageViaComposer(
         }
         return out.filter(isVisible);
       };
+
       const findComposer = () => {
         const selectors = [
           'textarea[placeholder*="message" i]',
@@ -299,14 +301,18 @@ async function sendAirbnbMessageViaComposer(
         });
         return candidates[0];
       };
+
       const findSendButton = (composer) => {
         const selectors = [
           'button[type="submit"]',
           'button[aria-label*="send" i]',
           'button[aria-label*="إرسال" i]',
+          'button[aria-label*="ارسال" i]',
+          'button[aria-label*="Send" i]',
           'button[data-testid*="send" i]',
           'button[data-testid*="submit" i]',
           '[role="button"][aria-label*="send" i]',
+          '[role="button"][aria-label*="إرسال" i]'
         ];
         const btns = collect(selectors);
         const isQuickReplyLike = (btn) => {
@@ -325,15 +331,25 @@ async function sendAirbnbMessageViaComposer(
             text.includes('quick_repl')
           );
         };
+        
+        let validBtns = btns.filter(btn => !btn.disabled && btn.getAttribute('aria-disabled') !== 'true' && !isQuickReplyLike(btn));
+        
+        // If selectors fail, try to find any enabled button within the composer's parent container
+        if (validBtns.length === 0 && composer && composer.parentElement) {
+           let parent = composer.parentElement;
+           for(let i=0; i<4; i++) {
+             if (!parent) break;
+             const nearbyBtns = Array.from(parent.querySelectorAll('button, [role="button"]')).filter(isVisible);
+             validBtns = nearbyBtns.filter(btn => !btn.disabled && btn.getAttribute('aria-disabled') !== 'true' && !isQuickReplyLike(btn));
+             if (validBtns.length > 0) break;
+             parent = parent.parentElement;
+           }
+        }
+
         const cr = composer?.getBoundingClientRect?.();
-        if (cr) {
-          // Prefer buttons close to composer (usually same compose bar).
-          const scored = btns
-            .filter((btn) =>
-              !btn.disabled &&
-              btn.getAttribute('aria-disabled') !== 'true' &&
-              !isQuickReplyLike(btn)
-            )
+        if (cr && validBtns.length > 0) {
+          // Prefer buttons close to composer
+          const scored = validBtns
             .map((btn) => {
               const br = btn.getBoundingClientRect();
               const dx = Math.abs((br.left + br.width / 2) - (cr.left + cr.width / 2));
@@ -344,33 +360,35 @@ async function sendAirbnbMessageViaComposer(
             .sort((a, b) => a.score - b.score);
           if (scored[0]) return scored[0].btn;
         }
-        for (const btn of btns) {
-          if (!btn.disabled && btn.getAttribute('aria-disabled') !== 'true' && !isQuickReplyLike(btn)) return btn;
-        }
-        return null;
+        return validBtns[0] || null;
       };
-      const setComposerValue = (composer, value) => {
+
+      const setComposerValue = async (composer, value) => {
         composer.focus();
+        
+        // 1. Clear existing text
         if (composer.tagName === 'TEXTAREA' || composer.tagName === 'INPUT') {
           const proto = composer.tagName === 'TEXTAREA'
             ? window.HTMLTextAreaElement.prototype
             : window.HTMLInputElement.prototype;
           const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-          if (setter) setter.call(composer, value);
-          else composer.value = value;
-          composer.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, data: value, inputType: 'insertText' }));
-          composer.dispatchEvent(new Event('input', { bubbles: true }));
-          composer.dispatchEvent(new Event('change', { bubbles: true }));
-          return;
+          if (setter) setter.call(composer, '');
+          else composer.value = '';
+        } else {
+           composer.textContent = '';
         }
-        // For contenteditable editors (Airbnb), do a single write path.
-        // Multiple write paths (textContent + innerText + execCommand) can
-        // duplicate the same text in one outgoing message.
-        composer.textContent = value;
+        composer.dispatchEvent(new Event('input', { bubbles: true }));
+        await sleep(50);
+
+        // 2. Insert text via execCommand (most reliable for React editors)
+        document.execCommand('insertText', false, value);
+
+        // 3. Dispatch manual events
         composer.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, data: value, inputType: 'insertText' }));
-        composer.dispatchEvent(new InputEvent('input', { bubbles: true, data: value, inputType: 'insertText' }));
+        composer.dispatchEvent(new Event('input', { bubbles: true }));
         composer.dispatchEvent(new Event('change', { bubbles: true }));
       };
+
       for (let i = 0; i < 30; i++) {
         let composer = findComposer();
         if (!composer) {
@@ -378,7 +396,7 @@ async function sendAirbnbMessageViaComposer(
           continue;
         }
 
-        setComposerValue(composer, msg);
+        await setComposerValue(composer, msg);
         await sleep(180);
 
         const sendBtn = findSendButton(composer);
@@ -387,21 +405,22 @@ async function sendAirbnbMessageViaComposer(
           return { ok: true, via: 'composer-button' };
         }
 
-        // Fallback key combos.
+        // Fallback: try pressing Enter if no button found
         composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
         composer.dispatchEvent(new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true }));
-        composer.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, ctrlKey: true }));
-        composer.dispatchEvent(new KeyboardEvent('keyup',   { key: 'Enter', code: 'Enter', bubbles: true, ctrlKey: true }));
-        return { ok: true, via: 'composer-enter' };
+        await sleep(200);
+        
+        if (!composer.textContent?.trim() && !composer.value?.trim()) {
+           return { ok: true, via: 'composer-enter' };
+        }
       }
-
-      // Extra diagnostics to avoid blind failures.
+      
       const textareas = collect(['textarea']).length;
       const editables = collect(['[contenteditable="true"]', '[role="textbox"]']).length;
       const buttons = collect(['button']).length;
-      return { ok: false, error: 'composer_not_found_or_not_ready', debug: { textareas, editables, buttons, url: location.href } };
+      return { ok: false, error: 'send_button_not_found_after_typing', debug: { textareas, editables, buttons } };
     })();
-  `;
+`;
 
   const result = await account.window.webContents.executeJavaScript(script, true) as { ok: boolean; via?: string; error?: string; debug?: Record<string, unknown> };
   if (!result?.ok) {

@@ -97,7 +97,6 @@ export class FallbackManager {
 
   private async setupAccount(account: any): Promise<void> {
     console.log(`[FallbackManager] 📦 Setting up account: ${account.account_name} (${account.platform})`);
-
     const tracked: TrackedAccount = {
       id: account.id,
       platform: account.platform,
@@ -110,18 +109,8 @@ export class FallbackManager {
     this.trackedAccounts.set(account.id, tracked);
 
     if (account.platform === 'airbnb') {
-      // Create and start Airbnb WebSocket listener
-      const listener = new AirbnbWebSocketListener(
-        account,
-        this.pool,
-        (event) => this.handleWebSocketEvent(account.id, event)
-      );
-      
-      tracked.wsListener = listener;
-      // Start async
-      listener.start().catch(err => {
-        console.error(`[FallbackManager] ❌ WS start failed for ${account.account_name}:`, err.message);
-      });
+      console.log(`[FallbackManager] ⏭️ Skipping polling setup for Airbnb account ${account.id} (Now Event-Driven)`);
+      return;
     }
 
     // Schedule the initial polling loop based on current status
