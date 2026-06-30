@@ -188,8 +188,8 @@ export default function NewEvaluationPage() {
     let maxTotal = 0;
     if (templateConfig?.criteria) {
         templateConfig.criteria.forEach((c) => {
-            currentTotal += scores[c.id]?.score || 0;
-            maxTotal += c.max_score;
+            currentTotal += Number(scores[c.id]?.score || 0);
+            maxTotal += Number(c.max_score);
         });
     }
     const currentPercentage = maxTotal > 0 ? (currentTotal / maxTotal) * 100 : 0;

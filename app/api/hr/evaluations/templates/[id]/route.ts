@@ -24,10 +24,19 @@ export async function GET(
             return NextResponse.json({ error: "القالب غير موجود" }, { status: 404 });
         }
 
-        const criteria = await query<EvaluationCriterion>(
+        const dbCriteria = await query<any>(
             "SELECT * FROM hr_evaluation_criteria WHERE template_id = ? ORDER BY sort_order ASC",
             [resolvedParams.id]
         );
+
+        const criteria: EvaluationCriterion[] = dbCriteria.map((c: any) => ({
+            id: c.id,
+            template_id: c.template_id,
+            name: c.criterion_name,
+            description: c.description,
+            max_score: parseFloat(c.max_score),
+            weight: parseFloat(c.weight)
+        }));
 
         return NextResponse.json({ ...template, criteria });
     } catch (error) {
