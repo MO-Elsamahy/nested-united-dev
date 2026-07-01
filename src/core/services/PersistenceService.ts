@@ -12,6 +12,16 @@ export class PersistenceService {
         await this.persistMessage(event.accountId, event.platform, msg);
       }
     }
+
+    // Update last_poll_at (used as last_sync_at in UI) for this account
+    try {
+      await this.pool.execute(
+        `UPDATE browser_accounts SET last_poll_at = NOW(), poll_error = NULL WHERE id = ?`,
+        [event.accountId]
+      );
+    } catch (err) {
+      console.error(`Failed to update last_poll_at for account ${event.accountId}:`, err);
+    }
   }
 
   private async persistThread(accountId: string, platform: string, thread: any) {

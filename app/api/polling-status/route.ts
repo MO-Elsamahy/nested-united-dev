@@ -19,17 +19,23 @@ export async function GET() {
     });
 
     const [accounts]: any = await conn.execute(
-      "SELECT id, platform, account_name, last_poll_at, poll_error, is_active FROM browser_accounts WHERE platform IN ('airbnb', 'gathern')"
+      "SELECT id, platform, account_name, last_poll_at, poll_error, is_active, ws_status, last_ws_activity FROM browser_accounts WHERE platform IN ('airbnb', 'gathern')"
     );
     await conn.end();
 
     const statusMap: Record<string, any> = {};
     for (const acc of accounts) {
+      // For real-time platforms, last_ws_activity is the true indicator of "sync" activity
+      let displayLastPoll = acc.last_poll_at;
+      if (acc.last_ws_activity && (!acc.last_poll_at || new Date(acc.last_ws_activity) > new Date(acc.last_poll_at))) {
+        displayLastPoll = acc.last_ws_activity;
+      }
+      
       statusMap[acc.id] = {
         platform: acc.platform,
         accountName: acc.account_name,
-        lastPollAt: acc.last_poll_at,
-        error: acc.poll_error,
+        lastPollAt: displayLastPoll,
+        error: acc.poll_error || (acc.ws_status === 'error' ? 'WebSocket Error' : null),
         isActive: acc.is_active === 1
       };
     }
