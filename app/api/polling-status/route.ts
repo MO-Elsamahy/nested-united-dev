@@ -41,7 +41,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ success: true, data: statusMap });
-  } catch (err: any) {
+  } catch (error) {
+    const err = error as any;
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

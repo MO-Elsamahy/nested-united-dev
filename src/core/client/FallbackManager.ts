@@ -109,7 +109,34 @@ export class FallbackManager {
     this.trackedAccounts.set(account.id, tracked);
 
     if (account.platform === 'airbnb') {
-      console.log(`[FallbackManager] ⏭️ Skipping polling setup for Airbnb account ${account.id} (Now Event-Driven)`);
+      console.log(`[FallbackManager] ⏭️ Setting up AirbnbWebSocketListener for account ${account.id} (Event-Driven)`);
+      try {
+        const listener = new AirbnbWebSocketListener(account, this.pool, async (event) => {
+          if (event.type === 'message') {
+            // Forward the raw WS payload to the CentralEventProcessor via the ingest API
+            try {
+              // We need to fetch the ingest API to process this raw payload, or just trigger a sync
+              // Wait, FallbackManager has IncrementalSyncEngine. If we just trigger sync for this thread!
+              if (event.threadId) {
+                console.log(`[FallbackManager] 🔔 WS Event received for thread ${event.threadId}, triggering poll...`);
+                await this.engine.syncSingleThread(account.id, account.platform, event.threadId);
+              } else {
+                // Global update, sync everything
+                console.log(`[FallbackManager] 🔔 Global WS Event received, triggering full poll...`);
+                await this.engine.syncSingleAccount(account.id);
+              }
+            } catch (err) {
+              console.error(`[FallbackManager] ❌ Failed to handle WS event:`, err);
+            }
+          }
+        });
+        
+        tracked.wsListener = listener;
+        await listener.start();
+        console.log(`[FallbackManager] ✅ AirbnbWebSocketListener started for ${account.id}`);
+      } catch (err) {
+        console.error(`[FallbackManager] ❌ Failed to start AirbnbWebSocketListener for ${account.id}:`, err);
+      }
       return;
     }
 
