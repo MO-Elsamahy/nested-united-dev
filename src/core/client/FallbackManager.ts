@@ -137,7 +137,12 @@ export class FallbackManager {
       } catch (err) {
         console.error(`[FallbackManager] ❌ Failed to start AirbnbWebSocketListener for ${account.id}:`, err);
       }
-      return;
+      // Trigger an immediate catch-up sync for Airbnb before relying on WS
+      console.log(`[FallbackManager] 🚀 Triggering initial catch-up sync for Airbnb account ${account.id}...`);
+      this.engine.syncSingleAccount(account.id).catch(err => {
+        console.error(`[FallbackManager] ❌ Initial catch-up sync failed for account ${account.id}:`, err);
+      });
+      // Do NOT return here, we want to schedule safety polling
     }
 
     // Schedule the initial polling loop based on current status
