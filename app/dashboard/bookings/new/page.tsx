@@ -33,6 +33,7 @@ export default function NewBookingPage() {
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [overlapData, setOverlapData] = useState<{ id: string, type: string } | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
 
   const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -61,6 +62,7 @@ export default function NewBookingPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setOverlapData(null);
 
     const form = new FormData(e.currentTarget);
     const payload = {
@@ -83,7 +85,14 @@ export default function NewBookingPage() {
         body: JSON.stringify(payload),
       });
       const result = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(result.error || "فشل إنشاء الحجز");
+      
+      if (!res.ok) {
+        if (res.status === 409 && result.overlap) {
+          setOverlapData(result.overlap);
+        }
+        throw new Error(result.error || "فشل إنشاء الحجز");
+      }
+      
       const amountVal = payload.amount || 0;
       if (amountVal > 0) {
         router.push(`/dashboard/bookings?deal_created=true&amount=${amountVal}`);
@@ -129,9 +138,23 @@ export default function NewBookingPage() {
 
       <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
         {error && (
-          <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded">
-            <AlertCircle className="w-4 h-4" />
-            <span>{error}</span>
+          <div className="flex flex-col gap-2 text-red-700 bg-red-50 border border-red-200 px-4 py-3 rounded">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span className="font-semibold">{error}</span>
+            </div>
+            {overlapData && (
+              <div className="mt-2 text-sm border-t border-red-200 pt-2">
+                <p className="mb-2">يوجد حجز مسجل بالفعل في هذه التواريخ. يمكنك تعديل الحجز الموجود بدلاً من إضافة حجز جديد.</p>
+                <Link
+                  href={overlapData.type === 'ical' ? `/dashboard/bookings/convert/${overlapData.id}` : `/dashboard/bookings/edit/${overlapData.id}`}
+                  className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-1.5 rounded hover:bg-red-700 transition-colors"
+                >
+                  {overlapData.type === 'ical' ? 'استكمال الحجز (iCal)' : 'تعديل الحجز الموجود'}
+                  <ArrowRight className="w-4 h-4 mr-1" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
 

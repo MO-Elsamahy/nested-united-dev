@@ -78,6 +78,33 @@ export async function PUT(
   }
 
   try {
+    // Overlap Check: Ensure unit is not already booked
+    const overlap = await queryOne<{ id: string }>(
+      `SELECT id FROM bookings 
+       WHERE unit_id = ? 
+       AND id != ?
+       AND (
+         (checkin_date < ? AND checkout_date > ?)
+       )`,
+      [unit_id, resolvedParams.id, checkout_date, checkin_date]
+    );
+
+    const reservationOverlap = await queryOne<{ id: string }>(
+      `SELECT id FROM reservations 
+       WHERE unit_id = ? 
+       AND (
+         (start_date < ? AND end_date > ?)
+       )`,
+      [unit_id, checkout_date, checkin_date]
+    );
+
+    if (overlap || reservationOverlap) {
+      return NextResponse.json({ 
+        error: "الوحدة محجوزة بالفعل في هذه التواريخ",
+        overlap: overlap ? { id: overlap.id, type: "booking" } : { id: reservationOverlap?.id, type: "ical" }
+      }, { status: 409 });
+    }
+
     // Get booking before update for logging
     const oldBooking = await queryOne<{ guest_name: string }>(
       "SELECT guest_name FROM bookings WHERE id = ?",

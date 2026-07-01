@@ -48,9 +48,9 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
     if (canEdit === false) {
       router.push("/dashboard/bookings?error=no_permission");
     }
-  }, [canEdit, router]);
-
-  useEffect(() => {
+      return;
+    }
+    
     // Load units, accounts, and booking data concurrently
     Promise.all([
       fetch("/api/units").then((r) => r.json()).catch(() => []),
@@ -68,7 +68,7 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
     }).finally(() => {
       setLoading(false);
     });
-  }, [resolvedParams.id]);
+  }, [canEdit, resolvedParams.id, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -76,6 +76,7 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
 
     setSaving(true);
     setError(null);
+    setOverlapData(null);
 
     const form = new FormData(e.currentTarget);
     const payload = {
@@ -98,7 +99,12 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
         body: JSON.stringify(payload),
       });
       const result = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(result.error || "فشل تحديث الحجز");
+      if (!res.ok) {
+        if (res.status === 409 && result.overlap) {
+          setOverlapData(result.overlap);
+        }
+        throw new Error(result.error || "فشل تحديث الحجز");
+      }
       router.push("/dashboard/bookings");
       router.refresh();
     } catch (err: unknown) {
@@ -129,7 +135,7 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
     );
   }
 
-  if (error && !booking) {
+  if (error && !booking && !overlapData) {
     return (
       <div className="max-w-3xl mx-auto">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -159,9 +165,23 @@ export default function EditBookingPage({ params }: { params: Promise<{ id: stri
 
       <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
         {error && (
-          <div className="flex items-center gap-2 text-red-700 bg-red-50 border border-red-200 px-3 py-2 rounded">
-            <AlertCircle className="w-4 h-4" />
-            <span>{error}</span>
+          <div className="flex flex-col gap-2 text-red-700 bg-red-50 border border-red-200 px-4 py-3 rounded">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              <span className="font-semibold">{error}</span>
+            </div>
+            {overlapData && (
+              <div className="mt-2 text-sm border-t border-red-200 pt-2">
+                <p className="mb-2">يوجد حجز مسجل بالفعل في هذه التواريخ. هل ترغب في تعديله بدلاً من ذلك؟</p>
+                <Link
+                  href={overlapData.type === 'ical' ? `/dashboard/bookings/convert/${overlapData.id}` : `/dashboard/bookings/edit/${overlapData.id}`}
+                  className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-1.5 rounded hover:bg-red-700 transition-colors"
+                >
+                  {overlapData.type === 'ical' ? 'استكمال الحجز (iCal)' : 'تعديل الحجز المتعارض'}
+                  <ArrowRight className="w-4 h-4 mr-1" />
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
