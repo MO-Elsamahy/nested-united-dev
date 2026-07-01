@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
     }));
 
     // Get reservations (iCal)
-    const reservationsRows = await query<ReservationRow>(
+    const reservationsRows = await query<ReservationRow & { platform_account_id: string | null }>(
       `SELECT r.*, u.id as unit_id, u.unit_name, u.unit_code, u.platform_account_id as unit_platform_account_id
        FROM reservations r
        LEFT JOIN units u ON r.unit_id = u.id
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
       checkout_date: r.end_date,
       unit: { id: r.unit_id, unit_name: r.unit_name, unit_code: r.unit_code },
       platform: r.platform || "ical",
-      platform_account_id: r.unit_platform_account_id ?? null,
+      platform_account_id: r.platform_account_id ?? r.unit_platform_account_id ?? null,
       amount: null,
       currency: null,
       notes: r.summary || "",
