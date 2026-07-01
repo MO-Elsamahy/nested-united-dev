@@ -188,7 +188,7 @@ export class AirbnbOutgoingParser implements IEventParser {
 
 export class AirbnbRealtimeParser implements IEventParser {
   canParse(operationName: string, platform: string): boolean {
-    return platform === 'airbnb' && operationName === 'SyncProtocolSubscription';
+    return platform === 'airbnb' && (operationName === 'SyncProtocolSubscription' || operationName === 'AirbnbWebSocketMessage');
   }
 
   parse(event: RawPlatformEvent): NormalizedEvent | null {

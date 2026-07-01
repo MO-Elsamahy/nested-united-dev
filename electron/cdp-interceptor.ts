@@ -90,6 +90,23 @@ export function attachCdpInterceptor(
           postData: existing?.postData, 
           headers: p?.response?.headers 
         });
+      } else if (method === 'Network.webSocketFrameReceived') {
+        const p = params as any;
+        const payloadData = p?.response?.payloadData;
+        if (payloadData && platform === 'airbnb') {
+          // Send it to ingest API as AirbnbWebSocketMessage
+          const rawEvent: RawPlatformEvent = {
+            accountId: browserAccountId,
+            platform,
+            operationName: 'AirbnbWebSocketMessage',
+            timestamp: new Date().toISOString(),
+            url: 'wss://ws.airbnb.com/',
+            headers: {},
+            payload: payloadData,
+            requestBody: null
+          };
+          cdpEventEmitter.emit('raw-event', rawEvent);
+        }
       } else if (method === 'Network.loadingFinished') {
         const p = params as any;
         const meta = pending.get(p.requestId);

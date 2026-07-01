@@ -639,19 +639,34 @@ function notifyTabsChanged() {
     mainWindow.webContents.send("tabs-changed");
   }
 }
+import { cdpEventEmitter } from './cdp-interceptor';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Real-Time Live Events Pipeline
 //
-// liveMessageEmitter fires for every incoming/outgoing message captured by the
-// CDP interceptor. We:
-//   1. Push the normalized event to the React UI immediately (zero lag)
-//   2. Fire a targeted background sync so the DB stays consistent
+// We listen to cdpEventEmitter and forward raw events to the Next.js ingest API.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/* liveMessageEmitter removed */
+cdpEventEmitter.on('raw-event', async (rawEvent: any) => {
+  try {
+    const ingestUrl = `${getApiUrl()}/api/events/ingest`;
+    const res = await fetch(ingestUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rawEvent)
+    });
+    if (!res.ok) {
+      console.warn(`[LivePipeline] ⚠️ Ingest API returned ${res.status}`);
+    } else {
+      console.log(`[LivePipeline] ✅ Ingested event ${rawEvent.operationName} for ${rawEvent.platform}`);
+    }
+  } catch (err: any) {
+    console.warn(`[LivePipeline] ⚠️ Failed to send raw-event to ingest API: ${err.message}`);
+  }
+});
 
-// Inject script to monitor notifications
+// ─────────────────────────────────────────────────────────────────────────────
+// Notification Monitor
 function _injectNotificationMonitor(browserWindow: BrowserWindow, account: BrowserAccountSession) {
   // Special handling for WhatsApp - Badge Monitoring
   if (account.platform === "whatsapp") {
