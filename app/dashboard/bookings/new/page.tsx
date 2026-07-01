@@ -33,7 +33,7 @@ export default function NewBookingPage() {
   const [accounts, setAccounts] = useState<AccountOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [overlapData, setOverlapData] = useState<{ id: string, type: string } | null>(null);
+    const [overlapData, setOverlapData] = useState<{ id: string, type: string, guest_name?: string, checkin_date?: string, checkout_date?: string, platform?: string | null } | null>(null);
   const [selectedAccountId, setSelectedAccountId] = useState<string>("");
 
   const handleUnitChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -144,13 +144,36 @@ export default function NewBookingPage() {
               <span className="font-semibold">{error}</span>
             </div>
             {overlapData && (
-              <div className="mt-2 text-sm border-t border-red-200 pt-2">
-                <p className="mb-2">يوجد حجز مسجل بالفعل في هذه التواريخ. يمكنك تعديل الحجز الموجود بدلاً من إضافة حجز جديد.</p>
+              <div className="mt-2 text-sm border-t border-red-200 pt-3">
+                <p className="mb-3 font-medium">يوجد حجز مسجل بالفعل في هذه التواريخ. تفاصيل الحجز المتعارض:</p>
+                <div className="bg-white/50 p-3 rounded border border-red-100 mb-3 space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">نوع الحجز:</span>
+                    <span className="font-semibold">{overlapData.type === 'ical' ? 'حجز iCal (خارجي)' : 'حجز يدوي'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">الاسم / الوصف:</span>
+                    <span className="font-semibold">{overlapData.guest_name || 'غير متوفر'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">المنصة:</span>
+                    <span className="font-semibold">{overlapData.platform || 'غير محدد'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">تاريخ الدخول:</span>
+                    <span className="font-semibold text-left" dir="ltr">{overlapData.checkin_date ? new Date(overlapData.checkin_date).toISOString().split('T')[0] : 'غير متوفر'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">تاريخ الخروج:</span>
+                    <span className="font-semibold text-left" dir="ltr">{overlapData.checkout_date ? new Date(overlapData.checkout_date).toISOString().split('T')[0] : 'غير متوفر'}</span>
+                  </div>
+                </div>
+                <p className="mb-3 text-red-700">هل ترغب في استكمال أو تعديل هذا الحجز بدلاً من إضافة حجز جديد؟</p>
                 <Link
                   href={overlapData.type === 'ical' ? `/dashboard/bookings/convert/${overlapData.id}` : `/dashboard/bookings/edit/${overlapData.id}`}
-                  className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-1.5 rounded hover:bg-red-700 transition-colors"
+                  className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors shadow-sm w-full justify-center"
                 >
-                  {overlapData.type === 'ical' ? 'استكمال الحجز (iCal)' : 'تعديل الحجز الموجود'}
+                  {overlapData.type === 'ical' ? 'استكمال هذا الحجز (iCal)' : 'تعديل هذا الحجز'}
                   <ArrowRight className="w-4 h-4 mr-1" />
                 </Link>
               </div>

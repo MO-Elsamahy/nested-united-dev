@@ -314,8 +314,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Overlap Check: Ensure unit is not already booked
-    const overlap = await queryOne<{ id: string }>(
-      `SELECT id FROM bookings 
+    const overlap = await queryOne<{ id: string, guest_name: string, checkin_date: string, checkout_date: string, platform: string | null }>(
+      `SELECT id, guest_name, checkin_date, checkout_date, platform FROM bookings 
        WHERE unit_id = ? 
        AND (
          (checkin_date < ? AND checkout_date > ?)
@@ -323,8 +323,8 @@ export async function POST(request: NextRequest) {
       [unit_id, checkout_date, checkin_date]
     );
 
-    const reservationOverlap = await queryOne<{ id: string }>(
-      `SELECT id FROM reservations 
+    const reservationOverlap = await queryOne<{ id: string, summary: string | null, start_date: string, end_date: string, platform: string | null }>(
+      `SELECT id, summary, start_date, end_date, platform FROM reservations 
        WHERE unit_id = ? 
        AND id != ?
        AND (
@@ -334,9 +334,13 @@ export async function POST(request: NextRequest) {
     );
 
     if (overlap || reservationOverlap) {
+      const overlapDetails = overlap 
+        ? { id: overlap.id, type: "booking", guest_name: overlap.guest_name, checkin_date: overlap.checkin_date, checkout_date: overlap.checkout_date, platform: overlap.platform }
+        : { id: reservationOverlap?.id, type: "ical", guest_name: reservationOverlap?.summary || "حجز iCal", checkin_date: reservationOverlap?.start_date, checkout_date: reservationOverlap?.end_date, platform: reservationOverlap?.platform };
+
       return NextResponse.json({ 
         error: "الوحدة محجوزة بالفعل في هذه التواريخ",
-        overlap: overlap ? { id: overlap.id, type: "booking" } : { id: reservationOverlap?.id, type: "ical" }
+        overlap: overlapDetails
       }, { status: 409 });
     }
 
