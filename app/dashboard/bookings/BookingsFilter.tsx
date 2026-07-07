@@ -24,6 +24,7 @@ interface BookingsFilterProps {
 type DatePreset = "today" | "checkin_today" | "checkout_today" | "week" | "month" | "next_month" | "custom";
 type BookingStatus = "all" | "upcoming" | "current" | "past";
 type BookingType = "all" | "manual" | "ical";
+type DateFilterType = "checkin" | "checkout" | "overlap";
 
 export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
     const router = useRouter();
@@ -52,6 +53,9 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
     );
     const [bookingStatus, setBookingStatus] = useState<BookingStatus>(
         (searchParams.get("status") as BookingStatus) || "all"
+    );
+    const [dateFilterType, setDateFilterType] = useState<DateFilterType>(
+        (searchParams.get("date_type") as DateFilterType) || "checkin"
     );
 
     // Date presets
@@ -121,6 +125,7 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
         } else {
             if (dateFrom) params.set("from", dateFrom);
             if (dateTo) params.set("to", dateTo);
+            if (dateFrom || dateTo) params.set("date_type", dateFilterType);
         }
 
         if (bookingType !== "all") params.set("booking_type", bookingType);
@@ -139,6 +144,7 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
         setDateFrom("");
         setDateTo("");
         setDatePreset("custom");
+        setDateFilterType("checkin");
         setSelectedUnits([]);
         setSelectedAccounts([]);
         setSelectedPlatforms([]);
@@ -225,7 +231,18 @@ export function BookingsFilter({ units, accounts }: BookingsFilterProps) {
 
                     {/* Date Range with Presets */}
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-gray-700">نطاق التاريخ</label>
+                        <div className="flex items-center justify-between">
+                            <label className="text-sm font-medium text-gray-700">نطاق التاريخ</label>
+                            <select
+                                value={dateFilterType}
+                                onChange={(e) => setDateFilterType(e.target.value as DateFilterType)}
+                                className="text-xs px-2 py-1 border rounded-lg text-gray-600 bg-gray-50 focus:ring-1 focus:ring-blue-500"
+                            >
+                                <option value="checkin">حسب تاريخ الدخول</option>
+                                <option value="checkout">حسب تاريخ الخروج</option>
+                                <option value="overlap">متداخل مع الفترة</option>
+                            </select>
+                        </div>
                         <div className="flex gap-2 flex-wrap">
                             {[
                                 { value: "today", label: "اليوم" },

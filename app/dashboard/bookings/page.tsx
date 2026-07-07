@@ -91,6 +91,7 @@ interface UnifiedBooking {
 async function getBookings(searchParams?: {
   from?: string;
   to?: string;
+  date_type?: string;
   platform_account_id?: string | string[];
   unit_id?: string | string[];
   platform?: string | string[];
@@ -159,15 +160,29 @@ async function getBookings(searchParams?: {
       bookingsSql += " AND b.checkout_date = ?";
       bookingsParams.push(filters.checkout_today);
     } else {
-      if (filters.from && filters.to) {
-        bookingsSql += " AND b.checkin_date >= ? AND b.checkout_date <= ?";
-        bookingsParams.push(filters.from, filters.to);
-      } else if (filters.from) {
-        bookingsSql += " AND b.checkin_date >= ?";
-        bookingsParams.push(filters.from);
-      } else if (filters.to) {
-        bookingsSql += " AND b.checkout_date <= ?";
-        bookingsParams.push(filters.to);
+      if (filters.from || filters.to) {
+        const dateType = filters.date_type || "checkin";
+        if (dateType === "checkin") {
+          // حجوزات بدأت خلال الفترة
+          if (filters.from) { bookingsSql += " AND b.checkin_date >= ?"; bookingsParams.push(filters.from); }
+          if (filters.to)   { bookingsSql += " AND b.checkin_date <= ?"; bookingsParams.push(filters.to); }
+        } else if (dateType === "checkout") {
+          // حجوزات انتهت خلال الفترة
+          if (filters.from) { bookingsSql += " AND b.checkout_date >= ?"; bookingsParams.push(filters.from); }
+          if (filters.to)   { bookingsSql += " AND b.checkout_date <= ?"; bookingsParams.push(filters.to); }
+        } else {
+          // overlap: أي حجز متداخل مع الفترة
+          if (filters.from && filters.to) {
+            bookingsSql += " AND b.checkin_date <= ? AND b.checkout_date >= ?";
+            bookingsParams.push(filters.to, filters.from);
+          } else if (filters.from) {
+            bookingsSql += " AND b.checkout_date >= ?";
+            bookingsParams.push(filters.from);
+          } else if (filters.to) {
+            bookingsSql += " AND b.checkin_date <= ?";
+            bookingsParams.push(filters.to);
+          }
+        }
       }
     }
 
@@ -242,15 +257,29 @@ async function getBookings(searchParams?: {
       resSql += " AND r.end_date = ?";
       resParams.push(filters.checkout_today);
     } else {
-      if (filters.from && filters.to) {
-        resSql += " AND r.start_date >= ? AND r.end_date <= ?";
-        resParams.push(filters.from, filters.to);
-      } else if (filters.from) {
-        resSql += " AND r.start_date >= ?";
-        resParams.push(filters.from);
-      } else if (filters.to) {
-        resSql += " AND r.end_date <= ?";
-        resParams.push(filters.to);
+      if (filters.from || filters.to) {
+        const dateType = filters.date_type || "checkin";
+        if (dateType === "checkin") {
+          // حجوزات بدأت خلال الفترة
+          if (filters.from) { resSql += " AND r.start_date >= ?"; resParams.push(filters.from); }
+          if (filters.to)   { resSql += " AND r.start_date <= ?"; resParams.push(filters.to); }
+        } else if (dateType === "checkout") {
+          // حجوزات انتهت خلال الفترة
+          if (filters.from) { resSql += " AND r.end_date >= ?"; resParams.push(filters.from); }
+          if (filters.to)   { resSql += " AND r.end_date <= ?"; resParams.push(filters.to); }
+        } else {
+          // overlap: أي حجز متداخل مع الفترة
+          if (filters.from && filters.to) {
+            resSql += " AND r.start_date <= ? AND r.end_date >= ?";
+            resParams.push(filters.to, filters.from);
+          } else if (filters.from) {
+            resSql += " AND r.end_date >= ?";
+            resParams.push(filters.from);
+          } else if (filters.to) {
+            resSql += " AND r.start_date <= ?";
+            resParams.push(filters.to);
+          }
+        }
       }
     }
     resSql += " ORDER BY r.start_date DESC";
@@ -363,6 +392,7 @@ export default async function BookingsPage({
   searchParams?: Promise<{
     from?: string;
     to?: string;
+    date_type?: string;
     platform_account_id?: string | string[];
     unit_id?: string | string[];
     platform?: string | string[];
@@ -377,6 +407,7 @@ export default async function BookingsPage({
   }> | {
     from?: string;
     to?: string;
+    date_type?: string;
     platform_account_id?: string | string[];
     unit_id?: string | string[];
     platform?: string | string[];
