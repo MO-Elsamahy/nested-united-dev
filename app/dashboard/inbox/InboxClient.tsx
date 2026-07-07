@@ -167,8 +167,18 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
   const [isRefreshingCookies, setIsRefreshingCookies] = useState(false);
   const [cookieRefreshResult, setCookieRefreshResult] = useState<string | null>(null);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const pollRef   = useRef<NodeJS.Timeout | null>(null);
+  const scrollRef           = useRef<HTMLDivElement>(null);
+  const pollRef             = useRef<NodeJS.Timeout | null>(null);
+  const fetchThreadsRef     = useRef(fetchThreads);
+  const fetchHistoryRef     = useRef(fetchHistory);
+  const fetchPollingRef     = useRef(fetchPollingStatus);
+  const activeThreadIdRef   = useRef(activeThreadId);
+
+  // Keep refs in sync with latest versions — no interval restart needed
+  useEffect(() => { fetchThreadsRef.current   = fetchThreads;      }, [fetchThreads]);
+  useEffect(() => { fetchHistoryRef.current   = fetchHistory;       }, [fetchHistory]);
+  useEffect(() => { fetchPollingRef.current   = fetchPollingStatus; }, [fetchPollingStatus]);
+  useEffect(() => { activeThreadIdRef.current = activeThreadId;     }, [activeThreadId]);
 
   // ── Notification sound listener (Electron IPC) ─────────────────────
   // main.ts calls playNotificationSound() → sends 'play-notification-sound'
@@ -310,22 +320,20 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
     fetchPollingStatus();
   }, [fetchThreads, fetchHealth, fetchPollingStatus]);
 
-  // Auto-refresh threads every 5 seconds
+  // ── Single stable polling interval (5 s) ─────────────────────────────────
+  // Using refs so the interval never needs to restart when state changes.
   useEffect(() => {
     pollRef.current = setInterval(() => {
-      fetchThreads(false);
-      fetchPollingStatus();
-      
-      // If a thread is currently open, fetch its history to show new messages
-      if (activeThreadId) {
-        fetchHistory(activeThreadId);
-      }
+      fetchThreadsRef.current(false);
+      fetchPollingRef.current();
+      const tid = activeThreadIdRef.current;
+      if (tid) fetchHistoryRef.current(tid);
     }, 5_000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [fetchThreads, fetchPollingStatus, activeThreadId, fetchHistory]);
+  }, []); // empty deps — interval starts once and never restarts
 
   // Refresh health every 30 seconds
   useEffect(() => {
@@ -343,13 +351,7 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
     }
   }, [activeThreadId, fetchHistory]);
 
-  // While a thread is open, refresh its history every 5 seconds to keep
-  // inbound/outbound message state fresh even if no push event arrives.
-  useEffect(() => {
-    if (!activeThreadId) return;
-    const t = setInterval(() => fetchHistory(activeThreadId), 5_000);
-    return () => clearInterval(t);
-  }, [activeThreadId, fetchHistory]);
+  // (Removed duplicate per-thread interval — handled by the stable 5 s poller above)
 
   // ── Real-Time Live Events (CDP → Electron IPC → React) ────────────────
   //
