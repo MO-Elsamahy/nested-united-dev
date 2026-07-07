@@ -169,16 +169,7 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
 
   const scrollRef           = useRef<HTMLDivElement>(null);
   const pollRef             = useRef<NodeJS.Timeout | null>(null);
-  const fetchThreadsRef     = useRef(fetchThreads);
-  const fetchHistoryRef     = useRef(fetchHistory);
-  const fetchPollingRef     = useRef(fetchPollingStatus);
-  const activeThreadIdRef   = useRef(activeThreadId);
 
-  // Keep refs in sync with latest versions — no interval restart needed
-  useEffect(() => { fetchThreadsRef.current   = fetchThreads;      }, [fetchThreads]);
-  useEffect(() => { fetchHistoryRef.current   = fetchHistory;       }, [fetchHistory]);
-  useEffect(() => { fetchPollingRef.current   = fetchPollingStatus; }, [fetchPollingStatus]);
-  useEffect(() => { activeThreadIdRef.current = activeThreadId;     }, [activeThreadId]);
 
   // ── Notification sound listener (Electron IPC) ─────────────────────
   // main.ts calls playNotificationSound() → sends 'play-notification-sound'
@@ -312,6 +303,17 @@ export default function InboxClient({ accounts }: { accounts: Account[] }) {
       }
     } catch { /* silent */ }
   }, []);
+
+  // ── Stable refs for polling interval (always point to latest version) ──────
+  const fetchThreadsRef   = useRef(fetchThreads);
+  const fetchHistoryRef   = useRef(fetchHistory);
+  const fetchPollingRef   = useRef(fetchPollingStatus);
+  const activeThreadIdRef = useRef(activeThreadId);
+
+  useEffect(() => { fetchThreadsRef.current   = fetchThreads;      }, [fetchThreads]);
+  useEffect(() => { fetchHistoryRef.current   = fetchHistory;       }, [fetchHistory]);
+  useEffect(() => { fetchPollingRef.current   = fetchPollingStatus; }, [fetchPollingStatus]);
+  useEffect(() => { activeThreadIdRef.current = activeThreadId;     }, [activeThreadId]);
 
   // Initial load
   useEffect(() => {
