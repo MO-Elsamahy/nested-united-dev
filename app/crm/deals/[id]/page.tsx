@@ -176,10 +176,10 @@ export default function DealDetailPage() {
     const handleArchiveOrReopen = async (status: "open" | "closed") => {
         setArchiving(true);
         try {
-            const res = await fetch(`/api/crm/deals/${id}`, {
+            const res = await fetch(`/api/crm/deals`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ status }),
+                body: JSON.stringify({ id, status }),
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
