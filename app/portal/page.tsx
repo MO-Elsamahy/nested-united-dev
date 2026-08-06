@@ -181,7 +181,8 @@ export default async function PortalPage() {
         "الوقت هو أثمن ما تملك، فلا تضيعه فيما لا يفيد",
         "القمة تتسع للجميع، لكنها لا تستقبل إلا المتميزين"
     ];
-    const randomQuote = quotes[quotes.length % 7]; // Deterministic based on constant, or use a date-based index if preferred
+    // تتغير في كل مرة يفتح اليوزر البوابة (الصفحة server-rendered بسبب force-dynamic)
+    const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
 
     return (
         <div className="min-h-screen bg-slate-50 relative overflow-hidden flex flex-col items-center justify-center p-4" dir="rtl">

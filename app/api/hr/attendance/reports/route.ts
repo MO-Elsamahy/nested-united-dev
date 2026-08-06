@@ -20,7 +20,12 @@ interface AttendanceRecord {
     check_out?: string;
 }
 
-// ─── Helper: جلب أيام الراحة للموظف ───
+interface LeaveRequest {
+    start_date: string;
+    end_date: string;
+}
+
+// ─── Helper: جلب أيام الراحة للموظف من شيفته ───
 async function getOffDays(emp: EmployeeForReport, fallback: number[]): Promise<number[]> {
     if (emp.shift_id) {
         const sh = await queryOne<{ days_off: string }>(
@@ -35,6 +40,18 @@ async function getOffDays(emp: EmployeeForReport, fallback: number[]): Promise<n
 // ─── Helper: اليوم المحلي UTC+3 كـ string ───
 function localToday(): string {
     return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().split("T")[0];
+}
+
+// ─── Helper: هل التاريخ المحدد يقع ضمن نطاق إجازة معتمدة ───
+function isDateOnApprovedLeave(date: Date, leaves: LeaveRequest[]): boolean {
+    return leaves.some((l) => {
+        const start = new Date(l.start_date);
+        const end   = new Date(l.end_date);
+        // نوحد الوقت لتجنب timezone offset
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999);
+        return date >= start && date <= end;
+    });
 }
 
 export async function GET(request: Request) {
@@ -65,13 +82,20 @@ export async function GET(request: Request) {
 
         const employees = await query<EmployeeForReport>(empSql, empParams);
 
-        // ─── default_days_off من hr_settings ───
+        // ─── الإعدادات من hr_settings ───
+        // 1. default_days_off: أيام الراحة الافتراضية (لمن ليس لديه شيفت)
         const defaultOffSetting = await queryOne<{ setting_value: string }>(
-            "SELECT setting_value FROM hr_settings WHERE setting_key = 'default_days_off'"
+            "SELECT setting_value FROM hr_settings WHERE setting_key = 'default_days_off' ORDER BY updated_at DESC LIMIT 1"
         );
         const defaultOffDays: number[] = defaultOffSetting?.setting_value
             ? defaultOffSetting.setting_value.split(",").filter(Boolean).map(Number)
-            : [5, 6]; // جمعة + سبت
+            : [5, 6]; // جمعة + سبت افتراضياً
+
+        // 2. working_days_per_month: أيام العمل المعتمدة في الشهر (من الإعدادات)
+        const workingDaysSetting = await queryOne<{ setting_value: string }>(
+            "SELECT setting_value FROM hr_settings WHERE setting_key = 'working_days_per_month' ORDER BY updated_at DESC LIMIT 1"
+        );
+        const workingDaysPerMonth = parseInt(workingDaysSetting?.setting_value || "26");
 
         const today = localToday();
 
@@ -93,10 +117,19 @@ export async function GET(request: Request) {
                 );
 
                 let status: string;
-                if (isOff)       status = "off";
-                else if (att)    status = att.status;
+                if (isOff)                    status = "off";
+                else if (att)                 status = att.status;
                 else if (targetDate >= today) status = "pending";
-                else             status = "absent";
+                else {
+                    // تحقق من إجازة معتمدة
+                    const leaves = await query<LeaveRequest>(`
+                        SELECT start_date, end_date FROM hr_requests
+                        WHERE employee_id = ? AND status = 'approved'
+                          AND request_type IN ('leave','annual_leave','sick_leave')
+                          AND ? BETWEEN DATE(start_date) AND DATE(end_date)
+                    `, [emp.id, targetDate]);
+                    status = leaves.length > 0 ? "leave" : "absent";
+                }
 
                 return {
                     id: emp.id, full_name: emp.full_name,
@@ -135,11 +168,19 @@ export async function GET(request: Request) {
             const rows = await Promise.all(employees.map(async (emp) => {
                 const offIdx = await getOffDays(emp, defaultOffDays);
 
-                // جلب سجلات الفترة دفعة واحدة
+                // جلب سجلات الحضور دفعة واحدة
                 const records = await query<AttendanceRecord>(`
                     SELECT DATE(date) as date, status, late_minutes, overtime_minutes
                     FROM hr_attendance
                     WHERE employee_id = ? AND DATE(date) BETWEEN ? AND ?
+                `, [emp.id, fromDate, toDate]);
+
+                // جلب الإجازات المعتمدة في الفترة
+                const approvedLeaves = await query<LeaveRequest>(`
+                    SELECT start_date, end_date FROM hr_requests
+                    WHERE employee_id = ? AND status = 'approved'
+                      AND request_type IN ('leave','annual_leave','sick_leave')
+                      AND DATE(end_date) >= ? AND DATE(start_date) <= ?
                 `, [emp.id, fromDate, toDate]);
 
                 let present = 0, absent = 0, leave = 0, offCount = 0;
@@ -164,9 +205,18 @@ export async function GET(request: Request) {
                         if (att.status === "present" || att.status === "late") present++;
                         else if (att.status === "absent") absent++;
                         else if (att.status === "leave") leave++;
+                    } else if (dayStr >= today) {
+                        status = "pending";
                     } else {
-                        status = dayStr >= today ? "pending" : "absent";
-                        if (status === "absent") absent++;
+                        // تحقق من إجازة معتمدة
+                        const checkDate = new Date(dy, dm - 1, dd);
+                        if (isDateOnApprovedLeave(checkDate, approvedLeaves)) {
+                            status = "leave";
+                            leave++;
+                        } else {
+                            status = "absent";
+                            absent++;
+                        }
                     }
 
                     return { date: dayStr, status };
@@ -190,38 +240,55 @@ export async function GET(request: Request) {
         // MONTHLY VIEW (default)
         // ═══════════════════════════════════════════════════
         const lastDayOfMonth = new Date(year, month, 0).getDate();
-        const localNow       = new Date(Date.now() + 3 * 60 * 60 * 1000);
-        const isCurrentMonth = localNow.getUTCMonth() + 1 === month && localNow.getUTCFullYear() === year;
+
+        // تحديد آخر يوم يتم حسابه:
+        // لو الشهر الحالي → نحسب لحد امبارح (UTC+3)
+        // لو شهر فات → نحسب الشهر كله
+        const localNow = new Date(Date.now() + 3 * 60 * 60 * 1000); // UTC+3
+        const localYear  = localNow.getUTCFullYear();
+        const localMonth = localNow.getUTCMonth() + 1;
+        const localDay   = localNow.getUTCDate();
+        const isCurrentMonth = localMonth === month && localYear === year;
         const lastCheckedDay = isCurrentMonth
-            ? Math.min(localNow.getUTCDate() - 1, lastDayOfMonth)
+            ? Math.min(localDay - 1, lastDayOfMonth)
             : lastDayOfMonth;
+
+        // أيام الراحة في التقرير = إجمالي أيام الشهر − أيام العمل المعتمدة
+        const offDaysDisplay = Math.max(0, lastDayOfMonth - workingDaysPerMonth);
 
         const results = await Promise.all(employees.map(async (emp) => {
             const offIdx = await getOffDays(emp, defaultOffDays);
 
-            // أيام العمل وأيام الراحة طول الشهر كله
-            let offDaysTotal = 0, workingDays = 0;
-            for (let d = 1; d <= lastDayOfMonth; d++) {
-                const dow = new Date(year, month - 1, d).getDay();
-                offIdx.includes(dow) ? offDaysTotal++ : workingDays++;
-            }
-
-            // سجلات الحضور
+            // سجلات الحضور للشهر
             const attendanceRecords = await query<AttendanceRecord>(`
                 SELECT DATE(date) as date, status, late_minutes, overtime_minutes
                 FROM hr_attendance
                 WHERE employee_id = ? AND MONTH(date) = ? AND YEAR(date) = ?
             `, [emp.id, month, year]);
 
+            // الإجازات المعتمدة للشهر
+            const approvedLeaves = await query<LeaveRequest>(`
+                SELECT start_date, end_date FROM hr_requests
+                WHERE employee_id = ? AND status = 'approved'
+                  AND request_type IN ('leave','annual_leave','sick_leave')
+                  AND (
+                    (MONTH(start_date) = ? AND YEAR(start_date) = ?)
+                    OR (MONTH(end_date) = ? AND YEAR(end_date) = ?)
+                  )
+            `, [emp.id, month, year, month, year]);
+
             let presentDays = 0, absentDays = 0, leaveDays = 0;
             let totalLateMinutes = 0, totalOvertimeMinutes = 0;
 
             for (let d = 1; d <= lastCheckedDay; d++) {
                 const dow = new Date(year, month - 1, d).getDay();
-                if (offIdx.includes(dow)) continue; // يوم راحة
 
+                // تجاهل أيام الراحة المحددة في شيفة الموظف
+                if (offIdx.includes(dow)) continue;
+
+                // البحث عن سجل حضور لهذا اليوم
+                // استخدام slice بدل new Date() لتجنب timezone (UTC midnight → يوم -1)
                 const att = attendanceRecords.find((r) => {
-                    // استخدام split بدل new Date() لتجنب مشكلة timezone (UTC midnight → يوم -1)
                     const rDay = String(r.date).slice(8, 10).replace(/^0/, "");
                     return parseInt(rDay) === d;
                 });
@@ -233,18 +300,29 @@ export async function GET(request: Request) {
                     else if (att.status === "absent") absentDays++;
                     else if (att.status === "leave")  leaveDays++;
                 } else {
-                    absentDays++; // يوم عمل عدى بدون سجل
+                    // يوم عمل بدون سجل حضور → نتحقق من الإجازات المعتمدة
+                    const checkDate = new Date(year, month - 1, d);
+                    if (isDateOnApprovedLeave(checkDate, approvedLeaves)) {
+                        leaveDays++;
+                    } else {
+                        absentDays++; // غياب فعلي
+                    }
                 }
             }
 
-            const elapsedWorkDays = presentDays + absentDays + leaveDays;
-            const attendanceRate  = elapsedWorkDays > 0 ? Math.round((presentDays / elapsedWorkDays) * 100) : 0;
+            // نسبة الحضور = الحضور الفعلي / إجمالي أيام العمل في الشهر (من الإعدادات)
+            const attendanceRate = workingDaysPerMonth > 0
+                ? Math.round((presentDays / workingDaysPerMonth) * 100)
+                : 0;
 
             return {
                 id: emp.id, full_name: emp.full_name,
                 department: emp.department, job_title: emp.job_title,
-                working_days: workingDays, off_days: offDaysTotal,
-                present_days: presentDays, absent_days: absentDays, leave_days: leaveDays,
+                working_days: workingDaysPerMonth, // من الإعدادات (26)
+                off_days: offDaysDisplay,           // أيام الشهر − working_days
+                present_days: presentDays,
+                absent_days: absentDays,
+                leave_days: leaveDays,
                 total_late_minutes: totalLateMinutes,
                 total_overtime_minutes: totalOvertimeMinutes,
                 attendance_rate: attendanceRate,
