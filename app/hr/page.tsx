@@ -11,8 +11,8 @@ import {
     FileText,
     TrendingUp,
     Calendar,
-    Megaphone,
 } from "lucide-react";
+import { AnnouncementsWidget } from "@/components/hr/AnnouncementsWidget";
 
 async function getHRStats() {
     const today = new Date().toISOString().split("T")[0];
@@ -90,7 +90,7 @@ async function getHRStats() {
     );
 
     // أحدث الإعلانات
-    const announcements = await query<{ id: string, title: string, content: string, priority: string, is_pinned: boolean | number }>(
+    const announcements = await query<{ id: string, title: string, content: string, priority: string, is_pinned: boolean | number, published_at: string | null }>(
         `SELECT * FROM hr_announcements 
      WHERE is_active = 1 AND (expires_at IS NULL OR expires_at > NOW())
      ORDER BY is_pinned DESC, published_at DESC LIMIT 3`
@@ -233,39 +233,7 @@ export default async function HRDashboardPage() {
                             عرض الكل
                         </Link>
                     </div>
-
-                    {stats.announcements.length > 0 ? (
-                        <div className="space-y-4">
-                            {stats.announcements.map((ann) => (
-                                <div
-                                    key={ann.id}
-                                    className={`p-4 rounded-xl border-r-4 ${ann.priority === "urgent"
-                                        ? "bg-red-50 border-red-500"
-                                        : ann.priority === "high"
-                                            ? "bg-orange-50 border-orange-500"
-                                            : "bg-gray-50 border-gray-300"
-                                        }`}
-                                >
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <h3 className="font-semibold text-gray-900">{ann.title}</h3>
-                                            <p className="text-gray-600 text-sm mt-1 line-clamp-2">{ann.content}</p>
-                                        </div>
-                                        {ann.is_pinned && (
-                                            <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded">
-                                                مثبت
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            <Megaphone className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                            <p>لا توجد إعلانات حالياً</p>
-                        </div>
-                    )}
+                    <AnnouncementsWidget announcements={stats.announcements} />
                 </div>
             </div>
         </div>

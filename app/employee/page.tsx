@@ -16,6 +16,7 @@ import {
     MessageSquare,
 } from "lucide-react";
 import { AttendanceButton } from "./AttendanceButton";
+import { AnnouncementsWidget } from "@/components/hr/AnnouncementsWidget";
 
 interface Employee {
     id: string;
@@ -243,33 +244,7 @@ export default async function EmployeeDashboardPage() {
                         <h2 className="text-lg font-bold text-gray-900">الإعلانات</h2>
                         <Megaphone className="w-5 h-5 text-gray-400" />
                     </div>
-
-                    {announcements.length > 0 ? (
-                        <div className="space-y-4">
-                            {announcements.map((ann: Announcement) => (
-                                <div
-                                    key={ann.id}
-                                    className={`p-4 rounded-xl border-r-4 ${ann.priority === "urgent"
-                                        ? "bg-red-50 border-red-500"
-                                        : ann.priority === "high"
-                                            ? "bg-orange-50 border-orange-500"
-                                            : "bg-gray-50 border-violet-300"
-                                        }`}
-                                >
-                                    <h3 className="font-semibold text-gray-900">{ann.title}</h3>
-                                    <p className="text-gray-600 text-sm mt-1 line-clamp-2">{ann.content}</p>
-                                    <p className="text-gray-400 text-xs mt-2">
-                                        {ann.published_at && new Date(ann.published_at).toLocaleDateString("ar-SA")}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-8 text-gray-500">
-                            <Megaphone className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                            <p>لا توجد إعلانات</p>
-                        </div>
-                    )}
+                    <AnnouncementsWidget announcements={announcements} />
                 </div>
             </div>
         </div>
